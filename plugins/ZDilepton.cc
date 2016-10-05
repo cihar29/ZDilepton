@@ -54,7 +54,7 @@ class ZDilepton : public edm::EDAnalyzer {
 
     ULong64_t event;
     int run, lumi, bx;
-    float mu, rho;
+    float rho;
 
     int nPVall, nPV;
     float pv_ndof[MAXNPV], pv_z[MAXNPV], pv_rho[MAXNPV];
@@ -77,7 +77,6 @@ class ZDilepton : public edm::EDAnalyzer {
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig)
 {
   RootFileName_ = iConfig.getParameter<string>("RootFileName");
-  muTag_ = consumes< vector<PileupSummaryInfo> >( iConfig.getParameter<edm::InputTag>("muTag") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
   muonTag_ = consumes< vector<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
@@ -94,7 +93,6 @@ void  ZDilepton::beginJob() {
   tree->Branch("bx", &bx, "bx/I");
   tree->Branch("event", &event, "event/l");
 
-  tree->Branch("mu", &mu, "mu/F");
   tree->Branch("rho",   &rho,   "rho/F");
 
   tree->Branch("nPVall",  &nPVall, "nPVall/I");
@@ -117,7 +115,12 @@ void  ZDilepton::beginJob() {
 // ------------ method called for each event  ------------
 void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
-//------------ Pileup ------------//
+//------------ Event Info ------------//
+
+  run = int(iEvent.id().run());
+  lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
+  bx = iEvent.bunchCrossing();
+  event = iEvent.id().event();
 
 //------------ Rho ------------//
 

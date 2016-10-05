@@ -21,14 +21,13 @@ readFiles.extend( [
 
 ] );
 
-era = "Spring16_25nsV6_DATA"
-tag = "80X_dataRun2_Prompt_v12"
+gt = "80X_dataRun2_Prompt_v12"
 
 process.load( "Configuration.Geometry.GeometryIdeal_cff" )
 process.load( "Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff" )
 process.load( "Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff" )
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, tag)
+process.GlobalTag = GlobalTag(process.GlobalTag, gt)
 
 #Beam Halo
 process.load('RecoMET.METFilters.CSCTightHaloFilter_cfi')
@@ -42,41 +41,19 @@ process.ApplyBaselineHBHENoiseFilter = cms.EDFilter('BooleanFlagFilter',
 )
 
 #Bad EE Supercrystal filter
-process.load('RecoMET.METFilters.eeBadScFilter_cfi')
-
-#Jet Corrections
-from CondCore.DBCommon.CondDBSetup_cfi import *
-process.jec = cms.ESSource("PoolDBESSource",CondDBSetup,
-    connect = cms.string('sqlite_file:'+era+'.db'),
-    toGet =  cms.VPSet(
-        cms.PSet(
-            record = cms.string("JetCorrectionsRecord"),
-            tag = cms.string("JetCorrectorParametersCollection_"+era+"_AK4PFchs"),
-            label= cms.untracked.string("AK4PFchs")
-        )
-    )
-)
-process.es_prefer_jec = cms.ESPrefer("PoolDBESSource","jec")
-
-process.load('JetMETCorrections.Configuration.JetCorrectors_cff')
-
-process.ak4PFJetsCHSl1l2l3 = cms.EDProducer('CorrectedPFJetProducer',
-    src         = cms.InputTag("ak4PFJetsCHS"),
-    correctors  = cms.VInputTag("ak4PFCHSL1FastL2L3ResidualCorrector")
-)
+#process.load('RecoMET.METFilters.eeBadScFilter_cfi')
 
 process.analysis = cms.EDAnalyzer("ZDilepton",
     RootFileName = cms.string("analysis.root"),
-    muTag = cms.InputTag("addPileupInfo"),
     rhoTag = cms.InputTag("fixedGridRhoFastjetAll"),
-    pvTag = cms.InputTag("offlinePrimaryVertices"),
+    pvTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
     muonTag = cms.InputTag("slimmedMuons")
 )
 
-process.myseq = cms.Sequence( process.ak4PFJetsCHSl1l2l3 * process.analysis )
+process.myseq = cms.Sequence( process.analysis )
 
 process.p = cms.Path( process.CSCTightHaloFilter *
                       process.HBHENoiseFilterResultProducer *
                       process.ApplyBaselineHBHENoiseFilter *
-                      process.eeBadScFilter *
+                      # process.eeBadScFilter *
                       process.myseq )
