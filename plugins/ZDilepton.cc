@@ -60,8 +60,11 @@ class ZDilepton : public edm::EDAnalyzer {
     float pv_ndof[MAXNPV], pv_z[MAXNPV], pv_rho[MAXNPV];
 
     int nMuon;
-    bool muon_isGlob[MAXLEP];
-    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP], muon_chi2[MAXLEP], muon_tspm[MAXLEP], muon_kinkf[MAXLEP], muon_segcom[MAXLEP];
+    bool muon_isGlob[MAXLEP], muon_IsLooseID[MAXLEP] , muon_IsMediumID[MAXLEP] , muon_IsTightID[MAXLEP];
+    int muon_type[MAXLEP] , muon_charge[MAXLEP];
+    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP] ,  muon_D0[MAXLEP] , muon_Dz[MAXLEP];
+    float muon_chi2[MAXLEP], muon_tspm[MAXLEP], muon_kinkf[MAXLEP], muon_segcom[MAXLEP];
+    
 
     //int nElectron;
     //float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP];
@@ -102,14 +105,21 @@ void  ZDilepton::beginJob() {
   tree->Branch("pv_rho",  pv_rho,  "pv_rho[nPVall]/F");
 
   tree->Branch("nMuon", &nMuon, "nMuon/I");
+  tree->Branch("muon_charge", muon_charge, "muon_charge[nMuon]/I");
+  tree->Branch("muon_type", muon_type, "muon_type[nMuon]/I");
   tree->Branch("muon_isGlob", muon_isGlob, "muon_isGlob[nMuon]/O");
   tree->Branch("muon_pt", muon_pt, "muon_pt[nMuon]/F");
   tree->Branch("muon_eta", muon_eta, "muon_eta[nMuon]/F");
   tree->Branch("muon_phi", muon_phi, "muon_phi[nMuon]/F");
+  tree->Branch("muon_D0", muon_D0, "muon_D0[nMuon]/F");
+  tree->Branch("muon_Dz", muon_Dz, "muon_Dz[nMuon]/F");
   tree->Branch("muon_chi2", muon_chi2, "muon_chi2[nMuon]/F");
   tree->Branch("muon_tspm", muon_tspm, "muon_tspm[nMuon]/F");
   tree->Branch("muon_kinkf", muon_kinkf, "muon_kinkf[nMuon]/F");
   tree->Branch("muon_segcom", muon_segcom, "muon_segcom[nMuon]/F");
+  tree->Branch("muon_IsLooseID", muon_IsLooseID, "muon_IsLooseID[nMuon]/O");
+  tree->Branch("muon_IsMediumID", muon_IsMediumID, "muon_IsMediumID[nMuon]/O");
+  tree->Branch("muon_IsTightID", muon_IsTightID, "muon_IsTightID[nMuon]/O");
 }
 
 // ------------ method called for each event  ------------
@@ -157,13 +167,24 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   for (int i=0; i<nMuon; i++){
     pat::Muon muon = muons->at(i);
 
+    
     muon_isGlob[i] = muon.isGlobalMuon();
+    muon_charge[i] = muon.charge();
+    muon_type[i] = muon.type();
     muon_pt[i] = muon.pt();
     muon_eta[i] = muon.eta();
     muon_phi[i] = muon.phi();
+
+    const reco::Vertex vtx;
+    muon_D0[i] = muon.muonBestTrack()->dxy(vtx.position());
+    muon_Dz[i] = muon.muonBestTrack()->dz(vtx.position());
     muon_tspm[i] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[i] = muon.combinedQuality().trkKink;
     muon_segcom[i] = muon::segmentCompatibility(muon);
+
+    muon_IsLooseID[i] = muon.isLooseMuon();
+    muon_IsMediumID[i] = muon.isMediumMuon();
+    muon_IsTightID[i] = muon.isTightMuon(vtx);
 
     if (muon_isGlob[i]) muon_chi2[i] = muon.globalTrack()->normalizedChi2();
     else                muon_chi2[i] = -1;
