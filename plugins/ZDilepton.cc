@@ -11,7 +11,7 @@
      [Notes on implementation]
 */
 //
-// Original Author:  charles harrington
+// Original Author:  charles harrington and bahareh roozbahani
 //         Created:  Wed, 05 Oct 2016 17:09:43 GMT
 //
 //
@@ -60,14 +60,15 @@ class ZDilepton : public edm::EDAnalyzer {
     float pv_ndof[MAXNPV], pv_z[MAXNPV], pv_rho[MAXNPV];
 
     int nMuon;
-    bool muon_isGlob[MAXLEP], muon_IsLooseID[MAXLEP] , muon_IsMediumID[MAXLEP] , muon_IsTightID[MAXLEP];
-    int muon_type[MAXLEP] , muon_charge[MAXLEP];
-    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP] ,  muon_D0[MAXLEP] , muon_Dz[MAXLEP];
+    bool muon_isGlob[MAXLEP], muon_IsLooseID[MAXLEP], muon_IsMediumID[MAXLEP], muon_IsTightID[MAXLEP];
+    int muon_type[MAXLEP], muon_charge[MAXLEP];
+    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP], muon_D0[MAXLEP], muon_Dz[MAXLEP];
     float muon_chi2[MAXLEP], muon_tspm[MAXLEP], muon_kinkf[MAXLEP], muon_segcom[MAXLEP];
     
-
-    //int nElectron;
-    //float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP];
+    int nEle;
+    int ele_charge[MAXLEP];
+    float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP];
+    float ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_dPhiSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP], ele_missinghits[MAXLEP];
 
     TString RootFileName_;
 
@@ -75,6 +76,7 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT<double> rhoTag_;
     edm::EDGetTokenT< vector<reco::Vertex> > pvTag_;
     edm::EDGetTokenT< vector<pat::Muon> > muonTag_;
+    edm::EDGetTokenT< vector<pat::Electron> > electronTag_;
 };
 
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig)
@@ -83,6 +85,7 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig)
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
   muonTag_ = consumes< vector<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
+  electronTag_ = consumes< vector<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -120,6 +123,21 @@ void  ZDilepton::beginJob() {
   tree->Branch("muon_IsLooseID", muon_IsLooseID, "muon_IsLooseID[nMuon]/O");
   tree->Branch("muon_IsMediumID", muon_IsMediumID, "muon_IsMediumID[nMuon]/O");
   tree->Branch("muon_IsTightID", muon_IsTightID, "muon_IsTightID[nMuon]/O");
+
+  tree->Branch("nEle", &nEle, "nEle/I");
+  tree->Branch("ele_charge", ele_charge, "ele_charge[nEle]/I");
+  tree->Branch("ele_pt", ele_pt, "ele_pt[nEle]/F");
+  tree->Branch("ele_eta", ele_eta, "ele_eta[nEle]/F");
+  tree->Branch("ele_phi", ele_phi, "ele_phi[nEle]/F");
+  tree->Branch("ele_D0", ele_D0, "ele_D0[nEle]/F");
+  tree->Branch("ele_Dz", ele_Dz, "ele_Dz[nEle]/F");
+  tree->Branch("ele_sigmaIetaIeta", ele_sigmaIetaIeta, "ele_sigmaIetaIeta[nEle]/F");
+  tree->Branch("ele_dEtaSeed", ele_dEtaSeed, "ele_dEtaSeed[nEle]/F");
+  tree->Branch("ele_dPhiSeed", ele_dPhiSeed, "ele_dPhiSeed[nEle]/F");
+  tree->Branch("ele_HE", ele_HE, "ele_HE[nEle]/F");
+  tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
+  tree->Branch("ele_overEoverP", ele_overEoverP, "ele_overEoverP[nEle]/F");
+  tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/F");
 }
 
 // ------------ method called for each event  ------------
@@ -157,6 +175,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       nPV++;
   }
 
+  reco::Vertex pvtx = primaryVertices->at(0);
+
 //------------ Muons ------------//
 
   edm::Handle< vector<pat::Muon> > muons;
@@ -167,27 +187,55 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   for (int i=0; i<nMuon; i++){
     pat::Muon muon = muons->at(i);
 
-    
     muon_isGlob[i] = muon.isGlobalMuon();
     muon_charge[i] = muon.charge();
     muon_type[i] = muon.type();
     muon_pt[i] = muon.pt();
     muon_eta[i] = muon.eta();
     muon_phi[i] = muon.phi();
+    muon_D0[i] = muon.muonBestTrack()->dxy(pvtx.position());
+    muon_Dz[i] = muon.muonBestTrack()->dz(pvtx.position());
 
-    const reco::Vertex vtx;
-    muon_D0[i] = muon.muonBestTrack()->dxy(vtx.position());
-    muon_Dz[i] = muon.muonBestTrack()->dz(vtx.position());
     muon_tspm[i] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[i] = muon.combinedQuality().trkKink;
     muon_segcom[i] = muon::segmentCompatibility(muon);
 
     muon_IsLooseID[i] = muon.isLooseMuon();
     muon_IsMediumID[i] = muon.isMediumMuon();
-    muon_IsTightID[i] = muon.isTightMuon(vtx);
+    muon_IsTightID[i] = muon.isTightMuon(pvtx);
 
     if (muon_isGlob[i]) muon_chi2[i] = muon.globalTrack()->normalizedChi2();
     else                muon_chi2[i] = -1;
+  }
+
+//------------ Electrons ------------//
+
+  edm::Handle< vector<pat::Electron> > electrons;
+  iEvent.getByToken(electronTag_, electrons);
+
+  nEle = electrons->size();
+
+  for (int i=0; i<nEle; i++){
+    pat::Electron ele = electrons->at(i);
+
+    ele_charge[i] = ele.charge();
+    ele_pt[i] = ele.pt();
+    ele_eta[i] = ele.eta();
+    ele_phi[i] = ele.phi();
+    ele_D0[i] = ele.gsfTrack()->dxy(pvtx.position());
+    ele_Dz[i] = ele.gsfTrack()->dz(pvtx.position());
+
+    ele_sigmaIetaIeta[i] = ele.full5x5_sigmaIetaIeta();
+
+    if ( ele.superCluster().isNonnull() && ele.superCluster()->seed().isNonnull() )
+      ele_dEtaSeed[i] = ele.deltaEtaSuperClusterTrackAtVtx() - ele.superCluster()->eta() + ele.superCluster()->seed()->eta();
+    else ele_dEtaSeed[i] = -99;
+
+    ele_dPhiSeed[i] = abs(ele.deltaPhiSuperClusterTrackAtVtx());
+    ele_HE[i] = ele.hadronicOverEm();
+    //ele_rcpiwec[i] = ele.;
+    ele_overEoverP[i] = abs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
+    ele_missinghits[i] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
   }
 
 //------------ Fill Tree ------------//

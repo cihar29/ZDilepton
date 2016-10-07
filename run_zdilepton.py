@@ -47,7 +47,8 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     RootFileName = cms.string("analysis.root"),
     rhoTag = cms.InputTag("fixedGridRhoFastjetAll"),
     pvTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
-    muonTag = cms.InputTag("slimmedMuons")
+    muonTag = cms.InputTag("slimmedMuons"),
+    electronTag = cms.InputTag("slimmedElectrons")
 )
 
 process.myseq = cms.Sequence( process.analysis )
