@@ -27,8 +27,11 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include <SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h>
+#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 #include <vector>
 
 //root files
@@ -38,6 +41,7 @@
 using namespace std;
 
 const int MAXLEP = 10;
+const int MAXJET = 10;
 const int MAXNPV = 50;
 
 class ZDilepton : public edm::EDAnalyzer {
@@ -70,22 +74,29 @@ class ZDilepton : public edm::EDAnalyzer {
     float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP];
     float ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_dPhiSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP], ele_missinghits[MAXLEP];
 
+    int nJet;
+    float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_area[MAXJET], jet_jec[MAXJET];
+
     TString RootFileName_;
 
+    EffectiveAreas ele_areas_;
     edm::EDGetTokenT< vector<PileupSummaryInfo> > muTag_;
     edm::EDGetTokenT<double> rhoTag_;
     edm::EDGetTokenT< vector<reco::Vertex> > pvTag_;
     edm::EDGetTokenT< vector<pat::Muon> > muonTag_;
     edm::EDGetTokenT< vector<pat::Electron> > electronTag_;
+    edm::EDGetTokenT< vector<pat::Jet> > jetTag_;
 };
 
-ZDilepton::ZDilepton(const edm::ParameterSet& iConfig)
+ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
+  ele_areas_( (iConfig.getParameter<edm::FileInPath>("effAreasConfigFile")).fullPath() )
 {
   RootFileName_ = iConfig.getParameter<string>("RootFileName");
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
   muonTag_ = consumes< vector<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
   electronTag_ = consumes< vector<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
+  jetTag_ = consumes< vector<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -138,6 +149,13 @@ void  ZDilepton::beginJob() {
   tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
   tree->Branch("ele_overEoverP", ele_overEoverP, "ele_overEoverP[nEle]/F");
   tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/F");
+
+  tree->Branch("nJet", &nJet, "nJet/I");
+  tree->Branch("jet_pt", jet_pt, "jet_pt[nJet]/F");
+  tree->Branch("jet_eta", jet_eta, "jet_eta[nJet]/F");
+  tree->Branch("jet_phi", jet_phi, "jet_phi[nJet]/F");
+  tree->Branch("jet_area", jet_area, "jet_area[nJet]/F");
+  tree->Branch("jet_jec", jet_jec, "jet_jec[nJet]/F");
 }
 
 // ------------ method called for each event  ------------
@@ -233,9 +251,31 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     ele_dPhiSeed[i] = abs(ele.deltaPhiSuperClusterTrackAtVtx());
     ele_HE[i] = ele.hadronicOverEm();
-    //ele_rcpiwec[i] = ele.;
+
+    reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
+    float abseta =  abs(ele.superCluster()->eta());
+    float eA = ele_areas_.getEffectiveArea(abseta);
+    ele_rcpiwec[i] = ( pfIso.sumChargedHadronPt + max( 0.0f, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eA*rho) ) / ele_pt[i];
+
     ele_overEoverP[i] = abs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
     ele_missinghits[i] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+  }
+
+//------------ Jets ------------//
+
+  edm::Handle< vector<pat::Jet> > jets;
+  iEvent.getByToken(jetTag_, jets);
+
+  nJet = jets->size();
+
+  for (int i=0; i<nJet; i++){
+    pat::Jet jet = jets->at(i);
+
+    jet_pt[i] = jet.pt();
+    jet_eta[i] = jet.eta();
+    jet_phi[i] = jet.phi();
+    jet_area[i] = jet.jetArea();
+    //jet_jec[i] = jet.jecFactor();
   }
 
 //------------ Fill Tree ------------//

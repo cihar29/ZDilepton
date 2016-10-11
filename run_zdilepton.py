@@ -17,7 +17,9 @@ readFiles = cms.untracked.vstring()
 process.source = cms.Source ("PoolSource", fileNames = readFiles)
 readFiles.extend( [
 
-  '/store/data/Run2016B/SingleMuon/MINIAOD/PromptReco-v2/000/273/150/00000/34A57FB8-D819-E611-B0A4-02163E0144EE.root'
+  # '/store/data/Run2016B/SingleMuon/MINIAOD/PromptReco-v2/000/273/150/00000/34A57FB8-D819-E611-B0A4-02163E0144EE.root'
+
+  '/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
 
 ] );
 
@@ -48,7 +50,9 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     rhoTag = cms.InputTag("fixedGridRhoFastjetAll"),
     pvTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
     muonTag = cms.InputTag("slimmedMuons"),
-    electronTag = cms.InputTag("slimmedElectrons")
+    electronTag = cms.InputTag("slimmedElectrons"),
+    effAreasConfigFile = cms.FileInPath("RecoEgamma/ElectronIdentification/data/Spring15/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_25ns.txt"),
+    jetTag = cms.InputTag("slimmedJets")
 )
 
 process.myseq = cms.Sequence( process.analysis )
