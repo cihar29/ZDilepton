@@ -32,6 +32,9 @@
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/Common/interface/Ptr.h"
+#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
+#include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include <vector>
 
 //root files
@@ -39,8 +42,10 @@
 #include <TTree.h>
 
 using namespace std;
+using namespace edm;
 
 const int MAXLEP = 10;
+const int MAXGEN = 50;
 const int MAXJET = 10;
 const int MAXNPV = 50;
 
@@ -58,10 +63,16 @@ class ZDilepton : public edm::EDAnalyzer {
 
     ULong64_t event;
     int run, lumi, bx;
-    float rho;
 
+    float rho;
     int nPVall, nPV;
     float pv_ndof[MAXNPV], pv_z[MAXNPV], pv_rho[MAXNPV];
+
+    int nGen;
+    int gen_status[MAXGEN], gen_PID[MAXGEN];
+    float gen_pt[MAXGEN], gen_mass[MAXGEN], gen_eta[MAXGEN], gen_phi[MAXGEN];
+    int nGenJet;
+    float genJet_pt[MAXJET], genJet_eta[MAXJET], genJet_phi[MAXJET], genJet_area[MAXJET];
 
     int nMuon;
     bool muon_isGlob[MAXLEP], muon_IsLooseID[MAXLEP], muon_IsMediumID[MAXLEP], muon_IsTightID[MAXLEP];
@@ -71,20 +82,30 @@ class ZDilepton : public edm::EDAnalyzer {
     
     int nEle;
     int ele_charge[MAXLEP];
+    bool ele_VetoID[MAXLEP], ele_LooseID[MAXLEP], ele_MediumID[MAXLEP], ele_TightID[MAXLEP];
+    float ele_dEtaIn[MAXLEP], ele_dPhiIn[MAXLEP];
     float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP];
-    float ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_dPhiSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP], ele_missinghits[MAXLEP];
+    float ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_dPhiSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP];
+    float ele_missinghits[MAXLEP];
 
     int nJet;
-    float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_area[MAXJET], jet_jec[MAXJET];
+    float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_area[MAXJET];
 
     TString RootFileName_;
+    bool isMC_;
 
     EffectiveAreas ele_areas_;
     edm::EDGetTokenT< vector<PileupSummaryInfo> > muTag_;
     edm::EDGetTokenT<double> rhoTag_;
     edm::EDGetTokenT< vector<reco::Vertex> > pvTag_;
+    edm::EDGetTokenT< vector<reco::GenParticle> > genParticleTag_;
+    edm::EDGetTokenT< vector<reco::GenJet> > genJetTag_;
     edm::EDGetTokenT< vector<pat::Muon> > muonTag_;
     edm::EDGetTokenT< vector<pat::Electron> > electronTag_;
+    edm::EDGetTokenT<edm::ValueMap<bool> > eleVetoIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<bool> > eleLooseIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<bool> > eleMediumIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
     edm::EDGetTokenT< vector<pat::Jet> > jetTag_;
 };
 
@@ -92,10 +113,17 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   ele_areas_( (iConfig.getParameter<edm::FileInPath>("effAreasConfigFile")).fullPath() )
 {
   RootFileName_ = iConfig.getParameter<string>("RootFileName");
+  isMC_ = iConfig.getParameter<bool>("isMC");
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
+  genParticleTag_ =  consumes< vector<reco::GenParticle> >( iConfig.getParameter<edm::InputTag>("genParticleTag") );
+  genJetTag_ =  consumes< vector<reco::GenJet> >( iConfig.getParameter<edm::InputTag>("genJetTag") );
   muonTag_ = consumes< vector<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
   electronTag_ = consumes< vector<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
+  eleVetoIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleVetoIdMapToken") );
+  eleLooseIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleLooseIdMapToken") );
+  eleMediumIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleMediumIdMapToken") );
+  eleTightIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
   jetTag_ = consumes< vector<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
 }
 
@@ -103,12 +131,29 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
 void  ZDilepton::beginJob() {
 
   root_file = new TFile(RootFileName_,"RECREATE");
-  tree = new TTree("T","Offset Tree");
+  tree = new TTree("T","RECREATE");
 
-  tree->Branch("run", &run, "run/I");
-  tree->Branch("lumi", &lumi, "lumi/I");
-  tree->Branch("bx", &bx, "bx/I");
-  tree->Branch("event", &event, "event/l");
+  if(isMC_){
+    tree->Branch("nGen", &nGen, "nGen/I");
+    tree->Branch("gen_status",  gen_status, "gen_status[nGen]/I");
+    tree->Branch("gen_PID",  gen_PID, "gen_PID[nGen]/I");
+    tree->Branch("gen_pt", gen_pt, "gen_pt[nGen]/F");
+    tree->Branch("gen_mass", gen_mass, "gen_mass[nGen]/F");
+    tree->Branch("gen_eta", gen_eta, "gen_eta[nGen]/F");
+    tree->Branch("gen_phi", gen_phi, "gen_phi[nGen]/F");
+
+    tree->Branch("nGenJet", &nGenJet, "nGenJet/I");
+    tree->Branch("genJet_pt", genJet_pt, "genJet_pt[nGenJet]/F");
+    tree->Branch("genJet_eta", genJet_eta, "genJet_eta[nGenJet]/F");
+    tree->Branch("genJet_phi", genJet_phi, "genJet_phi[nGenJet]/F");
+    tree->Branch("genJet_area",  genJet_area, "genJet_area[nGenJet]/F");
+  }
+  else{
+    tree->Branch("run", &run, "run/I");
+    tree->Branch("lumi", &lumi, "lumi/I");
+    tree->Branch("bx", &bx, "bx/I");
+    tree->Branch("event", &event, "event/l");
+  }
 
   tree->Branch("rho",   &rho,   "rho/F");
 
@@ -140,11 +185,17 @@ void  ZDilepton::beginJob() {
   tree->Branch("ele_pt", ele_pt, "ele_pt[nEle]/F");
   tree->Branch("ele_eta", ele_eta, "ele_eta[nEle]/F");
   tree->Branch("ele_phi", ele_phi, "ele_phi[nEle]/F");
+  tree->Branch("ele_VetoID", ele_VetoID , "ele_VetoID/O");
+  tree->Branch("ele_LooseID", ele_LooseID , "ele_LooseID/O");
+  tree->Branch("ele_MediumID", ele_MediumID , "ele_MediumID/O");
+  tree->Branch("ele_TightID", ele_TightID , "ele_TightID/O");
   tree->Branch("ele_D0", ele_D0, "ele_D0[nEle]/F");
   tree->Branch("ele_Dz", ele_Dz, "ele_Dz[nEle]/F");
   tree->Branch("ele_sigmaIetaIeta", ele_sigmaIetaIeta, "ele_sigmaIetaIeta[nEle]/F");
   tree->Branch("ele_dEtaSeed", ele_dEtaSeed, "ele_dEtaSeed[nEle]/F");
   tree->Branch("ele_dPhiSeed", ele_dPhiSeed, "ele_dPhiSeed[nEle]/F");
+  tree->Branch("ele_dEtaIn", ele_dEtaIn, "ele_dEtaIn[nEle]/F");
+  tree->Branch("ele_dPhiIn", ele_dPhiIn, "ele_dPhiIn[nEle]/F");
   tree->Branch("ele_HE", ele_HE, "ele_HE[nEle]/F");
   tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
   tree->Branch("ele_overEoverP", ele_overEoverP, "ele_overEoverP[nEle]/F");
@@ -155,7 +206,6 @@ void  ZDilepton::beginJob() {
   tree->Branch("jet_eta", jet_eta, "jet_eta[nJet]/F");
   tree->Branch("jet_phi", jet_phi, "jet_phi[nJet]/F");
   tree->Branch("jet_area", jet_area, "jet_area[nJet]/F");
-  tree->Branch("jet_jec", jet_jec, "jet_jec[nJet]/F");
 }
 
 // ------------ method called for each event  ------------
@@ -163,10 +213,12 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 //------------ Event Info ------------//
 
-  run = int(iEvent.id().run());
-  lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
-  bx = iEvent.bunchCrossing();
-  event = iEvent.id().event();
+  if(!isMC_){
+    run = int(iEvent.id().run());
+    lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
+    bx = iEvent.bunchCrossing();
+    event = iEvent.id().event();
+  }
 
 //------------ Rho ------------//
 
@@ -195,7 +247,41 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   reco::Vertex pvtx = primaryVertices->at(0);
 
-//------------ Muons ------------//
+//--------------Generated Particles-------------//
+
+  if(isMC_){
+    edm::Handle< vector<reco::GenParticle> > genParticles;
+    iEvent.getByToken(genParticleTag_, genParticles);
+
+    nGen = genParticles->size();
+
+    for (int i=0; i<nGen; i++){
+      reco::GenParticle p = genParticles->at(i);
+
+      gen_status[i] = p.status();
+      gen_PID[i] = p.pdgId();
+      gen_pt[i]  = p.pt();
+      gen_mass[i] = p.mass();
+      gen_eta[i] = p.eta();
+      gen_phi[i] = p.phi();
+    }
+
+    edm::Handle< vector<reco::GenJet> > genJets;
+    iEvent.getByToken(genJetTag_, genJets);
+
+    nGenJet = genJets->size();
+
+    for (int i=0; i<nGenJet; i++){
+      reco::GenJet jet = genJets->at(i);
+
+      genJet_pt[i]  = jet.pt();
+      genJet_eta[i] = jet.eta();
+      genJet_phi[i] = jet.phi();
+      genJet_area[i] = jet.jetArea();
+    }
+  }
+
+//--------------Muons-------------//
 
   edm::Handle< vector<pat::Muon> > muons;
   iEvent.getByToken(muonTag_, muons);
@@ -211,19 +297,19 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     muon_pt[i] = muon.pt();
     muon_eta[i] = muon.eta();
     muon_phi[i] = muon.phi();
+
     muon_D0[i] = muon.muonBestTrack()->dxy(pvtx.position());
     muon_Dz[i] = muon.muonBestTrack()->dz(pvtx.position());
-
     muon_tspm[i] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[i] = muon.combinedQuality().trkKink;
     muon_segcom[i] = muon::segmentCompatibility(muon);
 
-    muon_IsLooseID[i] = muon.isLooseMuon();
-    muon_IsMediumID[i] = muon.isMediumMuon();
-    muon_IsTightID[i] = muon.isTightMuon(pvtx);
-
     if (muon_isGlob[i]) muon_chi2[i] = muon.globalTrack()->normalizedChi2();
     else                muon_chi2[i] = -1;
+
+    muon_IsLooseID[i] = muon.isLooseMuon();
+    muon_IsMediumID[i] = muon.isMediumMuon();
+    muon_IsTightID[i] = muon.isTightMuon(pvtx);   
   }
 
 //------------ Electrons ------------//
@@ -231,18 +317,31 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< vector<pat::Electron> > electrons;
   iEvent.getByToken(electronTag_, electrons);
 
+  edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
+  iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
+
+  edm::Handle<edm::ValueMap<bool> > loose_id_decisions;
+  iEvent.getByToken(eleLooseIdMapToken_, loose_id_decisions);
+
+  edm::Handle<edm::ValueMap<bool> > Medium_id_decisions;
+  iEvent.getByToken(eleMediumIdMapToken_, Medium_id_decisions);
+
+  edm::Handle<edm::ValueMap<bool> > Tight_id_decisions;
+  iEvent.getByToken(eleTightIdMapToken_, Tight_id_decisions);
+
   nEle = electrons->size();
 
   for (int i=0; i<nEle; i++){
     pat::Electron ele = electrons->at(i);
+    const Ptr<pat::Electron> elPtr(electrons, i);
 
     ele_charge[i] = ele.charge();
     ele_pt[i] = ele.pt();
     ele_eta[i] = ele.eta();
     ele_phi[i] = ele.phi();
+
     ele_D0[i] = ele.gsfTrack()->dxy(pvtx.position());
     ele_Dz[i] = ele.gsfTrack()->dz(pvtx.position());
-
     ele_sigmaIetaIeta[i] = ele.full5x5_sigmaIetaIeta();
 
     if ( ele.superCluster().isNonnull() && ele.superCluster()->seed().isNonnull() )
@@ -250,6 +349,9 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     else ele_dEtaSeed[i] = -99;
 
     ele_dPhiSeed[i] = abs(ele.deltaPhiSuperClusterTrackAtVtx());
+
+    ele_dEtaIn[i] = ele.deltaEtaSuperClusterTrackAtVtx();
+    ele_dPhiIn[i] = ele.deltaPhiSuperClusterTrackAtVtx();
     ele_HE[i] = ele.hadronicOverEm();
 
     reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
@@ -259,6 +361,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     ele_overEoverP[i] = abs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
     ele_missinghits[i] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+
+    ele_VetoID[i]   = (*Veto_id_decisions)[ elPtr ];
+    ele_LooseID[i]  = (*loose_id_decisions)[ elPtr ];
+    ele_MediumID[i]  = (*Medium_id_decisions)[ elPtr ];
+    ele_TightID[i]  = (*Tight_id_decisions)[ elPtr ];
   }
 
 //------------ Jets ------------//
@@ -275,8 +382,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     jet_eta[i] = jet.eta();
     jet_phi[i] = jet.phi();
     jet_area[i] = jet.jetArea();
-    //jet_jec[i] = jet.jecFactor();
   }
+
 
 //------------ Fill Tree ------------//
 
@@ -293,7 +400,9 @@ void ZDilepton::endJob() {
     delete root_file;
     root_file = 0;
   }
+
 }
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(ZDilepton);
+
