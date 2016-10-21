@@ -63,6 +63,14 @@ else:
   #Bad EE Supercrystal filter
   #process.load('RecoMET.METFilters.eeBadScFilter_cfi')
 
+#PV Filter
+process.pvFilter = cms.EDFilter("GoodVertexFilter",
+                                    vertexCollection = cms.InputTag("offlineSlimmedPrimaryVertices"),
+                                    minimumNDOF = cms.uint32(4),
+                                    maxAbsZ = cms.double(24),
+                                    maxd0 = cms.double(2)
+                                  )
+
 dataFormat = DataFormat.MiniAOD
 switchOnVIDElectronIdProducer(process, dataFormat)
 
@@ -86,19 +94,20 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     eleMediumIdMapToken = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Spring15-25ns-V1-standalone-medium"),
     eleTightIdMapToken = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Spring15-25ns-V1-standalone-tight"),
     convLabel = cms.InputTag("reducedEgamma:reducedConversions"),
-    jetTag = cms.InputTag("slimmedJets")
+    jetTag = cms.InputTag("slimmedJets"),
+    metTag = cms.InputTag("slimmedMETs")
 )
 
-process.myseq = cms.Sequence( process.analysis )
+process.myseq = cms.Sequence( process.egmGsfElectronIDSequence *
+                              process.pvFilter *
+                              process.analysis )
 
 if isMC:
-  process.p = cms.Path( process.egmGsfElectronIDSequence *
-                        process.myseq )
+  process.p = cms.Path( process.myseq )
 
 else:
   process.p = cms.Path( process.CSCTightHaloFilter *
                         process.HBHENoiseFilterResultProducer *
                         process.ApplyBaselineHBHENoiseFilter *
                         # process.eeBadScFilter *
-                        process.egmGsfElectronIDSequence *
                         process.myseq )
