@@ -26,7 +26,6 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
-#include <SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h>
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
@@ -36,6 +35,8 @@
 #include "DataFormats/Common/interface/Ptr.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "FWCore/Common/interface/TriggerNames.h"
 #include <vector>
 
 //root files
@@ -49,6 +50,7 @@ const int MAXLEP = 10;
 const int MAXGEN = 50;
 const int MAXJET = 30;
 const int MAXNPV = 50;
+const int nFilters = 6;
 
 class ZDilepton : public edm::EDAnalyzer {
   public:
@@ -61,6 +63,17 @@ class ZDilepton : public edm::EDAnalyzer {
 
     TFile* root_file;
     TTree* tree;
+
+    string filters[nFilters] = {
+      "Flag_HBHENoiseFilter",
+      "Flag_HBHENoiseIsoFilter", 
+      "Flag_EcalDeadCellTriggerPrimitiveFilter",
+      "Flag_goodVertices",
+      "Flag_eeBadScFilter",
+      "Flag_globalTightHalo2016Filter"
+    };
+    int failed[nFilters] = {0};
+    int badch=0, badmu=0;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -97,10 +110,10 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_pt[MAXJET], met_eta[MAXJET], met_phi[MAXJET];
 
     TString RootFileName_;
-    bool isMC_;
+    bool isMC_, metFilters_;
 
     EffectiveAreas ele_areas_;
-    edm::EDGetTokenT< vector<PileupSummaryInfo> > muTag_;
+    edm::EDGetTokenT<edm::TriggerResults> patTrgLabel_;
     edm::EDGetTokenT<double> rhoTag_;
     edm::EDGetTokenT< vector<reco::Vertex> > pvTag_;
     edm::EDGetTokenT< vector<reco::GenParticle> > genParticleTag_;
@@ -113,6 +126,8 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
     edm::EDGetTokenT< vector<pat::Jet> > jetTag_;
     edm::EDGetTokenT< vector<pat::MET> > metTag_;
+    edm::EDGetTokenT<bool> BadChCandFilterToken_;
+    edm::EDGetTokenT<bool> BadPFMuonFilterToken_;
 };
 
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
@@ -120,6 +135,8 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
 {
   RootFileName_ = iConfig.getParameter<string>("RootFileName");
   isMC_ = iConfig.getParameter<bool>("isMC");
+  metFilters_ = iConfig.getParameter<bool>("metFilters");
+  patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
   genParticleTag_ =  consumes< vector<reco::GenParticle> >( iConfig.getParameter<edm::InputTag>("genParticleTag") );
@@ -132,13 +149,15 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   eleTightIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
   jetTag_ = consumes< vector<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
   metTag_ = consumes< vector<pat::MET> >( iConfig.getParameter<edm::InputTag>("metTag") );
+  BadChCandFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadChargedCandidateFilter"));
+  BadPFMuonFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadPFMuonFilter"));
 }
 
 // ------------ method called once each job just before starting event loop  ------------
 void  ZDilepton::beginJob() {
 
-  root_file = new TFile(RootFileName_,"RECREATE");
-  tree = new TTree("T","RECREATE");
+  root_file = new TFile(RootFileName_, "RECREATE");
+  tree = new TTree("T", "Analysis Tree");
 
   if(isMC_){
     tree->Branch("nGen", &nGen, "nGen/I");
@@ -163,8 +182,8 @@ void  ZDilepton::beginJob() {
     tree->Branch("event", &event, "event/l");
   }
 
-  tree->Branch("rho",   &rho,   "rho/F");
-  tree->Branch("nPV",     &nPV,    "nPV/I");
+  tree->Branch("rho", &rho, "rho/F");
+  tree->Branch("nPV", &nPV, "nPV/I");
 
   tree->Branch("nMuon", &nMuon, "nMuon/I");
   tree->Branch("muon_charge", muon_charge, "muon_charge[nMuon]/I");
@@ -230,6 +249,46 @@ void  ZDilepton::beginJob() {
 
 // ------------ method called for each event  ------------
 void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
+  //------------ MET Filters ------------//
+
+  if (metFilters_){
+
+    Handle<edm::TriggerResults> patFilterHandle;
+    iEvent.getByToken(patTrgLabel_, patFilterHandle);
+
+    if (patFilterHandle.isValid()){
+      const edm::TriggerNames& trigNames = iEvent.triggerNames(*patFilterHandle);
+
+      //for (unsigned int i=0; i<trigNames.size(); i++) cout << trigNames.triggerName(i) << endl;
+
+      for (int i=0; i<nFilters; i++){
+
+        if( filters[i] == "Flag_eeBadScFilter" && isMC_ ) continue;
+
+        const unsigned int trig = trigNames.triggerIndex(filters[i]);
+        if (trig != trigNames.size()){
+          if (!patFilterHandle->accept(trig)){
+            failed[i]++;            
+            return;
+          }
+        }
+        else cout << filters[i] << " not found." << endl;
+      }
+    }
+
+    edm::Handle<bool> ifilterbadChCand;
+    iEvent.getByToken(BadChCandFilterToken_, ifilterbadChCand);
+    bool filterbadChCandidate = *ifilterbadChCand;
+
+    if (!filterbadChCandidate) {badch++; return;}
+
+    edm::Handle<bool> ifilterbadPFMuon;
+    iEvent.getByToken(BadPFMuonFilterToken_, ifilterbadPFMuon);
+    bool filterbadPFMuon = *ifilterbadPFMuon;
+
+    if (!filterbadPFMuon) {badmu++; return;}
+  }
 
   //------------ Event Info ------------//
 
@@ -428,6 +487,14 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 // ------------ method called once each job just after ending the event loop  ------------
 void ZDilepton::endJob() {
+
+  cout << "Failed Events:" << endl;
+  for (int i=0; i<nFilters; i++){
+    if( filters[i] == "Flag_eeBadScFilter" && isMC_ ) continue;
+    cout << filters[i] << "\t" << failed[i] << endl;
+  }
+  cout << "filterbadChCandidate" << "\t" << badch << endl;
+  cout << "filterbadPFMuon" << "\t" << badmu << endl;
 
   if (root_file !=0) {
 

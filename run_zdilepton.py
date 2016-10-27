@@ -11,7 +11,7 @@ process = cms.Process("Ana")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 process.options.allowUnscheduled = cms.untracked.bool(True)
 
@@ -23,9 +23,9 @@ readFiles.extend( [
 
   #'/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
 
-  #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
+  'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
 
-  'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/TT_MC.root'
+  #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/TT_MC.root'
 
   #'/store/mc/RunIISpring16MiniAODv2/BprimeBprime_M-1800_TuneCUETP8M1_13TeV-madgraph-pythia8/MINIAODSIM/PUSpring16RAWAODSIM_80X_mcRun2_asymptotic_2016_miniAODv2_v0-v1/00000/14309732-EA24-E611-B94E-002481E0D500.root'
 
@@ -41,7 +41,7 @@ process.load( "Configuration.StandardSequences.FrontierConditions_GlobalTag_cond
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, gt)
 
-isMC = cms.bool(True)
+isMC = cms.bool(False)
 
 if isMC:
   OutputName = "_MC"  
@@ -49,27 +49,13 @@ if isMC:
 else:
   OutputName = "_Data"
 
-  #Beam Halo
-  process.load('RecoMET.METFilters.CSCTightHaloFilter_cfi')
+process.load('RecoMET.METFilters.BadPFMuonFilter_cfi')
+process.BadPFMuonFilter.muons = cms.InputTag("slimmedMuons")
+process.BadPFMuonFilter.PFCandidates = cms.InputTag("packedPFCandidates")
 
-  #HCAL HBHE
-  process.load('CommonTools.RecoAlgos.HBHENoiseFilterResultProducer_cfi')
-  process.HBHENoiseFilterResultProducer.minZeros = cms.int32(99999)
-  process.ApplyBaselineHBHENoiseFilter = cms.EDFilter('BooleanFlagFilter',
-    inputLabel = cms.InputTag('HBHENoiseFilterResultProducer','HBHENoiseFilterResultRun2Tight'),
-    reverseDecision = cms.bool(False)
-  )
-
-  #Bad EE Supercrystal filter
-  #process.load('RecoMET.METFilters.eeBadScFilter_cfi')
-
-#PV Filter
-process.pvFilter = cms.EDFilter("GoodVertexFilter",
-                                    vertexCollection = cms.InputTag("offlineSlimmedPrimaryVertices"),
-                                    minimumNDOF = cms.uint32(4),
-                                    maxAbsZ = cms.double(24),
-                                    maxd0 = cms.double(2)
-                                  )
+process.load('RecoMET.METFilters.BadChargedCandidateFilter_cfi')
+process.BadChargedCandidateFilter.muons = cms.InputTag("slimmedMuons")
+process.BadChargedCandidateFilter.PFCandidates = cms.InputTag("packedPFCandidates")
 
 dataFormat = DataFormat.MiniAOD
 switchOnVIDElectronIdProducer(process, dataFormat)
@@ -82,6 +68,10 @@ for idmod in my_eid_modules:
 process.analysis = cms.EDAnalyzer("ZDilepton",
     RootFileName = cms.string("analysis" + OutputName + ".root"),
     isMC = isMC,
+    metFilters = cms.bool(True),
+    patTrgLabel = cms.InputTag("TriggerResults", "", "RECO"),
+    BadPFMuonFilter = cms.InputTag("BadPFMuonFilter",""),
+    BadChargedCandidateFilter = cms.InputTag("BadChargedCandidateFilter",""),
     rhoTag = cms.InputTag("fixedGridRhoFastjetAll"),
     pvTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
     genParticleTag = cms.InputTag("prunedGenParticles"),
@@ -98,16 +88,9 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     metTag = cms.InputTag("slimmedMETs")
 )
 
-process.myseq = cms.Sequence( process.egmGsfElectronIDSequence *
-                              process.pvFilter *
+process.myseq = cms.Sequence( process.BadPFMuonFilter *
+                              process.BadChargedCandidateFilter *
+                              process.egmGsfElectronIDSequence *
                               process.analysis )
 
-if isMC:
-  process.p = cms.Path( process.myseq )
-
-else:
-  process.p = cms.Path( process.CSCTightHaloFilter *
-                        process.HBHENoiseFilterResultProducer *
-                        process.ApplyBaselineHBHENoiseFilter *
-                        # process.eeBadScFilter *
-                        process.myseq )
+process.p = cms.Path( process.myseq )
