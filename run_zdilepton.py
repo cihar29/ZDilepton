@@ -11,7 +11,7 @@ process = cms.Process("Ana")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 process.options.allowUnscheduled = cms.untracked.bool(True)
 
@@ -86,7 +86,9 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     convLabel = cms.InputTag("reducedEgamma:reducedConversions"),
     jetTag = cms.InputTag("slimmedJets"),
     metTag = cms.InputTag("slimmedMETs"),
-    metPuppiTag = cms.InputTag("slimmedMETsPuppi")
+    metPuppiTag = cms.InputTag("slimmedMETsPuppi"),
+    minLepPt = cms.double(45.),
+    minSubLepPt = cms.double(25.)
 )
 
 process.myseq = cms.Sequence( process.BadPFMuonFilter *

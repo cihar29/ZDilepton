@@ -1,6 +1,6 @@
 // -*- C++ -*-
 //
-// Package:    treemaker/ZDilepton
+// Package:    analysis/ZDilepton
 // Class:      ZDilepton
 // 
 /**\class ZDilepton ZDilepton.cc ZDilepton/plugins/ZDilepton.cc
@@ -38,6 +38,7 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "FWCore/Common/interface/TriggerNames.h"
 #include <vector>
+#include <algorithm>
 
 //root files
 #include <TFile.h>
@@ -51,7 +52,9 @@ const int MAXGEN = 50;
 const int MAXJET = 30;
 const int MAXNPV = 50;
 const int nFilters = 6;
-const int METUNCERT = 19;
+const int METUNCERT = 4;
+
+bool sortLepPt(const reco::Candidate* lep1, const reco::Candidate* lep2){ return lep1->pt() > lep2->pt(); }
 
 class ZDilepton : public edm::EDAnalyzer {
   public:
@@ -108,13 +111,14 @@ class ZDilepton : public edm::EDAnalyzer {
 
     float genmet_pt, genmet_px, genmet_py, genmet_sumet, genmet_eta, genmet_phi;
 
-    float met_pt, met_px, met_py, met_uncorpt, met_sumet, met_eta, met_phi, met_corpx, met_corpy;
-    float pupmet_pt, pupmet_px, pupmet_py, pupmet_uncorpt, pupmet_sumet, pupmet_eta, pupmet_phi, pupmet_corpx, pupmet_corpy;
+    float met_pt, met_px, met_py, met_uncorpt, met_uncorpx, met_uncorpy, met_sumet, met_eta, met_phi;
+    float pupmet_pt, pupmet_px, pupmet_py, pupmet_uncorpt, pupmet_uncorpx, pupmet_uncorpy, pupmet_sumet, pupmet_eta, pupmet_phi;
     int nMETUncert;
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT], pupmet_shiftedpx[METUNCERT], pupmet_shiftedpy[METUNCERT];
 
     TString RootFileName_;
     bool isMC_, metFilters_;
+    double minLepPt_, minSubLepPt_;
 
     EffectiveAreas ele_areas_;
     edm::EDGetTokenT<edm::TriggerResults> patTrgLabel_;
@@ -157,6 +161,8 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   metPuppiTag_ = consumes< vector<pat::MET> >( iConfig.getParameter<edm::InputTag>("metPuppiTag") );
   BadChCandFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadChargedCandidateFilter"));
   BadPFMuonFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadPFMuonFilter"));
+  minLepPt_ = iConfig.getParameter<double>("minLepPt");
+  minSubLepPt_ = iConfig.getParameter<double>("minSubLepPt");
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -260,21 +266,21 @@ void  ZDilepton::beginJob() {
   tree->Branch("met_px", &met_px, "met_px/F");
   tree->Branch("met_py", &met_py, "met_py/F");
   tree->Branch("met_uncorpt", &met_uncorpt, "met_uncorpt/F");
+  tree->Branch("met_uncorpx", &met_uncorpx, "met_uncorpx/F");
+  tree->Branch("met_uncorpy", &met_uncorpy, "met_uncorpy/F");
   tree->Branch("met_sumet", &met_sumet, "met_sumet/F");
   tree->Branch("met_eta", &met_eta, "met_eta/F");
   tree->Branch("met_phi", &met_phi, "met_phi/F");
-  tree->Branch("met_corpx", &met_corpx, "met_corpx/F");
-  tree->Branch("met_corpy", &met_corpy, "met_corpy/F");
 
   tree->Branch("pupmet_pt", &pupmet_pt, "pupmet_pt/F");
   tree->Branch("pupmet_px", &pupmet_px, "pupmet_px/F");
   tree->Branch("pupmet_py", &pupmet_py, "pupmet_py/F");
   tree->Branch("pupmet_uncorpt", &pupmet_uncorpt, "pupmet_uncorpt/F");
+  tree->Branch("pupmet_uncorpx", &pupmet_uncorpx, "pupmet_uncorpx/F");
+  tree->Branch("pupmet_uncorpy", &pupmet_uncorpy, "pupmet_uncorpy/F");
   tree->Branch("pupmet_sumet", &pupmet_sumet, "pupmet_sumet/F");
   tree->Branch("pupmet_eta", &pupmet_eta, "pupmet_eta/F");
   tree->Branch("pupmet_phi", &pupmet_phi, "pupmet_phi/F");
-  tree->Branch("pupmet_corpx", &pupmet_corpx, "pupmet_corpx/F");
-  tree->Branch("pupmet_corpy", &pupmet_corpy, "pupmet_corpy/F");
 
   tree->Branch("nMETUncert", &nMETUncert, "nMETUncert/I");
   tree->Branch("met_shiftedpx", met_shiftedpx, "met_shiftedpx[nMETUncert]/F");
@@ -285,6 +291,29 @@ void  ZDilepton::beginJob() {
 
 // ------------ method called for each event  ------------
 void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
+  //------------ Lepton Pt Filter ------------//
+
+  edm::Handle< vector<pat::Muon> > muons;
+  iEvent.getByToken(muonTag_, muons);
+
+  nMuon = muons->size();
+
+  edm::Handle< vector<pat::Electron> > electrons;
+  iEvent.getByToken(electronTag_, electrons);
+
+  nEle = electrons->size();
+
+  vector<const reco::Candidate*> leps;
+
+  for (int i=0; i<nMuon; i++) leps.push_back( dynamic_cast<const reco::Candidate*>( &(muons->at(i)) ) );  //i<2
+  for (int i=0; i<nEle; i++) leps.push_back( dynamic_cast<const reco::Candidate*>( &(electrons->at(i)) ) );
+
+  if (leps.size() < 2) return;
+
+  sort(leps.begin(), leps.end(), sortLepPt);
+
+  if (leps[0]->pt() < minLepPt_ || leps[1]->pt() < minSubLepPt_) return;
 
   //------------ MET Filters ------------//
 
@@ -385,11 +414,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //--------------Muons-------------//
 
-  edm::Handle< vector<pat::Muon> > muons;
-  iEvent.getByToken(muonTag_, muons);
-
-  nMuon = muons->size();
-
   for (int i=0; i<nMuon; i++){
     pat::Muon muon = muons->at(i);
 
@@ -417,9 +441,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Electrons ------------//
 
-  edm::Handle< vector<pat::Electron> > electrons;
-  iEvent.getByToken(electronTag_, electrons);
-
   edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
   iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
 
@@ -431,8 +452,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   edm::Handle<edm::ValueMap<bool> > Tight_id_decisions;
   iEvent.getByToken(eleTightIdMapToken_, Tight_id_decisions);
-
-  nEle = electrons->size();
 
   for (int i=0; i<nEle; i++){
     pat::Electron ele = electrons->at(i);
@@ -481,11 +500,25 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   nJet = jets->size();
 
   for (int i=0; i<nJet; i++){
-    pat::Jet jet = jets->at(i);
 
-    jet_pt[i] = jet.pt();
-    jet_eta[i] = jet.eta();
-    jet_phi[i] = jet.phi();
+    pat::Jet jet = jets->at(i).correctedJet(0);
+    reco::Candidate::LorentzVector jet_p4 = jet.p4();
+
+    const vector<reco::CandidatePtr> & daughters = jet.daughterPtrVector();
+
+    for (vector<reco::CandidatePtr>::const_iterator daughter = daughters.begin(); daughter != daughters.end(); ++daughter){
+
+      if (leps[0] == daughter->get()) jet_p4 -= (*daughter)->p4();
+      else if (leps[1] == daughter->get()) jet_p4 -= (*daughter)->p4();
+
+      //for (unsigned int j=0; j<electrons->size(); j++){
+      //  if (dynamic_cast<const reco::Candidate*>( &(electrons->at(i)) ) == daughter->get()) cout << "good" << endl;
+      //}
+    }
+
+    jet_pt[i] = jet_p4.Pt();
+    jet_eta[i] = jet_p4.Eta();
+    jet_phi[i] = jet_p4.Phi();
     jet_area[i] = jet.jetArea();
     jet_jec[i] = jet.jecFactor(0);
 
@@ -521,11 +554,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   met_px = met.px();
   met_py = met.py();
   met_uncorpt = met.uncorPt();
+  met_uncorpx = met.uncorPx();
+  met_uncorpy = met.uncorPy();
   met_sumet = met.sumEt();
   met_eta = met.eta();
   met_phi = met.phi();
-  met_corpx = met.corPx();
-  met_corpy = met.corPy();
 
   edm::Handle< vector<pat::MET> > pupmets;
   iEvent.getByToken(metPuppiTag_, pupmets);
@@ -535,11 +568,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   pupmet_px = pupmet.px();
   pupmet_py = pupmet.py();
   pupmet_uncorpt = pupmet.uncorPt();
+  pupmet_uncorpx = pupmet.uncorPx();
+  pupmet_uncorpy = pupmet.uncorPy();
   pupmet_sumet = pupmet.sumEt();
   pupmet_eta = pupmet.eta();
   pupmet_phi = pupmet.phi();
-  pupmet_corpx = pupmet.corPx();
-  pupmet_corpy = pupmet.corPy();
 
   nMETUncert = METUNCERT;
 
@@ -547,8 +580,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     pat::MET::METUncertainty uncert = static_cast<pat::MET::METUncertainty>(i);
     pat::MET::METCorrectionLevel level = pat::MET::Type1;
-
-    //pat::MET::Vector2 vec = met.shiftedP2(uncert, level);
 
     met_shiftedpx[i] = met.shiftedPx(uncert, level);
     met_shiftedpy[i] = met.shiftedPy(uncert, level);
