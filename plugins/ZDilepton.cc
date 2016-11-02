@@ -33,6 +33,7 @@
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 #include "DataFormats/Common/interface/Ptr.h"
+#include "DataFormats/Common/interface/RefToPtr.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include "DataFormats/Common/interface/TriggerResults.h"
@@ -54,7 +55,7 @@ const int MAXNPV = 50;
 const int nFilters = 6;
 const int METUNCERT = 4;
 
-bool sortLepPt(const reco::Candidate* lep1, const reco::Candidate* lep2){ return lep1->pt() > lep2->pt(); }
+bool sortLepPt(reco::CandidatePtr lep1, reco::CandidatePtr lep2){ return lep1->pt() > lep2->pt(); }
 
 class ZDilepton : public edm::EDAnalyzer {
   public:
@@ -123,18 +124,18 @@ class ZDilepton : public edm::EDAnalyzer {
     EffectiveAreas ele_areas_;
     edm::EDGetTokenT<edm::TriggerResults> patTrgLabel_;
     edm::EDGetTokenT<double> rhoTag_;
-    edm::EDGetTokenT< vector<reco::Vertex> > pvTag_;
-    edm::EDGetTokenT< vector<reco::GenParticle> > genParticleTag_;
-    edm::EDGetTokenT< vector<reco::GenJet> > genJetTag_;
-    edm::EDGetTokenT< vector<pat::Muon> > muonTag_;
-    edm::EDGetTokenT< vector<pat::Electron> > electronTag_;
+    edm::EDGetTokenT< edm::View<reco::Vertex> > pvTag_;
+    edm::EDGetTokenT< edm::View<reco::GenParticle> > genParticleTag_;
+    edm::EDGetTokenT< edm::View<reco::GenJet> > genJetTag_;
+    edm::EDGetTokenT< edm::View<pat::Muon> > muonTag_;
+    edm::EDGetTokenT< edm::View<pat::Electron> > electronTag_;
     edm::EDGetTokenT<edm::ValueMap<bool> > eleVetoIdMapToken_;
     edm::EDGetTokenT<edm::ValueMap<bool> > eleLooseIdMapToken_;
     edm::EDGetTokenT<edm::ValueMap<bool> > eleMediumIdMapToken_;
     edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
-    edm::EDGetTokenT< vector<pat::Jet> > jetTag_;
-    edm::EDGetTokenT< vector<pat::MET> > metTag_;
-    edm::EDGetTokenT< vector<pat::MET> > metPuppiTag_;
+    edm::EDGetTokenT< edm::View<pat::Jet> > jetTag_;
+    edm::EDGetTokenT< edm::View<pat::MET> > metTag_;
+    edm::EDGetTokenT< edm::View<pat::MET> > metPuppiTag_;
     edm::EDGetTokenT<bool> BadChCandFilterToken_;
     edm::EDGetTokenT<bool> BadPFMuonFilterToken_;
 };
@@ -147,18 +148,18 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   metFilters_ = iConfig.getParameter<bool>("metFilters");
   patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
-  pvTag_ = consumes< vector<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
-  genParticleTag_ =  consumes< vector<reco::GenParticle> >( iConfig.getParameter<edm::InputTag>("genParticleTag") );
-  genJetTag_ =  consumes< vector<reco::GenJet> >( iConfig.getParameter<edm::InputTag>("genJetTag") );
-  muonTag_ = consumes< vector<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
-  electronTag_ = consumes< vector<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
+  pvTag_ = consumes< edm::View<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
+  genParticleTag_ =  consumes< edm::View<reco::GenParticle> >( iConfig.getParameter<edm::InputTag>("genParticleTag") );
+  genJetTag_ =  consumes< edm::View<reco::GenJet> >( iConfig.getParameter<edm::InputTag>("genJetTag") );
+  muonTag_ = consumes< edm::View<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
+  electronTag_ = consumes< edm::View<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
   eleVetoIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleVetoIdMapToken") );
   eleLooseIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleLooseIdMapToken") );
   eleMediumIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleMediumIdMapToken") );
   eleTightIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
-  jetTag_ = consumes< vector<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
-  metTag_ = consumes< vector<pat::MET> >( iConfig.getParameter<edm::InputTag>("metTag") );
-  metPuppiTag_ = consumes< vector<pat::MET> >( iConfig.getParameter<edm::InputTag>("metPuppiTag") );
+  jetTag_ = consumes< edm::View<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
+  metTag_ = consumes< edm::View<pat::MET> >( iConfig.getParameter<edm::InputTag>("metTag") );
+  metPuppiTag_ = consumes< edm::View<pat::MET> >( iConfig.getParameter<edm::InputTag>("metPuppiTag") );
   BadChCandFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadChargedCandidateFilter"));
   BadPFMuonFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadPFMuonFilter"));
   minLepPt_ = iConfig.getParameter<double>("minLepPt");
@@ -286,7 +287,7 @@ void  ZDilepton::beginJob() {
   tree->Branch("met_shiftedpx", met_shiftedpx, "met_shiftedpx[nMETUncert]/F");
   tree->Branch("met_shiftedpy", met_shiftedpy, "met_shiftedpy[nMETUncert]/F");
   tree->Branch("pupmet_shiftedpx", pupmet_shiftedpx, "pupmet_shiftedpx[nMETUncert]/F");
-  tree->Branch("pupmet_shiftedpx", pupmet_shiftedpx, "pupmet_shiftedpx[nMETUncert]/F");
+  tree->Branch("pupmet_shiftedpy", pupmet_shiftedpy, "pupmet_shiftedpy[nMETUncert]/F");
 }
 
 // ------------ method called for each event  ------------
@@ -294,20 +295,20 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Lepton Pt Filter ------------//
 
-  edm::Handle< vector<pat::Muon> > muons;
+  edm::Handle< edm::View<pat::Muon> > muons;
   iEvent.getByToken(muonTag_, muons);
 
   nMuon = muons->size();
 
-  edm::Handle< vector<pat::Electron> > electrons;
+  edm::Handle< edm::View<pat::Electron> > electrons;
   iEvent.getByToken(electronTag_, electrons);
 
   nEle = electrons->size();
 
-  vector<const reco::Candidate*> leps;
+  vector<reco::CandidatePtr> leps;
 
-  for (int i=0; i<nMuon; i++) leps.push_back( dynamic_cast<const reco::Candidate*>( &(muons->at(i)) ) );  //i<2
-  for (int i=0; i<nEle; i++) leps.push_back( dynamic_cast<const reco::Candidate*>( &(electrons->at(i)) ) );
+  for (int i=0; i<nMuon; i++) leps.push_back( muons->ptrAt(i) );
+  for (int i=0; i<nEle; i++) leps.push_back( electrons->ptrAt(i) );
 
   if (leps.size() < 2) return;
 
@@ -371,7 +372,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Primary Vertices ------------//
 
-  edm::Handle< vector<reco::Vertex> > primaryVertices;
+  edm::Handle< edm::View<reco::Vertex> > primaryVertices;
   iEvent.getByToken(pvTag_, primaryVertices);
 
   nPV = primaryVertices->size();
@@ -380,7 +381,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   //--------------Generated Particles-------------//
 
   if(isMC_){
-    edm::Handle< vector<reco::GenParticle> > genParticles;
+    edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
     nGen = genParticles->size();
@@ -396,7 +397,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       gen_phi[i] = p.phi();
     }
 
-    edm::Handle< vector<reco::GenJet> > genJets;
+    edm::Handle< edm::View<reco::GenJet> > genJets;
     iEvent.getByToken(genJetTag_, genJets);
 
     nGenJet = genJets->size();
@@ -429,7 +430,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     muon_tspm[i] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[i] = muon.combinedQuality().trkKink;
 
-    if (!isMC_) muon_segcom[i] = muon::segmentCompatibility(muon);
+    //if (!isMC_) muon_segcom[i] = muon::segmentCompatibility(muon);
 
     if (muon_isGlob[i]) muon_chi2[i] = muon.globalTrack()->normalizedChi2();
     else                muon_chi2[i] = -1;
@@ -494,7 +495,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Jets ------------//
 
-  edm::Handle< vector<pat::Jet> > jets;
+  edm::Handle< edm::View<pat::Jet> > jets;
   iEvent.getByToken(jetTag_, jets);
 
   nJet = jets->size();
@@ -504,23 +505,21 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     pat::Jet jet = jets->at(i).correctedJet(0);
     reco::Candidate::LorentzVector jet_p4 = jet.p4();
 
-    const vector<reco::CandidatePtr> & daughters = jet.daughterPtrVector();
+    if ( reco::deltaR(jet, *leps[0]) < 0.4 || reco::deltaR(jet, *leps[1]) < 0.4 ){
 
-    for (vector<reco::CandidatePtr>::const_iterator daughter = daughters.begin(); daughter != daughters.end(); ++daughter){
+      const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
+      for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
 
-      if (leps[0] == daughter->get()) jet_p4 -= (*daughter)->p4();
-      else if (leps[1] == daughter->get()) jet_p4 -= (*daughter)->p4();
-
-      //for (unsigned int j=0; j<electrons->size(); j++){
-      //  if (dynamic_cast<const reco::Candidate*>( &(electrons->at(i)) ) == daughter->get()) cout << "good" << endl;
-      //}
+        if (*i_d == leps[0]) {jet_p4 -= (*i_d)->p4(); cout << "good" << endl;}
+        else if (*i_d == leps[1]) jet_p4 -= (*i_d)->p4();
+      }
     }
 
     jet_pt[i] = jet_p4.Pt();
     jet_eta[i] = jet_p4.Eta();
     jet_phi[i] = jet_p4.Phi();
     jet_area[i] = jet.jetArea();
-    jet_jec[i] = jet.jecFactor(0);
+    jet_jec[i] = jets->at(i).jecFactor(0);
 
     jet_nhf[i] = jet.neutralHadronEnergyFraction();
     jet_nef[i] = jet.neutralEmEnergyFraction();
@@ -534,7 +533,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ MET ------------//
 
-  edm::Handle< vector<pat::MET> > mets;
+  edm::Handle< edm::View<pat::MET> > mets;
   iEvent.getByToken(metTag_, mets);
 
   pat::MET met = mets->at(0);
@@ -560,7 +559,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   met_eta = met.eta();
   met_phi = met.phi();
 
-  edm::Handle< vector<pat::MET> > pupmets;
+  edm::Handle< edm::View<pat::MET> > pupmets;
   iEvent.getByToken(metPuppiTag_, pupmets);
 
   pat::MET pupmet = pupmets->at(0);
