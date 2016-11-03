@@ -33,13 +33,13 @@
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 #include "DataFormats/Common/interface/Ptr.h"
-#include "DataFormats/Common/interface/RefToPtr.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "FWCore/Common/interface/TriggerNames.h"
 #include <vector>
 #include <algorithm>
+#include <utility>
 
 //root files
 #include <TFile.h>
@@ -307,14 +307,18 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   vector<reco::CandidatePtr> leps;
 
-  for (int i=0; i<nMuon; i++) leps.push_back( muons->ptrAt(i) );
-  for (int i=0; i<nEle; i++) leps.push_back( electrons->ptrAt(i) );
+  for (int i=0; i<nMuon && i<2; i++) leps.push_back( muons->ptrAt(i) );
+  for (int i=0; i<nEle && i<2; i++) leps.push_back( electrons->ptrAt(i) );
 
   if (leps.size() < 2) return;
 
   sort(leps.begin(), leps.end(), sortLepPt);
 
   if (leps[0]->pt() < minLepPt_ || leps[1]->pt() < minSubLepPt_) return;
+
+  vector<reco::CandidatePtr> lep0Sources, lep1Sources;
+  for (unsigned int i=0, n=leps[0]->numberOfSourceCandidatePtrs(); i<n; i++) lep0Sources.push_back(leps[0]->sourceCandidatePtr(i));
+  for (unsigned int i=0, n=leps[1]->numberOfSourceCandidatePtrs(); i<n; i++) lep1Sources.push_back(leps[1]->sourceCandidatePtr(i));
 
   //------------ MET Filters ------------//
 
@@ -415,6 +419,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //--------------Muons-------------//
 
+  nMuon = muons->size();
+
   for (int i=0; i<nMuon; i++){
     pat::Muon muon = muons->at(i);
 
@@ -430,7 +436,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     muon_tspm[i] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[i] = muon.combinedQuality().trkKink;
 
-    //if (!isMC_) muon_segcom[i] = muon::segmentCompatibility(muon);
+    if (!isMC_) muon_segcom[i] = muon::segmentCompatibility(muon);
 
     if (muon_isGlob[i]) muon_chi2[i] = muon.globalTrack()->normalizedChi2();
     else                muon_chi2[i] = -1;
@@ -441,6 +447,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
 
   //------------ Electrons ------------//
+
+  nEle = electrons->size();
 
   edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
   iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
@@ -510,8 +518,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
       for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
 
-        if (*i_d == leps[0]) {jet_p4 -= (*i_d)->p4(); cout << "good" << endl;}
-        else if (*i_d == leps[1]) jet_p4 -= (*i_d)->p4();
+        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) jet_p4 -= (*i_d)->p4();
+        if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) jet_p4 -= (*i_d)->p4();
       }
     }
 
