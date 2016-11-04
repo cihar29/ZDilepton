@@ -11,7 +11,7 @@ process = cms.Process("Ana")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 process.options.allowUnscheduled = cms.untracked.bool(True)
 
@@ -66,7 +66,8 @@ for idmod in my_eid_modules:
     setupAllVIDIdsInModule(process,idmod,setupVIDElectronSelection)
 
 process.analysis = cms.EDAnalyzer("ZDilepton",
-    RootFileName = cms.string("analysis" + OutputName + ".root"),
+    fileName = cms.string("analysis" + OutputName + ".root"),
+    btag = cms.string("pfCombinedInclusiveSecondaryVertexV2BJetTags"),
     isMC = isMC,
     metFilters = cms.bool(True),
     patTrgLabel = cms.InputTag("TriggerResults", "", "RECO"),
@@ -88,7 +89,9 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     metTag = cms.InputTag("slimmedMETs"),
     metPuppiTag = cms.InputTag("slimmedMETsPuppi"),
     minLepPt = cms.double(45.),
-    minSubLepPt = cms.double(25.)
+    minSubLepPt = cms.double(25.),
+    triggerResultsTag = cms.InputTag("TriggerResults", "", "HLT"),
+    prescalesTag = cms.InputTag("patTrigger")
 )
 
 process.myseq = cms.Sequence( process.BadPFMuonFilter *

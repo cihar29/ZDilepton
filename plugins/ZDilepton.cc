@@ -37,6 +37,7 @@
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
 #include <vector>
 #include <algorithm>
 #include <utility>
@@ -77,7 +78,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<bool> failed;
+    vector<bool> filter_failed;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -106,18 +107,22 @@ class ZDilepton : public edm::EDAnalyzer {
     float ele_missinghits[MAXLEP];
 
     int nJet;
-    float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_area[MAXJET], jet_jec[MAXJET];
+    float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_area[MAXJET], jet_jec[MAXJET], jet_btag[MAXJET];
     float jet_nhf[MAXJET], jet_nef[MAXJET], jet_chf[MAXJET], jet_muf[MAXJET];
     float jet_elef[MAXJET], jet_numconst[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
+    char jet_clean[MAXJET];
 
     float genmet_pt, genmet_px, genmet_py, genmet_sumet, genmet_eta, genmet_phi;
 
-    float met_pt, met_px, met_py, met_uncorpt, met_uncorpx, met_uncorpy, met_sumet, met_eta, met_phi;
-    float pupmet_pt, pupmet_px, pupmet_py, pupmet_uncorpt, pupmet_uncorpx, pupmet_uncorpy, pupmet_sumet, pupmet_eta, pupmet_phi;
+    float met_pt, met_px, met_py, met_sumet, met_eta, met_phi;
+    float pupmet_pt, pupmet_px, pupmet_py,  pupmet_sumet, pupmet_eta, pupmet_phi;
     int nMETUncert;
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT], pupmet_shiftedpx[METUNCERT], pupmet_shiftedpy[METUNCERT];
 
-    TString RootFileName_;
+    vector<float> trig_prescale; vector<bool> trig_failed; vector<string> trig_name;
+
+    TString fileName_;
+    string btag_;
     bool isMC_, metFilters_;
     double minLepPt_, minSubLepPt_;
 
@@ -138,12 +143,15 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT< edm::View<pat::MET> > metPuppiTag_;
     edm::EDGetTokenT<bool> BadChCandFilterToken_;
     edm::EDGetTokenT<bool> BadPFMuonFilterToken_;
+    edm::EDGetTokenT<edm::TriggerResults> triggerResultsTag_;
+    edm::EDGetTokenT<pat::PackedTriggerPrescales> prescalesTag_;
 };
 
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   ele_areas_( (iConfig.getParameter<edm::FileInPath>("effAreasConfigFile")).fullPath() )
 {
-  RootFileName_ = iConfig.getParameter<string>("RootFileName");
+  fileName_ = iConfig.getParameter<string>("fileName");
+  btag_ = iConfig.getParameter<string>("btag");
   isMC_ = iConfig.getParameter<bool>("isMC");
   metFilters_ = iConfig.getParameter<bool>("metFilters");
   patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
@@ -164,15 +172,20 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   BadPFMuonFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadPFMuonFilter"));
   minLepPt_ = iConfig.getParameter<double>("minLepPt");
   minSubLepPt_ = iConfig.getParameter<double>("minSubLepPt");
+  triggerResultsTag_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("triggerResultsTag") );
+  prescalesTag_ = consumes<pat::PackedTriggerPrescales>( iConfig.getParameter<edm::InputTag>("prescalesTag") );
 }
 
 // ------------ method called once each job just before starting event loop  ------------
 void  ZDilepton::beginJob() {
 
-  root_file = new TFile(RootFileName_, "RECREATE");
+  root_file = new TFile(fileName_, "RECREATE");
   tree = new TTree("T", "Analysis Tree");
 
-  tree->Branch("failed", "std::vector<bool>", &failed);
+  tree->Branch("filter_failed", "std::vector<bool>", &filter_failed);
+  tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
+  tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
+  tree->Branch("trig_name", "std::vector<string>", &trig_name);
 
   if(isMC_){
     tree->Branch("nGen", &nGen, "nGen/I");
@@ -253,6 +266,8 @@ void  ZDilepton::beginJob() {
   tree->Branch("jet_phi", jet_phi, "jet_phi[nJet]/F");
   tree->Branch("jet_area", jet_area, "jet_area[nJet]/F");
   tree->Branch("jet_jec", jet_jec, "jet_jec[nJet]/F");
+  tree->Branch("jet_btag", jet_btag, "jet_btag[nJet]/F");
+  tree->Branch("jet_clean", jet_clean, "jet_clean[nJet]/B");
 
   tree->Branch("jet_nhf", jet_nhf, "jet_nhf[nJet]/F");
   tree->Branch("jet_nef", jet_nef, "jet_nef[nJet]/F");
@@ -266,9 +281,6 @@ void  ZDilepton::beginJob() {
   tree->Branch("met_pt", &met_pt, "met_pt/F");
   tree->Branch("met_px", &met_px, "met_px/F");
   tree->Branch("met_py", &met_py, "met_py/F");
-  tree->Branch("met_uncorpt", &met_uncorpt, "met_uncorpt/F");
-  tree->Branch("met_uncorpx", &met_uncorpx, "met_uncorpx/F");
-  tree->Branch("met_uncorpy", &met_uncorpy, "met_uncorpy/F");
   tree->Branch("met_sumet", &met_sumet, "met_sumet/F");
   tree->Branch("met_eta", &met_eta, "met_eta/F");
   tree->Branch("met_phi", &met_phi, "met_phi/F");
@@ -276,9 +288,6 @@ void  ZDilepton::beginJob() {
   tree->Branch("pupmet_pt", &pupmet_pt, "pupmet_pt/F");
   tree->Branch("pupmet_px", &pupmet_px, "pupmet_px/F");
   tree->Branch("pupmet_py", &pupmet_py, "pupmet_py/F");
-  tree->Branch("pupmet_uncorpt", &pupmet_uncorpt, "pupmet_uncorpt/F");
-  tree->Branch("pupmet_uncorpx", &pupmet_uncorpx, "pupmet_uncorpx/F");
-  tree->Branch("pupmet_uncorpy", &pupmet_uncorpy, "pupmet_uncorpy/F");
   tree->Branch("pupmet_sumet", &pupmet_sumet, "pupmet_sumet/F");
   tree->Branch("pupmet_eta", &pupmet_eta, "pupmet_eta/F");
   tree->Branch("pupmet_phi", &pupmet_phi, "pupmet_phi/F");
@@ -324,7 +333,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   if (metFilters_){
 
-    failed.assign(nFilters+2, false);
+    filter_failed.assign(nFilters+2, false);
 
     Handle<edm::TriggerResults> patFilterHandle;
     iEvent.getByToken(patTrgLabel_, patFilterHandle);
@@ -340,7 +349,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         const unsigned int trig = trigNames.triggerIndex(filters[i]);
         if (trig != trigNames.size()){
-          if (!patFilterHandle->accept(trig)) failed[i] = true;
+          if (!patFilterHandle->accept(trig)) filter_failed[i] = true;
         }
         else cout << filters[i] << " not found." << endl;
       }
@@ -350,13 +359,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(BadChCandFilterToken_, ifilterbadChCand);
     bool filterbadChCandidate = *ifilterbadChCand;
 
-    if (!filterbadChCandidate) failed[nFilters] = true;
+    if (!filterbadChCandidate) filter_failed[nFilters] = true;
 
     edm::Handle<bool> ifilterbadPFMuon;
     iEvent.getByToken(BadPFMuonFilterToken_, ifilterbadPFMuon);
     bool filterbadPFMuon = *ifilterbadPFMuon;
 
-    if (!filterbadPFMuon) failed[nFilters+1] = true;
+    if (!filterbadPFMuon) filter_failed[nFilters+1] = true;
   }
 
   //------------ Event Info ------------//
@@ -518,10 +527,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
       for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
 
-        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) jet_p4 -= (*i_d)->p4();
-        if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) jet_p4 -= (*i_d)->p4();
+        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 'l';}
+        else if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 's';}
       }
     }
+    if (jet_clean[i] != 'l' && jet_clean[i] != 's') jet_clean[i] = 'n';
 
     jet_pt[i] = jet_p4.Pt();
     jet_eta[i] = jet_p4.Eta();
@@ -537,6 +547,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     jet_numconst[i] = jet.chargedMultiplicity()+jet.neutralMultiplicity();
     jet_numneutral[i] =jet.neutralMultiplicity();
     jet_chmult[i] = jet.chargedMultiplicity();
+    jet_btag[i] = jet.bDiscriminator(btag_);
   }
 
   //------------ MET ------------//
@@ -557,29 +568,23 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     genmet_phi = genmet->phi();
   }
 
-  met_pt = met.pt();
-  met_px = met.px();
-  met_py = met.py();
-  met_uncorpt = met.uncorPt();
-  met_uncorpx = met.uncorPx();
-  met_uncorpy = met.uncorPy();
-  met_sumet = met.sumEt();
-  met_eta = met.eta();
-  met_phi = met.phi();
+  met_pt = met.uncorPt();
+  met_px = met.uncorPx();
+  met_py = met.uncorPy();
+  met_sumet = met.uncorSumEt();
+  met_eta = met.uncorP4().Eta();
+  met_phi = met.uncorPhi();
 
   edm::Handle< edm::View<pat::MET> > pupmets;
   iEvent.getByToken(metPuppiTag_, pupmets);
 
   pat::MET pupmet = pupmets->at(0);
-  pupmet_pt = pupmet.pt();
-  pupmet_px = pupmet.px();
-  pupmet_py = pupmet.py();
-  pupmet_uncorpt = pupmet.uncorPt();
-  pupmet_uncorpx = pupmet.uncorPx();
-  pupmet_uncorpy = pupmet.uncorPy();
-  pupmet_sumet = pupmet.sumEt();
-  pupmet_eta = pupmet.eta();
-  pupmet_phi = pupmet.phi();
+  pupmet_pt = pupmet.uncorPt();
+  pupmet_px = pupmet.uncorPx();
+  pupmet_py = pupmet.uncorPy();
+  pupmet_sumet = pupmet.uncorSumEt();
+  pupmet_eta = pupmet.uncorP4().Eta();
+  pupmet_phi = pupmet.uncorPhi();
 
   nMETUncert = METUNCERT;
 
@@ -592,6 +597,35 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     met_shiftedpy[i] = met.shiftedPy(uncert, level);
     pupmet_shiftedpx[i] = pupmet.shiftedPx(uncert, level);
     pupmet_shiftedpy[i] = pupmet.shiftedPy(uncert, level);
+  }
+
+  //------------ Triggers ------------//
+
+  edm::Handle<edm::TriggerResults> triggerResults;
+  iEvent.getByToken(triggerResultsTag_, triggerResults);
+  
+  edm::Handle<pat::PackedTriggerPrescales> triggerPrescales;
+  iEvent.getByToken(prescalesTag_, triggerPrescales);
+    
+  if (triggerResults.isValid()){
+    const edm::TriggerNames& triggerNames = iEvent.triggerNames(*triggerResults); 
+    
+    for (size_t i=0, n=triggerResults->size(); i<n; i++){
+      string name = triggerNames.triggerName(i);
+      size_t end = string::npos;
+
+      if (name.find("HLT")==end || name.find("Jet")!=end || name.find("Photon")!=end || name.find("MET")!=end || name.find("Multiplicity")!=end
+           || (name.find("_Mu")==end && name.find("_Ele")==end && name.find("_DoubleMu")==end && name.find("_DoubleEle")==end) )
+             continue;
+      
+      unsigned int index = triggerNames.triggerIndex(name);
+      bool failed = !triggerResults->accept(index);
+      float prescale = triggerPrescales->getPrescaleForIndex(index);
+      
+      trig_prescale.push_back(prescale);  
+      trig_failed.push_back(failed);
+      trig_name.push_back(name);
+    }
   }
 
   //------------ Fill Tree ------------//
