@@ -23,13 +23,9 @@ readFiles.extend( [
 
   #'/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
 
-  'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
+  #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
 
-  #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/TT_MC.root'
-
-  #'/store/mc/RunIISpring16MiniAODv2/BprimeBprime_M-1800_TuneCUETP8M1_13TeV-madgraph-pythia8/MINIAODSIM/PUSpring16RAWAODSIM_80X_mcRun2_asymptotic_2016_miniAODv2_v0-v1/00000/14309732-EA24-E611-B94E-002481E0D500.root'
-
-  #'/store/mc/RunIISpring16MiniAODv2/ZprimeToTT_M-1500_W-150_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUSpring16RAWAODSIM_80X_mcRun2_asymptotic_2016_miniAODv2_v0-v1/00000/BA954B45-3525-E611-A90F-44A84225CDA4.root'
+  '/store/mc/RunIISpring16MiniAODv2/TT_TuneCUETP8M1_13TeV-powheg-pythia8/MINIAODSIM/PUSpring16_80X_mcRun2_asymptotic_2016_miniAODv2_v0_ext4-v1/00000/004A0552-3929-E611-BD44-0025905A48F0.root'
 
 ] );
 
@@ -41,7 +37,7 @@ process.load( "Configuration.StandardSequences.FrontierConditions_GlobalTag_cond
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, gt)
 
-isMC = cms.bool(False)
+isMC = cms.bool(True)
 
 if isMC:
   OutputName = "_MC"  
@@ -91,7 +87,9 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     minLepPt = cms.double(45.),
     minSubLepPt = cms.double(25.),
     triggerResultsTag = cms.InputTag("TriggerResults", "", "HLT"),
-    prescalesTag = cms.InputTag("patTrigger")
+    prescalesTag = cms.InputTag("patTrigger"),
+    genEventTag = cms.InputTag("generator"),
+    muTag = cms.InputTag("slimmedAddPileupInfo")
 )
 
 process.myseq = cms.Sequence( process.BadPFMuonFilter *

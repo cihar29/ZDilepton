@@ -38,6 +38,9 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include <SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h>
+#include "parsePileUpJSON2.h"
 #include <vector>
 #include <algorithm>
 #include <utility>
@@ -50,9 +53,9 @@ using namespace std;
 using namespace edm;
 
 const int MAXLEP = 10;
-const int MAXGEN = 50;
-const int MAXJET = 30;
-const int MAXNPV = 50;
+const int MAXGEN = 400;
+const int MAXJET = 50;
+const int MAXNPV = 100;
 const int nFilters = 6;
 const int METUNCERT = 4;
 
@@ -83,11 +86,11 @@ class ZDilepton : public edm::EDAnalyzer {
     ULong64_t event;
     int run, lumi, bx;
 
-    float rho;
+    float rho, mu, genweight;
     int nPV;
 
     int nGen;
-    int gen_status[MAXGEN], gen_PID[MAXGEN];
+    int gen_status[MAXGEN], gen_PID[MAXGEN], gen_nMothers[MAXGEN], gen_nDaughters[MAXGEN], gen_mother0[MAXGEN], gen_mother1[MAXGEN];
     float gen_pt[MAXGEN], gen_mass[MAXGEN], gen_eta[MAXGEN], gen_phi[MAXGEN];
     int nGenJet;
     float genJet_pt[MAXJET], genJet_eta[MAXJET], genJet_phi[MAXJET], genJet_area[MAXJET], genJet_nDaught[MAXJET];
@@ -112,10 +115,10 @@ class ZDilepton : public edm::EDAnalyzer {
     float jet_elef[MAXJET], jet_numconst[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
     char jet_clean[MAXJET];
 
-    float genmet_pt, genmet_px, genmet_py, genmet_sumet, genmet_eta, genmet_phi;
+    float genmet_pt, genmet_px, genmet_py, genmet_sumet, genmet_phi;
 
-    float met_pt, met_px, met_py, met_sumet, met_eta, met_phi;
-    float pupmet_pt, pupmet_px, pupmet_py,  pupmet_sumet, pupmet_eta, pupmet_phi;
+    float met_pt, met_px, met_py, met_sumet, met_phi;
+    float pupmet_pt, pupmet_px, pupmet_py,  pupmet_sumet, pupmet_phi;
     int nMETUncert;
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT], pupmet_shiftedpx[METUNCERT], pupmet_shiftedpy[METUNCERT];
 
@@ -145,6 +148,8 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT<bool> BadPFMuonFilterToken_;
     edm::EDGetTokenT<edm::TriggerResults> triggerResultsTag_;
     edm::EDGetTokenT<pat::PackedTriggerPrescales> prescalesTag_;
+    edm::EDGetTokenT<GenEventInfoProduct> genEventTag_;
+    edm::EDGetTokenT< edm::View<PileupSummaryInfo> > muTag_;
 };
 
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
@@ -174,6 +179,8 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   minSubLepPt_ = iConfig.getParameter<double>("minSubLepPt");
   triggerResultsTag_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("triggerResultsTag") );
   prescalesTag_ = consumes<pat::PackedTriggerPrescales>( iConfig.getParameter<edm::InputTag>("prescalesTag") );
+  genEventTag_ = consumes<GenEventInfoProduct>( iConfig.getParameter<edm::InputTag>("genEventTag") );
+  muTag_ = consumes< edm::View<PileupSummaryInfo> >( iConfig.getParameter<edm::InputTag>("muTag") );
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -195,6 +202,10 @@ void  ZDilepton::beginJob() {
     tree->Branch("gen_mass", gen_mass, "gen_mass[nGen]/F");
     tree->Branch("gen_eta", gen_eta, "gen_eta[nGen]/F");
     tree->Branch("gen_phi", gen_phi, "gen_phi[nGen]/F");
+    tree->Branch("gen_nMothers", gen_nMothers, "gen_nMothers[nGen]/I");
+    tree->Branch("gen_nDaughters", gen_nDaughters, "gen_nDaughters[nGen]/I");
+    tree->Branch("gen_mother0", gen_mother0, "gen_mother0[nGen]/I");
+    tree->Branch("gen_mother1", gen_mother1, "gen_mother1[nGen]/I");
 
     tree->Branch("nGenJet", &nGenJet, "nGenJet/I");
     tree->Branch("genJet_pt", genJet_pt, "genJet_pt[nGenJet]/F");
@@ -207,8 +218,9 @@ void  ZDilepton::beginJob() {
     tree->Branch("genmet_px", &genmet_px, "genmet_px/F");
     tree->Branch("genmet_py", &genmet_py, "genmet_py/F");
     tree->Branch("genmet_sumet", &genmet_sumet, "genmet_sumet/F");
-    tree->Branch("genmet_eta", &genmet_eta, "genmet_eta/F");
     tree->Branch("genmet_phi", &genmet_phi, "genmet_phi/F");
+
+    tree->Branch("genweight", &genweight, "genweight/F");
   }
   else{
     tree->Branch("run", &run, "run/I");
@@ -218,6 +230,7 @@ void  ZDilepton::beginJob() {
   }
 
   tree->Branch("rho", &rho, "rho/F");
+  tree->Branch("mu", &mu, "mu/F");
   tree->Branch("nPV", &nPV, "nPV/I");
 
   tree->Branch("nMuon", &nMuon, "nMuon/I");
@@ -282,14 +295,12 @@ void  ZDilepton::beginJob() {
   tree->Branch("met_px", &met_px, "met_px/F");
   tree->Branch("met_py", &met_py, "met_py/F");
   tree->Branch("met_sumet", &met_sumet, "met_sumet/F");
-  tree->Branch("met_eta", &met_eta, "met_eta/F");
   tree->Branch("met_phi", &met_phi, "met_phi/F");
 
   tree->Branch("pupmet_pt", &pupmet_pt, "pupmet_pt/F");
   tree->Branch("pupmet_px", &pupmet_px, "pupmet_px/F");
   tree->Branch("pupmet_py", &pupmet_py, "pupmet_py/F");
   tree->Branch("pupmet_sumet", &pupmet_sumet, "pupmet_sumet/F");
-  tree->Branch("pupmet_eta", &pupmet_eta, "pupmet_eta/F");
   tree->Branch("pupmet_phi", &pupmet_phi, "pupmet_phi/F");
 
   tree->Branch("nMETUncert", &nMETUncert, "nMETUncert/I");
@@ -370,11 +381,23 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Event Info ------------//
 
-  if(!isMC_){
+  if (isMC_){
+    edm::Handle<GenEventInfoProduct> genEventHandle;
+    iEvent.getByToken(genEventTag_, genEventHandle);
+    genweight = genEventHandle->weight();
+
+    edm::Handle< edm::View<PileupSummaryInfo> > pileups;
+    iEvent.getByToken(muTag_, pileups);
+
+    mu = pileups->at(1).getTrueNumInteractions();
+  }
+  else{
     run = int(iEvent.id().run());
     lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
     bx = iEvent.bunchCrossing();
     event = iEvent.id().event();
+
+    mu = getAvgPU( run, lumi );
   }
 
   //------------ Rho ------------//
@@ -408,6 +431,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       gen_mass[i] = p.mass();
       gen_eta[i] = p.eta();
       gen_phi[i] = p.phi();
+      gen_nMothers[i] = p.numberOfMothers();
+      gen_nDaughters[i] = p.numberOfDaughters();
+
+      if (gen_nMothers[i] > 0) gen_mother0[i] = p.motherRef(0).key();
+      else gen_mother0[i] = -1;
+      if (gen_nMothers[i] > 1) gen_mother1[i] = p.motherRef(1).key();
+      else gen_mother1[i] = -1;
     }
 
     edm::Handle< edm::View<reco::GenJet> > genJets;
@@ -564,7 +594,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     genmet_px = genmet->px();
     genmet_py = genmet->py();
     genmet_sumet = genmet->sumEt();
-    genmet_eta = genmet->eta();
     genmet_phi = genmet->phi();
   }
 
@@ -572,7 +601,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   met_px = met.uncorPx();
   met_py = met.uncorPy();
   met_sumet = met.uncorSumEt();
-  met_eta = met.uncorP4().Eta();
   met_phi = met.uncorPhi();
 
   edm::Handle< edm::View<pat::MET> > pupmets;
@@ -583,7 +611,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   pupmet_px = pupmet.uncorPx();
   pupmet_py = pupmet.uncorPy();
   pupmet_sumet = pupmet.uncorSumEt();
-  pupmet_eta = pupmet.uncorP4().Eta();
   pupmet_phi = pupmet.uncorPhi();
 
   nMETUncert = METUNCERT;
@@ -614,9 +641,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       string name = triggerNames.triggerName(i);
       size_t end = string::npos;
 
-      if (name.find("HLT")==end || name.find("Jet")!=end || name.find("Photon")!=end || name.find("MET")!=end || name.find("Multiplicity")!=end
-           || (name.find("_Mu")==end && name.find("_Ele")==end && name.find("_DoubleMu")==end && name.find("_DoubleEle")==end) )
-             continue;
+      if (name.find("HLT")==end || name.find("PF")!=end || name.find("Photon")!=end || name.find("MET")!=end || name.find("eta")!=end
+           || name.find("Multiplicity")!=end || name.find("WP")!=end || name.find("Iso")!=end || name.find("Jpsi")!=end || name.find("DZ")!=end
+             || name.find("Upsilon")!=end || name.find("Eta")!=end || name.find("Vtx")!=end || name.find("Jet")!=end || name.find("Displaced")!=end
+               || (name.find("_Mu")==end && name.find("_Ele")==end && name.find("_DoubleMu")==end && name.find("_DoubleEle")==end) )
+                 continue;
       
       unsigned int index = triggerNames.triggerIndex(name);
       bool failed = !triggerResults->accept(index);
