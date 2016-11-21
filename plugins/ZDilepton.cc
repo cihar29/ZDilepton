@@ -52,10 +52,9 @@
 using namespace std;
 using namespace edm;
 
-const int MAXLEP = 10;
+const int MAXLEP = 20;
 const int MAXGEN = 400;
 const int MAXJET = 50;
-const int MAXNPV = 100;
 const int nFilters = 6;
 const int METUNCERT = 4;
 
@@ -194,6 +193,11 @@ void  ZDilepton::beginJob() {
   tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
   tree->Branch("trig_name", "std::vector<string>", &trig_name);
 
+  tree->Branch("run", &run, "run/I");
+  tree->Branch("lumi", &lumi, "lumi/I");
+  tree->Branch("bx", &bx, "bx/I");
+  tree->Branch("event", &event, "event/l");
+
   if(isMC_){
     tree->Branch("nGen", &nGen, "nGen/I");
     tree->Branch("gen_status",  gen_status, "gen_status[nGen]/I");
@@ -221,12 +225,6 @@ void  ZDilepton::beginJob() {
     tree->Branch("genmet_phi", &genmet_phi, "genmet_phi/F");
 
     tree->Branch("genweight", &genweight, "genweight/F");
-  }
-  else{
-    tree->Branch("run", &run, "run/I");
-    tree->Branch("lumi", &lumi, "lumi/I");
-    tree->Branch("bx", &bx, "bx/I");
-    tree->Branch("event", &event, "event/l");
   }
 
   tree->Branch("rho", &rho, "rho/F");
@@ -381,6 +379,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Event Info ------------//
 
+  run = int(iEvent.id().run());
+  lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
+  bx = iEvent.bunchCrossing();
+  event = iEvent.id().event();
+
   if (isMC_){
     edm::Handle<GenEventInfoProduct> genEventHandle;
     iEvent.getByToken(genEventTag_, genEventHandle);
@@ -392,11 +395,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     mu = pileups->at(1).getTrueNumInteractions();
   }
   else{
-    run = int(iEvent.id().run());
-    lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
-    bx = iEvent.bunchCrossing();
-    event = iEvent.id().event();
-
     mu = getAvgPU( run, lumi );
   }
 
