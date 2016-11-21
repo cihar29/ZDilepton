@@ -2,13 +2,13 @@ from WMCore.Configuration import Configuration
 config = Configuration()
 
 config.section_("General")
-config.General.requestName = 'offset_treemaker'
+config.General.requestName = 'analysis_tree'
 config.General.workArea = 'crab_projects/analysis'
 config.General.transferLogs = True
 
 config.section_("JobType")
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = 'run_offset.py'
+config.JobType.psetName = 'run_zdilepton.py'
 config.JobType.allowUndistributedCMSSW = True
 config.JobType.inputFiles = ["pileup_11_6_16.txt"]
 config.JobType.outputFiles = ["analysis_Data.root"]
@@ -25,7 +25,7 @@ config.Data.unitsPerJob = 10
 config.Data.outLFNDirBase = '/store/user/charring/analysis'
 config.Data.publication = False
 #config.Data.ignoreLocality = True
-#config.Data.publishDataName = 'offset_analysis'
+#config.Data.publishDataName = 'analysis_tree'
 
 config.section_("Site")
 #config.Site.blacklist = ['T1_US_FNAL']

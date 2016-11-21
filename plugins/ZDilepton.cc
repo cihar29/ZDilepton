@@ -226,6 +226,9 @@ void  ZDilepton::beginJob() {
 
     tree->Branch("genweight", &genweight, "genweight/F");
   }
+  else{
+    parsePileUpJSON2();
+  }
 
   tree->Branch("rho", &rho, "rho/F");
   tree->Branch("mu", &mu, "mu/F");
