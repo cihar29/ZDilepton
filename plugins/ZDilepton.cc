@@ -53,7 +53,7 @@ using namespace std;
 using namespace edm;
 
 const int MAXLEP = 20;
-const int MAXGEN = 400;
+const int MAXGEN = 20;
 const int MAXJET = 50;
 const int nFilters = 6;
 const int METUNCERT = 4;
@@ -421,10 +421,32 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
-    nGen = genParticles->size();
+    vector<reco::GenParticle> reducedGens;
 
-    for (int i=0; i<nGen; i++){
+    for (int i=0, n=genParticles->size(); i<n; i++) {
       reco::GenParticle p = genParticles->at(i);
+
+      int id = p.pdgId();
+      int nDaught = p.numberOfDaughters();
+
+      if (id>1000000)  //Z'
+        reducedGens.push_back(p);
+
+      else if (fabs(id)==6 && nDaught==2){   //t's
+        reducedGens.push_back(p);
+        reducedGens.push_back( genParticles->at(p.daughterRef(0).key()) ); //b or W
+        reducedGens.push_back( genParticles->at(p.daughterRef(1).key()) ); //b or W
+      }
+
+      else if (fabs(id)==24 && nDaught==2){   //W's
+        reducedGens.push_back( genParticles->at(p.daughterRef(0).key()) ); //q or lep
+        reducedGens.push_back( genParticles->at(p.daughterRef(1).key()) ); //q or lep
+      }
+    }
+      
+    nGen = reducedGens.size();
+    for (int i=0; i<nGen; i++) {
+      reco::GenParticle p = reducedGens[i];
 
       gen_status[i] = p.status();
       gen_PID[i] = p.pdgId();
