@@ -80,7 +80,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<bool> filter_failed;
+    vector<int> filter_failed;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -89,7 +89,7 @@ class ZDilepton : public edm::EDAnalyzer {
     int nPV;
 
     int nGen;
-    int gen_status[MAXGEN], gen_PID[MAXGEN], gen_nMothers[MAXGEN], gen_nDaughters[MAXGEN], gen_mother0[MAXGEN], gen_mother1[MAXGEN];
+    int gen_status[MAXGEN], gen_PID[MAXGEN], gen_mother0[MAXGEN], gen_mother1[MAXGEN], gen_index[MAXGEN]; //gen_nMothers[MAXGEN], gen_nDaughters[MAXGEN];
     float gen_pt[MAXGEN], gen_mass[MAXGEN], gen_eta[MAXGEN], gen_phi[MAXGEN];
     int nGenJet;
     float genJet_pt[MAXJET], genJet_eta[MAXJET], genJet_phi[MAXJET], genJet_area[MAXJET], genJet_nDaught[MAXJET];
@@ -188,7 +188,8 @@ void  ZDilepton::beginJob() {
   root_file = new TFile(fileName_, "RECREATE");
   tree = new TTree("T", "Analysis Tree");
 
-  tree->Branch("filter_failed", "std::vector<bool>", &filter_failed);
+  filter_failed.assign(nFilters+2, 0);
+
   tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
   tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
   tree->Branch("trig_name", "std::vector<string>", &trig_name);
@@ -206,8 +207,9 @@ void  ZDilepton::beginJob() {
     tree->Branch("gen_mass", gen_mass, "gen_mass[nGen]/F");
     tree->Branch("gen_eta", gen_eta, "gen_eta[nGen]/F");
     tree->Branch("gen_phi", gen_phi, "gen_phi[nGen]/F");
-    tree->Branch("gen_nMothers", gen_nMothers, "gen_nMothers[nGen]/I");
-    tree->Branch("gen_nDaughters", gen_nDaughters, "gen_nDaughters[nGen]/I");
+    tree->Branch("gen_index",  gen_index, "gen_index[nGen]/I");
+    //tree->Branch("gen_nMothers", gen_nMothers, "gen_nMothers[nGen]/I");
+    //tree->Branch("gen_nDaughters", gen_nDaughters, "gen_nDaughters[nGen]/I");
     tree->Branch("gen_mother0", gen_mother0, "gen_mother0[nGen]/I");
     tree->Branch("gen_mother1", gen_mother1, "gen_mother1[nGen]/I");
 
@@ -345,8 +347,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   if (metFilters_){
 
-    filter_failed.assign(nFilters+2, false);
-
     Handle<edm::TriggerResults> patFilterHandle;
     iEvent.getByToken(patTrgLabel_, patFilterHandle);
 
@@ -361,7 +361,10 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         const unsigned int trig = trigNames.triggerIndex(filters[i]);
         if (trig != trigNames.size()){
-          if (!patFilterHandle->accept(trig)) filter_failed[i] = true;
+          if (!patFilterHandle->accept(trig)){
+            filter_failed[i]++;
+            return;
+          }
         }
         else cout << filters[i] << " not found." << endl;
       }
@@ -371,13 +374,19 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(BadChCandFilterToken_, ifilterbadChCand);
     bool filterbadChCandidate = *ifilterbadChCand;
 
-    if (!filterbadChCandidate) filter_failed[nFilters] = true;
+    if (!filterbadChCandidate){
+      filter_failed[nFilters]++;
+      return;
+    }
 
     edm::Handle<bool> ifilterbadPFMuon;
     iEvent.getByToken(BadPFMuonFilterToken_, ifilterbadPFMuon);
     bool filterbadPFMuon = *ifilterbadPFMuon;
 
-    if (!filterbadPFMuon) filter_failed[nFilters+1] = true;
+    if (!filterbadPFMuon){
+      filter_failed[nFilters+1]++;
+      return;
+    }
   }
 
   //------------ Event Info ------------//
@@ -421,32 +430,63 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
-    vector<reco::GenParticle> reducedGens;
+    vector<pair<reco::GenParticle, int> > reducedGens;
+
+    //cout << "#\tID\tstatus\td1\td2\tm1\tm2\t4 momentum" << endl;
+    //cout << "--------------------------------------------------------------------"<<endl;
 
     for (int i=0, n=genParticles->size(); i<n; i++) {
       reco::GenParticle p = genParticles->at(i);
 
+      /*cout << i << "\t" << p.pdgId() << "\t" << p.status() << "\t";
+      if (p.numberOfDaughters() > 0) cout << p.daughterRef(0).key() << "\t";
+      else cout << -1 << "\t";
+      if (p.numberOfDaughters() > 1) cout << p.daughterRef(1).key() << "\t"; 
+      else cout << -1 << "\t";
+      if (p.numberOfMothers() > 0) cout << p.motherRef(0).key() << "\t"; 
+      else cout << -1 << "\t";
+      if (p.numberOfMothers() > 1) cout << p.motherRef(1).key() << "\t";
+      else cout << -1 << "\t";
+      cout << "( " << p.mass() << ", " << p.pt() << ", " << p.eta() << ", " << p.phi() << " )" << endl;*/
+
       int id = p.pdgId();
+      int status = p.status();
       int nDaught = p.numberOfDaughters();
 
       if (id>1000000)  //Z'
-        reducedGens.push_back(p);
+        reducedGens.push_back(make_pair(p,i));
 
-      else if (fabs(id)==6 && nDaught==2){   //t's
-        reducedGens.push_back(p);
-        reducedGens.push_back( genParticles->at(p.daughterRef(0).key()) ); //b or W
-        reducedGens.push_back( genParticles->at(p.daughterRef(1).key()) ); //b or W
+      if (fabs(id)==6 && 20<=status && status<30) //first t's
+        reducedGens.push_back(make_pair(p,i));
+
+      else if (fabs(id)==6 && nDaught==2){   //last t's
+        reducedGens.push_back(make_pair(p,i));
+        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(0).key()),p.daughterRef(0).key()) ); //b or W (first)
+        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //b or W (first)
       }
 
       else if (fabs(id)==24 && nDaught==2){   //W's
-        reducedGens.push_back( genParticles->at(p.daughterRef(0).key()) ); //q or lep
-        reducedGens.push_back( genParticles->at(p.daughterRef(1).key()) ); //q or lep
+        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(0).key()),p.daughterRef(0).key()) ); //q or lep
+        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //q or lep
       }
     }
+    //cout << endl << "STORED PARTICLES" << endl;
       
     nGen = reducedGens.size();
+
     for (int i=0; i<nGen; i++) {
-      reco::GenParticle p = reducedGens[i];
+      reco::GenParticle p = reducedGens[i].first;
+
+      /*cout << reducedGens[i].second << "\t" << p.pdgId() << "\t" << p.status() << "\t";
+      if (p.numberOfDaughters() > 0) cout << p.daughterRef(0).key() << "\t";
+      else cout << -1 << "\t";
+      if (p.numberOfDaughters() > 1) cout << p.daughterRef(1).key() << "\t";
+      else cout << -1 << "\t";
+      if (p.numberOfMothers() > 0) cout << p.motherRef(0).key() << "\t";
+      else cout << -1 << "\t";
+      if (p.numberOfMothers() > 1) cout << p.motherRef(1).key() << "\t";
+      else cout << -1 << "\t";
+      cout << "( " << p.mass() << ", " << p.pt() << ", " << p.eta() << ", " << p.phi() << " )" << endl;*/
 
       gen_status[i] = p.status();
       gen_PID[i] = p.pdgId();
@@ -454,28 +494,34 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       gen_mass[i] = p.mass();
       gen_eta[i] = p.eta();
       gen_phi[i] = p.phi();
-      gen_nMothers[i] = p.numberOfMothers();
-      gen_nDaughters[i] = p.numberOfDaughters();
+      gen_index[i] = reducedGens[i].second;
+      //gen_nMothers[i] = p.numberOfMothers();
+      //gen_nDaughters[i] = p.numberOfDaughters();
 
-      if (gen_nMothers[i] > 0) gen_mother0[i] = p.motherRef(0).key();
+      if (p.numberOfMothers() > 0) gen_mother0[i] = p.motherRef(0).key();
       else gen_mother0[i] = -1;
-      if (gen_nMothers[i] > 1) gen_mother1[i] = p.motherRef(1).key();
+      if (p.numberOfMothers() > 1) gen_mother1[i] = p.motherRef(1).key();
       else gen_mother1[i] = -1;
     }
+    //cout << endl;
 
     edm::Handle< edm::View<reco::GenJet> > genJets;
     iEvent.getByToken(genJetTag_, genJets);
 
-    nGenJet = genJets->size();
+    nGenJet = 0;
 
-    for (int i=0; i<nGenJet; i++){
+    for (int i=0, n=genJets->size(); i<n; i++){
+      if (genJets->at(i).pt() < 15) continue;
+
       reco::GenJet jet = genJets->at(i);
 
-      genJet_pt[i]  = jet.pt();
-      genJet_eta[i] = jet.eta();
-      genJet_phi[i] = jet.phi();
-      genJet_area[i] = jet.jetArea();
-      genJet_nDaught[i] = jet.numberOfDaughters();
+      genJet_pt[nGenJet]  = jet.pt();
+      genJet_eta[nGenJet] = jet.eta();
+      genJet_phi[nGenJet] = jet.phi();
+      genJet_area[nGenJet] = jet.jetArea();
+      genJet_nDaught[nGenJet] = jet.numberOfDaughters();
+
+      nGenJet++;
     }
   }
 
@@ -688,6 +734,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 // ------------ method called once each job just after ending the event loop  ------------
 void ZDilepton::endJob() {
+
+  gFile->WriteObject(&filter_failed, "filter_failed");
 
   if (root_file !=0) {
 
