@@ -735,7 +735,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 // ------------ method called once each job just after ending the event loop  ------------
 void ZDilepton::endJob() {
 
-  gFile->WriteObject(&filter_failed, "filter_failed");
+  if (metFilters_) root_file->WriteObject(&filter_failed, "filter_failed");
 
   if (root_file !=0) {
 
