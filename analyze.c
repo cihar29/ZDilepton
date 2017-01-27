@@ -1,3 +1,7 @@
+//charles harrington and bahareh roozbahani
+//execute as 'root -l -b -q analyze.c'
+//edit parameters in pars.txt file
+
 #include "TFile.h"
 #include "TTree.h"
 #include "TLorentzVector.h"
@@ -6,19 +10,22 @@
 #include <vector>
 #include <map>
 #include <utility>
+#include <algorithm>
 #include <time.h>
 
 #include "CondFormats/JetMETObjects/interface/FactorizedJetCorrector.h"
 #include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
 using namespace std;
 
-void FillHist1D(const TString& histName, const Double_t& value, double weight);
-void setPars(string parFile); 
+void FillHist1D(const TString& histName, const Double_t& value, const double& weight);
+void setPars(const string& parFile); 
+bool sortJetPt(pair<int, float> jet1, pair<int, float> jet2){ return jet1.second > jet2.second; }
 
 map<TString, TH1*> m_Histos1D;
 
 bool ISMC = false;
 string inName = "analysis_Data.root";
+string outName = "hist.root";
 string channel = "mm";
 string era = "Spring16_25nsV10BCD";
 string jet_type = "AK4PFchs";
@@ -26,37 +33,65 @@ string jet_type = "AK4PFchs";
 const int MAXJET = 50;
 const int MAXLEP = 20;
 
-void analyze(string parFile = "pars.txt"){
+void analyze(const string& parFile = "pars.txt"){
 
   setPars(parFile);
 
   //Open Files//
 
-  TString outName = "hist_" + inName + "_" + channel + ".root";
   TFile* inFile = TFile::Open(inName.data());
 
   TTree* T = (TTree*) inFile->Get("T");
   Long64_t nEntries = T->GetEntries();
   cout << nEntries << " Events" << endl;
 
-  //MET Filters//
+  //Skims//
 
-  int metCut = 0;
-  for (int j=1; j<=6; j++){
-    vector<int> *vFilter = (vector<int>*) inFile->Get( Form("filter_failed;%i", j) );
-    for (int i=0; i<vFilter->size(); i++) metCut += vFilter->at(i);
+  int countEvts=0, countDilep=0, countLeppt=0, countJetpteta=0, countMet=0;
+
+  int nFiles = 1;
+  for (int i=1; i<=nFiles; i++){
+    //vector<int> *vFilter = (vector<int>*) inFile->Get( Form("filter_failed;%i", i) );
+    vector<int>* totalEvts = (vector<int>*) inFile->Get("totalEvts");
+    vector<int>* dilep_cut = (vector<int>*) inFile->Get("dilep_cut");
+    vector<int>* leppt_cut = (vector<int>*) inFile->Get("leppt_cut");
+    vector<int>* jetpteta_cut = (vector<int>*) inFile->Get("jetpteta_cut");
+    vector<int>* met_cut = (vector<int>*) inFile->Get("met_cut");
+
+    countEvts += (*totalEvts)[0];
+    countDilep += (*dilep_cut)[0];
+    countLeppt += (*leppt_cut)[0];
+    countJetpteta += (*jetpteta_cut)[0];
+    countMet += (*met_cut)[0];
   }
-  cout << "MET cut: " << metCut << endl;
 
   //Histograms//
 
   TString hname = "nJet";
   m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+  hname = "nJet_25";
+  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+  hname = "nJet_40";
+  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+  hname = "nJet_eta2p5";
+  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+  hname = "jet_pt2p5";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "jet_eta25";
+  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+  hname = "jet_eta40";
+  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
   hname = "jet_pt";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "jet_ptleadingcut";
   m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
   hname = "jet_eta";
   m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
 
+  hname = "nEle";
+  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+  hname = "nMuon";
+  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
   hname = "lep0pt";
   m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
   hname = "lep0eta";
@@ -145,8 +180,8 @@ void analyze(string parFile = "pars.txt"){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int etaCut = 0;
   int signCut = 0;
+  int etaCut = 0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
@@ -159,53 +194,70 @@ void analyze(string parFile = "pars.txt"){
 
     if (channel == "mm"){
       if (lep0flavor == 'm' && lep1flavor == 'm'){
-        if (muon_eta[0] > 2.4 || muon_eta[1] > 2.4) { etaCut++; continue;}
+        lep0charge = muon_charge[0]; lep1charge = muon_charge[1];
+        if (lep0charge*lep1charge > 0) continue;
+        signCut++;
+
+        if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
+        etaCut++;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
         lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], muon_mass[1]);
-        lep0charge = muon_charge[0]; lep1charge = muon_charge[1];
       }
       else continue;
     }
     else if (channel == "ee"){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
-        if (ele_eta[0] > 2.5 || ele_eta[1] > 2.5) { etaCut++; continue;}
+        lep0charge = ele_charge[0]; lep1charge = ele_charge[1];
+        if (lep0charge*lep1charge > 0) continue;
+        signCut++;
+
+        if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
+        etaCut++;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
         lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ele_mass[1]);
-        lep0charge = ele_charge[0]; lep1charge = ele_charge[1];
       }
       else continue;
     }
     else{
       if (lep0flavor == 'e' && lep1flavor == 'm'){
-        if (ele_eta[0] > 2.5 || muon_eta[0] > 2.4) { etaCut++; continue;}
+        lep0charge = ele_charge[0]; lep1charge = muon_charge[0];
+        if (lep0charge*lep1charge > 0) continue;
+        signCut++;
+
+        if (fabs(ele_eta[0]) > 2.5 || fabs(muon_eta[0]) > 2.4) continue;
+        etaCut++;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
         lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
-        lep0charge = ele_charge[0]; lep1charge = muon_charge[0];
       }
       else if (lep0flavor == 'm' && lep1flavor == 'e'){
-        if (muon_eta[0] > 2.4 || ele_eta[0] > 2.5) { etaCut++; continue;}
+        lep0charge = muon_charge[0]; lep1charge = ele_charge[0];
+        if (lep0charge*lep1charge > 0) continue;
+        signCut++;
+
+        if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
+        etaCut++;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
         lep1.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
-        lep0charge = muon_charge[0]; lep1charge = ele_charge[0];
       }
       else continue;
     }
-    //cout << lep0flavor << lep0charge << "\t" << lep0.Pt() << "\t" << endl;
-    //cout << lep1flavor << lep1charge << "\t" << lep1.Pt() << "\t" << endl << endl;
 
-    if (lep0charge*lep1charge > 0) { signCut++; continue; }
+    FillHist1D("nEle", nEle, weight);
+    FillHist1D("nMuon", nMuon, weight);
 
-    FillHist1D("lep0pt", lep0.Pt(), weight);
     FillHist1D("lep0eta", lep0.Eta(), weight);
     FillHist1D("lep1pt", lep1.Pt(), weight);
     FillHist1D("lep1eta", lep1.Eta(), weight);
     FillHist1D("lepmass", (lep0+lep1).M(), weight);
 
+    int nJet_25=0, nJet_40=0, nJet_eta2p5=0;
     FillHist1D("nJet", nJet, weight);
+
+    vector<pair<int, float> > jet_corrpt;
     for (int i=0; i<nJet; i++){
 
       float eta = jet_eta[i];
@@ -217,19 +269,44 @@ void analyze(string parFile = "pars.txt"){
       JetCorrector->setJetA(area);
       JetCorrector->setRho(rho); 
       double corr_pt = JetCorrector->getCorrection() * pt;
+      jet_corrpt.push_back( make_pair(i, corr_pt) );
 
       FillHist1D("jet_pt", corr_pt, weight);
       FillHist1D("jet_eta", eta, weight);
+
+      if (corr_pt>25) { nJet_25++; FillHist1D("jet_eta25", eta, weight); }
+      if (corr_pt>40) { nJet_40++; FillHist1D("jet_eta40", eta, weight); }
+      if (fabs(eta)<2.5) { nJet_eta2p5++; FillHist1D("jet_pt2p5", corr_pt, weight); }
     }
+    FillHist1D("nJet_25", nJet_25, weight);
+    FillHist1D("nJet_40", nJet_40, weight);
+    FillHist1D("nJet_eta2p5", nJet_eta2p5, weight);
+
+    sort(jet_corrpt.begin(), jet_corrpt.end(), sortJetPt);
+    int lead_index = jet_corrpt[0].first;
+    if ( fabs(jet_eta[lead_index])<2.5 && jet_corrpt[0].second>25 ) FillHist1D("jet_ptleadingcut", jet_corrpt[0].second, weight);
 
   }
   cout << difftime(time(NULL), start) << " s" << endl;
-  cout << "eta cut: " << etaCut << endl;
-  cout << "sign cut: " << signCut << endl;
+
+  //Cutflow Table//
+
+  cout<<"====================================================================================================================="<< "\n" ;
+  cout<<"                                         Cut Flow Table                                                              "<< "\n" ;
+  cout<<"====================================================================================================================="<< "\n" ;
+
+  cout<<      "                                  |||       Nevent          |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
+  cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %4.3f         ",countEvts,float(countEvts/countEvts),float(countEvts/countEvts)) << "\n";
+  cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilep,float(float(countDilep)/float(countEvts)),float(float(countDilep)/float(countEvts))) << "\n";
+  cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %4.3f         ",countLeppt,float(float(countLeppt)/float(countDilep)),float(float(countLeppt)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %4.3f         ",countJetpteta,float(float(countJetpteta)/float(countLeppt)),float(float(countJetpteta)/float(countEvts))) << "\n";
+  cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %4.3f         ",countMet,float(float(countMet)/float(countJetpteta)),float(float(countMet)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(countMet)),float(float(signCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(signCut)),float(float(etaCut)/float(countEvts))) << "\n";
 
   //Write Histograms//
 
-  TFile* outFile = new TFile(outName,"RECREATE");
+  TFile* outFile = new TFile(outName.data(),"RECREATE");
   outFile->cd();
 
   for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++)
@@ -240,7 +317,7 @@ void analyze(string parFile = "pars.txt"){
   outFile = 0;
 }
 
-void FillHist1D(const TString& histName, const Double_t& value, double weight) 
+void FillHist1D(const TString& histName, const Double_t& value, const double& weight) 
 {
   map<TString, TH1*>::iterator hid=m_Histos1D.find(histName);
   if (hid==m_Histos1D.end())
@@ -249,7 +326,7 @@ void FillHist1D(const TString& histName, const Double_t& value, double weight)
     hid->second->Fill(value, weight);
 }
 
-void setPars(string parFile){
+void setPars(const string& parFile){
 
   ifstream file(parFile);
   string line;
@@ -274,6 +351,7 @@ void setPars(string parFile){
       else ISMC = false;
     }
     else if (var == "inName") inName = line;
+    else if (var == "outName") outName = line;
     else if (var == "channel") channel = line;
     else if (var == "era") era = line;
     else if (var == "jet_type") jet_type = line;

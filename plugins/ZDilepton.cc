@@ -81,7 +81,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<int> filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut;
+    vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -192,7 +192,7 @@ void  ZDilepton::beginJob() {
   tree = new TTree("T", "Analysis Tree");
 
   filter_failed.assign(nFilters+2, 0);
-  dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0);
+  totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0);
 
   tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
   tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
@@ -326,6 +326,8 @@ void  ZDilepton::beginJob() {
 
 // ------------ method called for each event  ------------
 void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
+  totalEvts[0]++;
 
   //------------ Lepton Pt Filter ------------//
 
@@ -767,6 +769,7 @@ void ZDilepton::endJob() {
 
     if (metFilters_) root_file->WriteObject(&filter_failed, "filter_failed");
 
+    root_file->WriteObject(&totalEvts, "totalEvts");
     root_file->WriteObject(&dilep_cut, "dilep_cut");
     root_file->WriteObject(&leppt_cut, "leppt_cut");
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");

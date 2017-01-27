@@ -1,5 +1,6 @@
 ISMC       false
-inName     MuonBv1.root
+inName     analysis_Data.root
+outName    hist.root
 channel    mm
 era        Spring16_25nsV10BCD
 jet_type   AK4PFchs
