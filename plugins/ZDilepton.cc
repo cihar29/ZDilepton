@@ -48,6 +48,7 @@
 //root files
 #include <TFile.h>
 #include <TTree.h>
+#include <TVector.h>
 
 using namespace std;
 using namespace edm;
@@ -80,7 +81,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<int> filter_failed;
+    vector<int> filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -191,6 +192,7 @@ void  ZDilepton::beginJob() {
   tree = new TTree("T", "Analysis Tree");
 
   filter_failed.assign(nFilters+2, 0);
+  dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0);
 
   tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
   tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
@@ -339,10 +341,12 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   for (int i=0, n=electrons->size(); i<n && i<2; i++) leps.push_back( make_pair(electrons->ptrAt(i),'e') );
 
   if (leps.size() < 2) return;
+  dilep_cut[0]++;
 
   sort(leps.begin(), leps.end(), sortLepPt);
 
   if (leps[0].first->pt() < minLepPt_ || leps[1].first->pt() < minSubLepPt_) return;
+  leppt_cut[0]++;
 
   lep0flavor = leps[0].second;
   lep1flavor = leps[1].second;
@@ -350,6 +354,52 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   vector<reco::CandidatePtr> lep0Sources, lep1Sources;
   for (unsigned int i=0, n=leps[0].first->numberOfSourceCandidatePtrs(); i<n; i++) lep0Sources.push_back(leps[0].first->sourceCandidatePtr(i));
   for (unsigned int i=0, n=leps[1].first->numberOfSourceCandidatePtrs(); i<n; i++) lep1Sources.push_back(leps[1].first->sourceCandidatePtr(i));
+
+  //------------ Jets ------------//
+
+  edm::Handle< edm::View<pat::Jet> > jets;
+  iEvent.getByToken(jetTag_, jets);
+
+  nJet = jets->size();
+  int nJetpteta = 0;
+
+  for (int i=0; i<nJet; i++){
+
+    pat::Jet jet = jets->at(i).correctedJet(0);
+    reco::Candidate::LorentzVector jet_p4 = jet.p4();
+
+    if ( reco::deltaR(jet, *leps[0].first) < 0.4 || reco::deltaR(jet, *leps[1].first) < 0.4 ){
+
+      const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
+      for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
+
+        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 'l';}
+        else if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 's';}
+      }
+    }
+    if (jet_clean[i] != 'l' && jet_clean[i] != 's') jet_clean[i] = 'n';
+
+    jet_pt[i] = jet_p4.Pt();
+    jet_eta[i] = jet_p4.Eta();
+    jet_phi[i] = jet_p4.Phi();
+    jet_mass[i] = jet_p4.M();
+    jet_area[i] = jet.jetArea();
+    jet_jec[i] = jets->at(i).jecFactor(0);
+
+    jet_nhf[i] = jet.neutralHadronEnergyFraction();
+    jet_nef[i] = jet.neutralEmEnergyFraction();
+    jet_chf[i] = jet.chargedHadronEnergyFraction();
+    jet_muf[i] = jet.muonEnergyFraction();
+    jet_elef[i] = jet.chargedEmEnergyFraction();
+    jet_numconst[i] = jet.chargedMultiplicity()+jet.neutralMultiplicity();
+    jet_numneutral[i] =jet.neutralMultiplicity();
+    jet_chmult[i] = jet.chargedMultiplicity();
+    jet_btag[i] = jet.bDiscriminator(btag_);
+
+    if ( jet_pt[i]>40 && fabs(jet_eta[i])<2.5 ) nJetpteta++;
+  }
+  if (nJetpteta==0) return;
+  jetpteta_cut[0]++;
 
   //------------ MET Filters ------------//
 
@@ -395,6 +445,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       filter_failed[nFilters+1]++;
       return;
     }
+    met_cut[0]++;
   }
 
   //------------ Event Info ------------//
@@ -626,47 +677,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     nEle++;
   }
 
-  //------------ Jets ------------//
-
-  edm::Handle< edm::View<pat::Jet> > jets;
-  iEvent.getByToken(jetTag_, jets);
-
-  nJet = jets->size();
-
-  for (int i=0; i<nJet; i++){
-
-    pat::Jet jet = jets->at(i).correctedJet(0);
-    reco::Candidate::LorentzVector jet_p4 = jet.p4();
-
-    if ( reco::deltaR(jet, *leps[0].first) < 0.4 || reco::deltaR(jet, *leps[1].first) < 0.4 ){
-
-      const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
-      for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
-
-        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 'l';}
-        else if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 's';}
-      }
-    }
-    if (jet_clean[i] != 'l' && jet_clean[i] != 's') jet_clean[i] = 'n';
-
-    jet_pt[i] = jet_p4.Pt();
-    jet_eta[i] = jet_p4.Eta();
-    jet_phi[i] = jet_p4.Phi();
-    jet_mass[i] = jet_p4.M();
-    jet_area[i] = jet.jetArea();
-    jet_jec[i] = jets->at(i).jecFactor(0);
-
-    jet_nhf[i] = jet.neutralHadronEnergyFraction();
-    jet_nef[i] = jet.neutralEmEnergyFraction();
-    jet_chf[i] = jet.chargedHadronEnergyFraction();
-    jet_muf[i] = jet.muonEnergyFraction();
-    jet_elef[i] = jet.chargedEmEnergyFraction();
-    jet_numconst[i] = jet.chargedMultiplicity()+jet.neutralMultiplicity();
-    jet_numneutral[i] =jet.neutralMultiplicity();
-    jet_chmult[i] = jet.chargedMultiplicity();
-    jet_btag[i] = jet.bDiscriminator(btag_);
-  }
-
   //------------ MET ------------//
 
   edm::Handle< edm::View<pat::MET> > mets;
@@ -753,9 +763,14 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 // ------------ method called once each job just after ending the event loop  ------------
 void ZDilepton::endJob() {
 
-  if (metFilters_) root_file->WriteObject(&filter_failed, "filter_failed");
-
   if (root_file !=0) {
+
+    if (metFilters_) root_file->WriteObject(&filter_failed, "filter_failed");
+
+    root_file->WriteObject(&dilep_cut, "dilep_cut");
+    root_file->WriteObject(&leppt_cut, "leppt_cut");
+    root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");
+    root_file->WriteObject(&met_cut, "met_cut");
 
     root_file->Write();
     delete root_file;
