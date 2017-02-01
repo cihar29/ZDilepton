@@ -49,6 +49,7 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TVector.h>
+#include <TLorentzVector.h>
 
 using namespace std;
 using namespace edm;
@@ -81,7 +82,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut;
+    vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -114,22 +115,21 @@ class ZDilepton : public edm::EDAnalyzer {
     int nJet;
     float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_mass[MAXJET], jet_area[MAXJET], jet_jec[MAXJET], jet_btag[MAXJET];
     float jet_nhf[MAXJET], jet_nef[MAXJET], jet_chf[MAXJET], jet_muf[MAXJET];
-    float jet_elef[MAXJET], jet_numconst[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
+    float jet_elef[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
     char jet_clean[MAXJET];
 
     float genmet_pt, genmet_px, genmet_py, genmet_sumet, genmet_phi;
 
     float met_pt, met_px, met_py, met_sumet, met_phi;
-    float pupmet_pt, pupmet_px, pupmet_py,  pupmet_sumet, pupmet_phi;
     int nMETUncert;
-    float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT], pupmet_shiftedpx[METUNCERT], pupmet_shiftedpy[METUNCERT];
+    float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
 
     vector<float> trig_prescale; vector<bool> trig_failed; vector<string> trig_name;
 
     TString fileName_;
     string btag_;
     bool isMC_, metFilters_;
-    double minLepPt_, minSubLepPt_;
+    double minLepPt_, minSubLepPt_, minDiLepMass_, minLeadJetPt_;
 
     EffectiveAreas ele_areas_;
     edm::EDGetTokenT<edm::TriggerResults> patTrgLabel_;
@@ -174,11 +174,12 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   eleTightIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
   jetTag_ = consumes< edm::View<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
   metTag_ = consumes< edm::View<pat::MET> >( iConfig.getParameter<edm::InputTag>("metTag") );
-  metPuppiTag_ = consumes< edm::View<pat::MET> >( iConfig.getParameter<edm::InputTag>("metPuppiTag") );
   BadChCandFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadChargedCandidateFilter"));
   BadPFMuonFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadPFMuonFilter"));
   minLepPt_ = iConfig.getParameter<double>("minLepPt");
   minSubLepPt_ = iConfig.getParameter<double>("minSubLepPt");
+  minDiLepMass_ = iConfig.getParameter<double>("minDiLepMass");
+  minLeadJetPt_ = iConfig.getParameter<double>("minLeadJetPt");
   triggerResultsTag_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("triggerResultsTag") );
   prescalesTag_ = consumes<pat::PackedTriggerPrescales>( iConfig.getParameter<edm::InputTag>("prescalesTag") );
   genEventTag_ = consumes<GenEventInfoProduct>( iConfig.getParameter<edm::InputTag>("genEventTag") );
@@ -192,7 +193,7 @@ void  ZDilepton::beginJob() {
   tree = new TTree("T", "Analysis Tree");
 
   filter_failed.assign(nFilters+2, 0);
-  totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0);
+  totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
 
   tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
   tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
@@ -301,7 +302,6 @@ void  ZDilepton::beginJob() {
   tree->Branch("jet_chf", jet_chf, "jet_chf[nJet]/F");
   tree->Branch("jet_muf", jet_muf, "jet_muf[nJet]/F");
   tree->Branch("jet_elef", jet_elef, "jet_elef[nJet]/F");
-  tree->Branch("jet_numconst", jet_numconst, "jet_numconst[nJet]/F");
   tree->Branch("jet_numneutral", jet_numneutral, "jet_numneutral[nJet]/F");
   tree->Branch("jet_chmult", jet_chmult, "jet_chmult[nJet]/F");
 
@@ -311,17 +311,9 @@ void  ZDilepton::beginJob() {
   tree->Branch("met_sumet", &met_sumet, "met_sumet/F");
   tree->Branch("met_phi", &met_phi, "met_phi/F");
 
-  tree->Branch("pupmet_pt", &pupmet_pt, "pupmet_pt/F");
-  tree->Branch("pupmet_px", &pupmet_px, "pupmet_px/F");
-  tree->Branch("pupmet_py", &pupmet_py, "pupmet_py/F");
-  tree->Branch("pupmet_sumet", &pupmet_sumet, "pupmet_sumet/F");
-  tree->Branch("pupmet_phi", &pupmet_phi, "pupmet_phi/F");
-
   tree->Branch("nMETUncert", &nMETUncert, "nMETUncert/I");
   tree->Branch("met_shiftedpx", met_shiftedpx, "met_shiftedpx[nMETUncert]/F");
   tree->Branch("met_shiftedpy", met_shiftedpy, "met_shiftedpy[nMETUncert]/F");
-  tree->Branch("pupmet_shiftedpx", pupmet_shiftedpx, "pupmet_shiftedpx[nMETUncert]/F");
-  tree->Branch("pupmet_shiftedpy", pupmet_shiftedpy, "pupmet_shiftedpy[nMETUncert]/F");
 }
 
 // ------------ method called for each event  ------------
@@ -337,10 +329,21 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< edm::View<pat::Electron> > electrons;
   iEvent.getByToken(electronTag_, electrons);
 
+  edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
+  iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
+
   vector<pair<reco::CandidatePtr, char> > leps;
 
-  for (int i=0, n=muons->size(); i<n && i<2; i++) leps.push_back( make_pair(muons->ptrAt(i),'m') );
-  for (int i=0, n=electrons->size(); i<n && i<2; i++) leps.push_back( make_pair(electrons->ptrAt(i),'e') );
+  for (int i=0, n=muons->size(); i<n; i++) {
+    if (!muons->at(i).isLooseMuon()) continue;
+    leps.push_back( make_pair(muons->ptrAt(i),'m') );
+  }
+  for (int i=0, n=electrons->size(); i<n; i++) {
+    const Ptr<pat::Electron> elPtr(electrons, i);
+    if ( !(*Veto_id_decisions)[ elPtr ] ) continue;
+
+    leps.push_back( make_pair(electrons->ptrAt(i),'e') );
+  }
 
   if (leps.size() < 2) return;
   dilep_cut[0]++;
@@ -349,6 +352,29 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   if (leps[0].first->pt() < minLepPt_ || leps[1].first->pt() < minSubLepPt_) return;
   leppt_cut[0]++;
+
+  bool dilepmass_flag = false;
+  for (int i=0, n=leps.size(); i<n && !dilepmass_flag; i++) {
+
+    char flavi = leps[i].second;
+    reco::CandidatePtr lepi = leps[i].first;
+    TLorentzVector vlepi;
+    vlepi.SetPtEtaPhiM( lepi->pt(), lepi->eta(), lepi->phi(), lepi->mass() );
+
+    for (int j=i+1; j<n && !dilepmass_flag; j++) {
+      char flavj = leps[j].second;
+
+      if (flavi==flavj) {
+        reco::CandidatePtr lepj = leps[j].first;
+        TLorentzVector vlepj;
+        vlepj.SetPtEtaPhiM( lepj->pt(), lepj->eta(), lepj->phi(), lepj->mass() );
+
+        if ( (vlepi+vlepj).M() > minDiLepMass_ ) dilepmass_flag = true;
+      }
+    }
+  }
+  if (!dilepmass_flag) return;
+  dilepmass_cut[0]++;
 
   lep0flavor = leps[0].second;
   lep1flavor = leps[1].second;
@@ -363,7 +389,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   iEvent.getByToken(jetTag_, jets);
 
   nJet = jets->size();
-  int nJetpteta = 0;
+  int leadJetPt_flag = false;
 
   for (int i=0; i<nJet; i++){
 
@@ -393,14 +419,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     jet_chf[i] = jet.chargedHadronEnergyFraction();
     jet_muf[i] = jet.muonEnergyFraction();
     jet_elef[i] = jet.chargedEmEnergyFraction();
-    jet_numconst[i] = jet.chargedMultiplicity()+jet.neutralMultiplicity();
     jet_numneutral[i] =jet.neutralMultiplicity();
     jet_chmult[i] = jet.chargedMultiplicity();
     jet_btag[i] = jet.bDiscriminator(btag_);
 
-    if ( jet_pt[i]>40 && fabs(jet_eta[i])<2.5 ) nJetpteta++;
+    if ( jet_pt[i]>minLeadJetPt_ && fabs(jet_eta[i])<2.5 ) leadJetPt_flag = true;
   }
-  if (nJetpteta==0) return;
+  if (!leadJetPt_flag) return;
   jetpteta_cut[0]++;
 
   //------------ MET Filters ------------//
@@ -592,7 +617,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   nMuon = 0;
 
   for (int i=0, n=muons->size(); i<n; i++){
-    if (muons->at(i).pt() < 15) continue;
+    if ( muons->at(i).pt() < 15 || !muons->at(i).isLooseMuon() ) continue;
     pat::Muon muon = muons->at(i);
 
     muon_isGlob[nMuon] = muon.isGlobalMuon();
@@ -622,9 +647,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Electrons ------------//
 
-  edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
-  iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
-
   edm::Handle<edm::ValueMap<bool> > Loose_id_decisions;
   iEvent.getByToken(eleLooseIdMapToken_, Loose_id_decisions);
 
@@ -638,8 +660,9 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   for (int i=0, n=electrons->size(); i<n; i++){
     if (electrons->at(i).pt() < 15) continue;
-    pat::Electron ele = electrons->at(i);
     const Ptr<pat::Electron> elPtr(electrons, i);
+    if ( !(*Veto_id_decisions)[ elPtr ] ) continue;
+    pat::Electron ele = electrons->at(i);
 
     ele_charge[nEle] = ele.charge();
     ele_pt[nEle] = ele.pt();
@@ -702,16 +725,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   met_sumet = met.uncorSumEt();
   met_phi = met.uncorPhi();
 
-  edm::Handle< edm::View<pat::MET> > pupmets;
-  iEvent.getByToken(metPuppiTag_, pupmets);
-
-  pat::MET pupmet = pupmets->at(0);
-  pupmet_pt = pupmet.uncorPt();
-  pupmet_px = pupmet.uncorPx();
-  pupmet_py = pupmet.uncorPy();
-  pupmet_sumet = pupmet.uncorSumEt();
-  pupmet_phi = pupmet.uncorPhi();
-
   nMETUncert = METUNCERT;
 
   for (int i=0; i<nMETUncert; i++){
@@ -721,8 +734,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     met_shiftedpx[i] = met.shiftedPx(uncert, level);
     met_shiftedpy[i] = met.shiftedPy(uncert, level);
-    pupmet_shiftedpx[i] = pupmet.shiftedPx(uncert, level);
-    pupmet_shiftedpy[i] = pupmet.shiftedPy(uncert, level);
   }
 
   //------------ Triggers ------------//
@@ -774,6 +785,7 @@ void ZDilepton::endJob() {
     root_file->WriteObject(&leppt_cut, "leppt_cut");
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");
     root_file->WriteObject(&met_cut, "met_cut");
+    root_file->WriteObject(&dilepmass_cut, "dilepmass_cut");
 
     root_file->Write();
     delete root_file;

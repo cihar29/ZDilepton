@@ -47,7 +47,7 @@ void analyze(const string& parFile = "pars.txt"){
 
   //Skims//
 
-  int countEvts=0, countDilep=0, countLeppt=0, countJetpteta=0, countMet=0;
+  int countEvts=0, countDilep=0, countLeppt=0, countDilepmass=0, countJetpteta=0, countMet=0;
 
   int nFiles = 1;
   for (int i=1; i<=nFiles; i++){
@@ -55,12 +55,14 @@ void analyze(const string& parFile = "pars.txt"){
     vector<int>* totalEvts = (vector<int>*) inFile->Get("totalEvts");
     vector<int>* dilep_cut = (vector<int>*) inFile->Get("dilep_cut");
     vector<int>* leppt_cut = (vector<int>*) inFile->Get("leppt_cut");
+    vector<int>* dilepmass_cut = (vector<int>*) inFile->Get("dilepmass_cut");
     vector<int>* jetpteta_cut = (vector<int>*) inFile->Get("jetpteta_cut");
     vector<int>* met_cut = (vector<int>*) inFile->Get("met_cut");
 
     countEvts += (*totalEvts)[0];
     countDilep += (*dilep_cut)[0];
     countLeppt += (*leppt_cut)[0];
+    countDilepmass += (*dilepmass_cut)[0];
     countJetpteta += (*jetpteta_cut)[0];
     countMet += (*met_cut)[0];
   }
@@ -299,7 +301,8 @@ void analyze(const string& parFile = "pars.txt"){
   cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %4.3f         ",countEvts,float(countEvts/countEvts),float(countEvts/countEvts)) << "\n";
   cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilep,float(float(countDilep)/float(countEvts)),float(float(countDilep)/float(countEvts))) << "\n";
   cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %4.3f         ",countLeppt,float(float(countLeppt)/float(countDilep)),float(float(countLeppt)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %4.3f         ",countJetpteta,float(float(countJetpteta)/float(countLeppt)),float(float(countJetpteta)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Dilepton Mass Cut        |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilepmass,float(float(countDilepmass)/float(countLeppt)),float(float(countDilepmass)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %4.3f         ",countJetpteta,float(float(countJetpteta)/float(countDilepmass)),float(float(countJetpteta)/float(countEvts))) << "\n";
   cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %4.3f         ",countMet,float(float(countMet)/float(countJetpteta)),float(float(countMet)/float(countEvts))) << "\n";
   cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(countMet)),float(float(signCut)/float(countEvts))) << "\n";
   cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(signCut)),float(float(etaCut)/float(countEvts))) << "\n";

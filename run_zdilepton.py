@@ -11,7 +11,7 @@ process = cms.Process("Ana")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 process.options.allowUnscheduled = cms.untracked.bool(True)
 
@@ -26,6 +26,8 @@ readFiles.extend( [
   #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
 
   #'/store/mc/RunIISpring16MiniAODv2/TT_TuneCUETP8M1_13TeV-powheg-pythia8/MINIAODSIM/PUSpring16_80X_mcRun2_asymptotic_2016_miniAODv2_v0_ext4-v1/00000/004A0552-3929-E611-BD44-0025905A48F0.root'
+
+  #'/store/mc/RunIISpring16MiniAODv2/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/MINIAODSIM/PUSpring16RAWAODSIM_80X_mcRun2_asymptotic_2016_miniAODv2_v0-v1/00000/02404626-C64D-E611-9744-485B39897231.root'
 
 ] );
 
@@ -82,9 +84,10 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     convLabel = cms.InputTag("reducedEgamma:reducedConversions"),
     jetTag = cms.InputTag("slimmedJets"),
     metTag = cms.InputTag("slimmedMETs"),
-    metPuppiTag = cms.InputTag("slimmedMETsPuppi"),
     minLepPt = cms.double(45.),
     minSubLepPt = cms.double(25.),
+    minDiLepMass = cms.double(20.),
+    minLeadJetPt = cms.double(80.),
     triggerResultsTag = cms.InputTag("TriggerResults", "", "HLT"),
     prescalesTag = cms.InputTag("patTrigger"),
     genEventTag = cms.InputTag("generator"),
