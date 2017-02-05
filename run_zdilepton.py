@@ -19,7 +19,9 @@ readFiles = cms.untracked.vstring()
 process.source = cms.Source ("PoolSource", fileNames = readFiles)
 readFiles.extend( [
 
-  '/store/data/Run2016B/SingleMuon/MINIAOD/23Sep2016-v1/70000/029A7F31-B187-E611-B7D5-0CC47A13CECE.root'
+  '/store/data/Run2016E/SingleMuon/MINIAOD/23Sep2016-v1/50000/00CFC689-8D8D-E611-9F90-0CC47A13D16E.root'
+
+  #'/store/data/Run2016B/SingleMuon/MINIAOD/23Sep2016-v1/70000/029A7F31-B187-E611-B7D5-0CC47A13CECE.root'
 
   #'/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
 
@@ -31,7 +33,7 @@ readFiles.extend( [
 
 ] );
 
-gt = "80X_dataRun2_Prompt_v15"
+gt = "80X_dataRun2_2016SeptRepro_v3"
 
 process.load( "Configuration.Geometry.GeometryIdeal_cff" )
 process.load( "Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff" )
