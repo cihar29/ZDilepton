@@ -19,9 +19,13 @@ readFiles = cms.untracked.vstring()
 process.source = cms.Source ("PoolSource", fileNames = readFiles)
 readFiles.extend( [
 
-  '/store/data/Run2016E/SingleMuon/MINIAOD/23Sep2016-v1/50000/00CFC689-8D8D-E611-9F90-0CC47A13D16E.root'
+  #'/store/data/Run2016E/SingleMuon/MINIAOD/23Sep2016-v1/50000/00CFC689-8D8D-E611-9F90-0CC47A13D16E.root'
+
+  '/store/data/Run2016G/SingleMuon/MINIAOD/23Sep2016-v1/1110000/A2C0F697-B19C-E611-A4D8-F04DA275BFF2.root'
 
   #'/store/data/Run2016B/SingleMuon/MINIAOD/23Sep2016-v1/70000/029A7F31-B187-E611-B7D5-0CC47A13CECE.root'
+
+  #'/store/data/Run2016G/SingleElectron/MINIAOD/23Sep2016-v1/100000/004A7893-A990-E611-B29F-002590E7DE36.root'
 
   #'/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
 
@@ -78,7 +82,7 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     genJetTag = cms.InputTag("slimmedGenJets"),
     muonTag = cms.InputTag("slimmedMuons"),
     electronTag = cms.InputTag("slimmedElectrons"),
-    effAreasConfigFile = cms.FileInPath("RecoEgamma/ElectronIdentification/data/Spring15/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_25ns.txt"),
+    effAreasConfigFile = cms.FileInPath("RecoEgamma/ElectronIdentification/data/Summer16/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_80X.txt"),
     eleVetoIdMapToken = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-veto"),
     eleLooseIdMapToken = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-loose"),
     eleMediumIdMapToken = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-medium"),
@@ -94,6 +98,8 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     prescalesTag = cms.InputTag("patTrigger"),
     genEventTag = cms.InputTag("generator"),
     muTag = cms.InputTag("slimmedAddPileupInfo")
+    #convTag = cms.InputTag("reducedConversions"),
+    #bsTag = cms.InputTag("offlineBeamSpot")
 )
 
 process.myseq = cms.Sequence( process.BadPFMuonFilter *

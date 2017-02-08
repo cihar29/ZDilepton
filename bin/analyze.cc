@@ -38,6 +38,8 @@ int nFiles = 1;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
+const float MUONMASS = 0.10566;
+const float ELEMASS = 0;
 
 int main(int argc, char* argv[]){
 
@@ -157,24 +159,22 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("lep1flavor", &lep1flavor);
 
   int nMuon=MAXLEP, muon_charge[nMuon];
-  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon], muon_mass[nMuon];
+  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon];
 
   T->SetBranchAddress("nMuon", &nMuon);
   T->SetBranchAddress("muon_charge", muon_charge);
   T->SetBranchAddress("muon_eta", muon_eta);
   T->SetBranchAddress("muon_pt", muon_pt);
   T->SetBranchAddress("muon_phi", muon_phi);
-  T->SetBranchAddress("muon_mass", muon_mass);
 
   int nEle=MAXLEP, ele_charge[nEle];
-  float ele_eta[nEle], ele_pt[nEle], ele_phi[nEle], ele_mass[nEle];
+  float ele_eta[nEle], ele_pt[nEle], ele_phi[nEle];
 
   T->SetBranchAddress("nEle", &nEle);
   T->SetBranchAddress("ele_charge", ele_charge);
   T->SetBranchAddress("ele_eta", ele_eta);
   T->SetBranchAddress("ele_pt", ele_pt);
   T->SetBranchAddress("ele_phi", ele_phi);
-  T->SetBranchAddress("ele_mass", ele_mass);
 
   int nJet=MAXJET;
   float jet_eta[nJet], jet_pt[nJet], jet_area[nJet];
@@ -209,8 +209,8 @@ int main(int argc, char* argv[]){
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
         etaCut++;
 
-        lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
-        lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], muon_mass[1]);
+        lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
+        lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], MUONMASS);
       }
       else continue;
     }
@@ -223,8 +223,8 @@ int main(int argc, char* argv[]){
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
         etaCut++;
 
-        lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
-        lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ele_mass[1]);
+        lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
+        lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ELEMASS);
       }
       else continue;
     }
@@ -237,8 +237,8 @@ int main(int argc, char* argv[]){
         if (fabs(ele_eta[0]) > 2.5 || fabs(muon_eta[0]) > 2.4) continue;
         etaCut++;
 
-        lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
-        lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
+        lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
+        lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
       }
       else if (lep0flavor == 'm' && lep1flavor == 'e'){
         lep0charge = muon_charge[0]; lep1charge = ele_charge[0];
@@ -248,8 +248,8 @@ int main(int argc, char* argv[]){
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
         etaCut++;
 
-        lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], muon_mass[0]);
-        lep1.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ele_mass[0]);
+        lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
+        lep1.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
       }
       else continue;
     }

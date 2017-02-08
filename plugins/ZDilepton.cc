@@ -40,6 +40,8 @@
 #include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include <SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h>
+//#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
+#include "DataFormats/PatCandidates/interface/VIDCutFlowResult.h"
 #include "parsePileUpJSON2.h"
 #include <vector>
 #include <algorithm>
@@ -60,7 +62,7 @@ const int MAXJET = 50;
 const int nFilters = 6;
 const int METUNCERT = 4;
 
-bool sortLepPt(pair<reco::CandidatePtr, char> lep1, pair<reco::CandidatePtr, char> lep2){ return lep1.first->pt() > lep2.first->pt(); }
+bool sortLepPt(const pair<reco::CandidatePtr, char>& lep1, const pair<reco::CandidatePtr, char>& lep2){ return lep1.first->pt() > lep2.first->pt(); }
 
 class ZDilepton : public edm::EDAnalyzer {
   public:
@@ -99,18 +101,16 @@ class ZDilepton : public edm::EDAnalyzer {
     char lep0flavor, lep1flavor;
 
     int nMuon;
-    bool muon_isGlob[MAXLEP], muon_IsLooseID[MAXLEP], muon_IsMediumID[MAXLEP], muon_IsTightID[MAXLEP];
-    int muon_type[MAXLEP], muon_charge[MAXLEP];
-    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP], muon_mass[MAXLEP], muon_D0[MAXLEP], muon_Dz[MAXLEP];
-    float muon_chi2[MAXLEP], muon_tspm[MAXLEP], muon_kinkf[MAXLEP], muon_segcom[MAXLEP];
+    bool muon_isGlob[MAXLEP], muon_IsMediumID[MAXLEP], muon_IsTightID[MAXLEP];
+    int muon_charge[MAXLEP];
+    float muon_pt[MAXLEP], muon_eta[MAXLEP], muon_phi[MAXLEP], muon_D0[MAXLEP], muon_Dz[MAXLEP];
+    float muon_chi2[MAXLEP], muon_tspm[MAXLEP], muon_kinkf[MAXLEP], muon_segcom[MAXLEP], muon_ftrackhits[MAXLEP];
     
     int nEle;
-    int ele_charge[MAXLEP];
-    bool ele_VetoID[MAXLEP], ele_LooseID[MAXLEP], ele_MediumID[MAXLEP], ele_TightID[MAXLEP];
-    float ele_dEtaIn[MAXLEP], ele_dPhiIn[MAXLEP];
-    float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_mass[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP];
-    float ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_dPhiSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP];
-    float ele_missinghits[MAXLEP];
+    int ele_charge[MAXLEP], ele_missinghits[MAXLEP];
+    bool ele_LooseID[MAXLEP], ele_MediumID[MAXLEP], ele_TightID[MAXLEP]; //ele_passConv[MAXLEP];
+    float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP], ele_etaSupClust[MAXLEP];
+    float ele_dPhiIn[MAXLEP], ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP];
 
     int nJet;
     float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_mass[MAXJET], jet_area[MAXJET], jet_jec[MAXJET], jet_btag[MAXJET];
@@ -139,10 +139,10 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT< edm::View<reco::GenJet> > genJetTag_;
     edm::EDGetTokenT< edm::View<pat::Muon> > muonTag_;
     edm::EDGetTokenT< edm::View<pat::Electron> > electronTag_;
-    edm::EDGetTokenT<edm::ValueMap<bool> > eleVetoIdMapToken_;
-    edm::EDGetTokenT<edm::ValueMap<bool> > eleLooseIdMapToken_;
-    edm::EDGetTokenT<edm::ValueMap<bool> > eleMediumIdMapToken_;
-    edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleVetoIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleLooseIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleMediumIdMapToken_;
+    edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleTightIdMapToken_;
     edm::EDGetTokenT< edm::View<pat::Jet> > jetTag_;
     edm::EDGetTokenT< edm::View<pat::MET> > metTag_;
     edm::EDGetTokenT< edm::View<pat::MET> > metPuppiTag_;
@@ -152,6 +152,8 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT<pat::PackedTriggerPrescales> prescalesTag_;
     edm::EDGetTokenT<GenEventInfoProduct> genEventTag_;
     edm::EDGetTokenT< edm::View<PileupSummaryInfo> > muTag_;
+    //edm::EDGetTokenT< vector<reco::Conversion> > convTag_;
+    //edm::EDGetTokenT<reco::BeamSpot> bsTag_;
 };
 
 ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
@@ -168,10 +170,10 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   genJetTag_ =  consumes< edm::View<reco::GenJet> >( iConfig.getParameter<edm::InputTag>("genJetTag") );
   muonTag_ = consumes< edm::View<pat::Muon> >( iConfig.getParameter<edm::InputTag>("muonTag") );
   electronTag_ = consumes< edm::View<pat::Electron> >( iConfig.getParameter<edm::InputTag>("electronTag") );
-  eleVetoIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleVetoIdMapToken") );
-  eleLooseIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleLooseIdMapToken") );
-  eleMediumIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleMediumIdMapToken") );
-  eleTightIdMapToken_ = consumes<edm::ValueMap<bool> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
+  eleVetoIdMapToken_ = consumes<edm::ValueMap<vid::CutFlowResult> >( iConfig.getParameter<edm::InputTag>("eleVetoIdMapToken") );
+  eleLooseIdMapToken_ = consumes<edm::ValueMap<vid::CutFlowResult> >( iConfig.getParameter<edm::InputTag>("eleLooseIdMapToken") );
+  eleMediumIdMapToken_ = consumes<edm::ValueMap<vid::CutFlowResult> >( iConfig.getParameter<edm::InputTag>("eleMediumIdMapToken") );
+  eleTightIdMapToken_ = consumes<edm::ValueMap<vid::CutFlowResult> >( iConfig.getParameter<edm::InputTag>("eleTightIdMapToken") );
   jetTag_ = consumes< edm::View<pat::Jet> >( iConfig.getParameter<edm::InputTag>("jetTag") );
   metTag_ = consumes< edm::View<pat::MET> >( iConfig.getParameter<edm::InputTag>("metTag") );
   BadChCandFilterToken_ = consumes<bool>(iConfig.getParameter<edm::InputTag>("BadChargedCandidateFilter"));
@@ -184,6 +186,8 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   prescalesTag_ = consumes<pat::PackedTriggerPrescales>( iConfig.getParameter<edm::InputTag>("prescalesTag") );
   genEventTag_ = consumes<GenEventInfoProduct>( iConfig.getParameter<edm::InputTag>("genEventTag") );
   muTag_ = consumes< edm::View<PileupSummaryInfo> >( iConfig.getParameter<edm::InputTag>("muTag") );
+  //convTag_ = consumes< vector<reco::Conversion> >( iConfig.getParameter<edm::InputTag>("convTag") );
+  //bsTag_ = consumes<reco::BeamSpot>( iConfig.getParameter<edm::InputTag>("bsTag") );
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -247,19 +251,17 @@ void  ZDilepton::beginJob() {
 
   tree->Branch("nMuon", &nMuon, "nMuon/I");
   tree->Branch("muon_charge", muon_charge, "muon_charge[nMuon]/I");
-  tree->Branch("muon_type", muon_type, "muon_type[nMuon]/I");
   tree->Branch("muon_isGlob", muon_isGlob, "muon_isGlob[nMuon]/O");
   tree->Branch("muon_pt", muon_pt, "muon_pt[nMuon]/F");
   tree->Branch("muon_eta", muon_eta, "muon_eta[nMuon]/F");
   tree->Branch("muon_phi", muon_phi, "muon_phi[nMuon]/F");
-  tree->Branch("muon_mass", muon_mass, "muon_mass[nMuon]/F");
   tree->Branch("muon_D0", muon_D0, "muon_D0[nMuon]/F");
   tree->Branch("muon_Dz", muon_Dz, "muon_Dz[nMuon]/F");
   tree->Branch("muon_chi2", muon_chi2, "muon_chi2[nMuon]/F");
   tree->Branch("muon_tspm", muon_tspm, "muon_tspm[nMuon]/F");
   tree->Branch("muon_kinkf", muon_kinkf, "muon_kinkf[nMuon]/F");
-  if (!isMC_) tree->Branch("muon_segcom", muon_segcom, "muon_segcom[nMuon]/F");
-  tree->Branch("muon_IsLooseID", muon_IsLooseID, "muon_IsLooseID[nMuon]/O");
+  tree->Branch("muon_ftrackhits", muon_ftrackhits, "muon_ftrackhits[nMuon]/F");
+  tree->Branch("muon_segcom", muon_segcom, "muon_segcom[nMuon]/F");
   tree->Branch("muon_IsMediumID", muon_IsMediumID, "muon_IsMediumID[nMuon]/O");
   tree->Branch("muon_IsTightID", muon_IsTightID, "muon_IsTightID[nMuon]/O");
 
@@ -268,23 +270,21 @@ void  ZDilepton::beginJob() {
   tree->Branch("ele_pt", ele_pt, "ele_pt[nEle]/F");
   tree->Branch("ele_eta", ele_eta, "ele_eta[nEle]/F");
   tree->Branch("ele_phi", ele_phi, "ele_phi[nEle]/F");
-  tree->Branch("ele_mass", ele_mass, "ele_mass[nEle]/F");
-  tree->Branch("ele_VetoID", ele_VetoID , "ele_VetoID/O");
-  tree->Branch("ele_LooseID", ele_LooseID , "ele_LooseID/O");
-  tree->Branch("ele_MediumID", ele_MediumID , "ele_MediumID/O");
-  tree->Branch("ele_TightID", ele_TightID , "ele_TightID/O");
+  tree->Branch("ele_LooseID", ele_LooseID , "ele_LooseID[nEle]/O");
+  tree->Branch("ele_MediumID", ele_MediumID , "ele_MediumID[nEle]/O");
+  tree->Branch("ele_TightID", ele_TightID , "ele_TightID[nEle]/O");
+  //tree->Branch("ele_passConv", ele_passConv , "ele_passConv[nEle]/O");
   tree->Branch("ele_D0", ele_D0, "ele_D0[nEle]/F");
   tree->Branch("ele_Dz", ele_Dz, "ele_Dz[nEle]/F");
   tree->Branch("ele_sigmaIetaIeta", ele_sigmaIetaIeta, "ele_sigmaIetaIeta[nEle]/F");
   tree->Branch("ele_dEtaSeed", ele_dEtaSeed, "ele_dEtaSeed[nEle]/F");
-  tree->Branch("ele_dPhiSeed", ele_dPhiSeed, "ele_dPhiSeed[nEle]/F");
-  tree->Branch("ele_dEtaIn", ele_dEtaIn, "ele_dEtaIn[nEle]/F");
   tree->Branch("ele_dPhiIn", ele_dPhiIn, "ele_dPhiIn[nEle]/F");
+  tree->Branch("ele_etaSupClust", ele_etaSupClust, "ele_etaSupClust[nEle]/F");
   tree->Branch("ele_overEoverP", ele_overEoverP, "ele_overEoverP[nEle]/F");
   if (!isMC_){
     tree->Branch("ele_HE", ele_HE, "ele_HE[nEle]/F");
     tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
-    tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/F");
+    tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/I");
   }
 
   tree->Branch("nJet", &nJet, "nJet/I");
@@ -329,8 +329,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< edm::View<pat::Electron> > electrons;
   iEvent.getByToken(electronTag_, electrons);
 
-  edm::Handle<edm::ValueMap<bool> > Veto_id_decisions;
+  edm::Handle<edm::ValueMap<vid::CutFlowResult> > Veto_id_decisions;
   iEvent.getByToken(eleVetoIdMapToken_, Veto_id_decisions);
+
+  //edm::Handle< vector<reco::Conversion> > conversions;
+  //iEvent.getByToken(convTag_, conversions);
+  //edm::Handle<reco::BeamSpot> beamspot;
+  //iEvent.getByToken(bsTag_, beamspot);
 
   vector<pair<reco::CandidatePtr, char> > leps;
 
@@ -338,10 +343,10 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     if (!muons->at(i).isLooseMuon()) continue;
     leps.push_back( make_pair(muons->ptrAt(i),'m') );
   }
+  const int isoCut = 7;
   for (int i=0, n=electrons->size(); i<n; i++) {
     const Ptr<pat::Electron> elPtr(electrons, i);
-    if ( !(*Veto_id_decisions)[ elPtr ] ) continue;
-
+    if (!(*Veto_id_decisions)[elPtr].getCutFlowResultMasking(isoCut).cutFlowPassed()) continue;
     leps.push_back( make_pair(electrons->ptrAt(i),'e') );
   }
 
@@ -393,7 +398,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   for (int i=0; i<nJet; i++){
 
-    pat::Jet jet = jets->at(i).correctedJet(0);
+    const pat::Jet& jet = jets->at(i).correctedJet(0);
     reco::Candidate::LorentzVector jet_p4 = jet.p4();
 
     if ( reco::deltaR(jet, *leps[0].first) < 0.4 || reco::deltaR(jet, *leps[1].first) < 0.4 ){
@@ -522,7 +527,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     //cout << "--------------------------------------------------------------------"<<endl;
 
     for (int i=0, n=genParticles->size(); i<n; i++) {
-      reco::GenParticle p = genParticles->at(i);
+      const reco::GenParticle& p = genParticles->at(i);
 
       /*cout << i << "\t" << p.pdgId() << "\t" << p.status() << "\t";
       if (p.numberOfDaughters() > 0) cout << p.daughterRef(0).key() << "\t";
@@ -561,7 +566,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     nGen = reducedGens.size();
 
     for (int i=0; i<nGen; i++) {
-      reco::GenParticle p = reducedGens[i].first;
+      const reco::GenParticle& p = reducedGens[i].first;
 
       /*cout << reducedGens[i].second << "\t" << p.pdgId() << "\t" << p.status() << "\t";
       if (p.numberOfDaughters() > 0) cout << p.daughterRef(0).key() << "\t";
@@ -599,7 +604,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     for (int i=0, n=genJets->size(); i<n; i++){
       if (genJets->at(i).pt() < 15) continue;
 
-      reco::GenJet jet = genJets->at(i);
+      const reco::GenJet& jet = genJets->at(i);
 
       genJet_pt[nGenJet]  = jet.pt();
       genJet_eta[nGenJet] = jet.eta();
@@ -617,28 +622,27 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   nMuon = 0;
 
   for (int i=0, n=muons->size(); i<n; i++){
+    //save only loose muons above 15 gev
     if ( muons->at(i).pt() < 15 || !muons->at(i).isLooseMuon() ) continue;
-    pat::Muon muon = muons->at(i);
+    const pat::Muon& muon = muons->at(i);
 
     muon_isGlob[nMuon] = muon.isGlobalMuon();
     muon_charge[nMuon] = muon.charge();
-    muon_type[nMuon] = muon.type();
     muon_pt[nMuon] = muon.pt();
     muon_eta[nMuon] = muon.eta();
     muon_phi[nMuon] = muon.phi();
-    muon_mass[nMuon] = muon.mass();
 
     muon_D0[nMuon] = muon.muonBestTrack()->dxy(pvtx.position());
     muon_Dz[nMuon] = muon.muonBestTrack()->dz(pvtx.position());
     muon_tspm[nMuon] = muon.combinedQuality().chi2LocalPosition;
     muon_kinkf[nMuon] = muon.combinedQuality().trkKink;
+    muon_ftrackhits[nMuon] = muon.innerTrack()->validFraction();
 
-    if (!isMC_) muon_segcom[nMuon] = muon::segmentCompatibility(muon);
+    muon_segcom[nMuon] = muon::segmentCompatibility(muon);
 
     if (muon_isGlob[nMuon]) muon_chi2[nMuon] = muon.globalTrack()->normalizedChi2();
-    else                muon_chi2[nMuon] = -1;
+    else                muon_chi2[nMuon] = 99;
 
-    muon_IsLooseID[nMuon] = muon.isLooseMuon();
     muon_IsMediumID[nMuon] = muon.isMediumMuon();
     muon_IsTightID[nMuon] = muon.isTightMuon(pvtx);   
 
@@ -647,58 +651,76 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Electrons ------------//
 
-  edm::Handle<edm::ValueMap<bool> > Loose_id_decisions;
+  edm::Handle<edm::ValueMap<vid::CutFlowResult> > Loose_id_decisions;
   iEvent.getByToken(eleLooseIdMapToken_, Loose_id_decisions);
 
-  edm::Handle<edm::ValueMap<bool> > Medium_id_decisions;
+  edm::Handle<edm::ValueMap<vid::CutFlowResult> > Medium_id_decisions;
   iEvent.getByToken(eleMediumIdMapToken_, Medium_id_decisions);
 
-  edm::Handle<edm::ValueMap<bool> > Tight_id_decisions;
+  edm::Handle<edm::ValueMap<vid::CutFlowResult> > Tight_id_decisions;
   iEvent.getByToken(eleTightIdMapToken_, Tight_id_decisions);
 
   nEle = 0;
 
   for (int i=0, n=electrons->size(); i<n; i++){
-    if (electrons->at(i).pt() < 15) continue;
+    const pat::Electron& ele = electrons->at(i);
     const Ptr<pat::Electron> elPtr(electrons, i);
-    if ( !(*Veto_id_decisions)[ elPtr ] ) continue;
-    pat::Electron ele = electrons->at(i);
+
+    //save only veto electrons (without isocut) above 15 gev
+    if (ele.pt() < 15 || !(*Veto_id_decisions)[elPtr].getCutFlowResultMasking(isoCut).cutFlowPassed()) continue;
+
 
     ele_charge[nEle] = ele.charge();
     ele_pt[nEle] = ele.pt();
     ele_eta[nEle] = ele.eta();
     ele_phi[nEle] = ele.phi();
-    ele_mass[nEle] = ele.mass();
 
     ele_D0[nEle] = ele.gsfTrack()->dxy(pvtx.position());
     ele_Dz[nEle] = ele.gsfTrack()->dz(pvtx.position());
     ele_sigmaIetaIeta[nEle] = ele.full5x5_sigmaIetaIeta();
 
+    if (ele.superCluster().isNonnull()) ele_etaSupClust[nEle] = ele.superCluster()->eta();
+    else ele_etaSupClust[nEle] = -99;
     if ( ele.superCluster().isNonnull() && ele.superCluster()->seed().isNonnull() )
       ele_dEtaSeed[nEle] = ele.deltaEtaSuperClusterTrackAtVtx() - ele.superCluster()->eta() + ele.superCluster()->seed()->eta();
     else ele_dEtaSeed[nEle] = -99;
 
-    ele_dPhiSeed[nEle] = abs(ele.deltaPhiSuperClusterTrackAtVtx());
-
-    ele_dEtaIn[nEle] = ele.deltaEtaSuperClusterTrackAtVtx();
     ele_dPhiIn[nEle] = ele.deltaPhiSuperClusterTrackAtVtx();
-    ele_overEoverP[nEle] = abs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
+    ele_overEoverP[nEle] = fabs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
 
     if (!isMC_){
       ele_HE[nEle] = ele.hadronicOverEm();
       ele_missinghits[nEle] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
 
       reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
-      float abseta =  abs(ele.superCluster()->eta());
-      float eA = ele_areas_.getEffectiveArea(abseta);
+      float eA = ele_areas_.getEffectiveArea( fabs(ele_etaSupClust[nEle]) );
       ele_rcpiwec[nEle] = ( pfIso.sumChargedHadronPt + max( 0.0f, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eA*rho) ) / ele_pt[nEle];
     }
 
-    ele_VetoID[nEle]   = (*Veto_id_decisions)[ elPtr ];
-    ele_LooseID[nEle]  = (*Loose_id_decisions)[ elPtr ];
-    ele_MediumID[nEle]  = (*Medium_id_decisions)[ elPtr ];
-    ele_TightID[nEle]  = (*Tight_id_decisions)[ elPtr ];
+    //if ( beamspot.isValid() && conversions.isValid() )
+    //  ele_passConv[nEle] = !ConversionTools::hasMatchedConversion(ele, conversions, beamspot->position());
+    //else
+    //  ele_passConv[nEle] = true;
+    //Tried implementing the passConversion but didn't agree with official passConversion cut, so use below
+    //const int passConvCut = 8;
+    //ele_passConv[nEle] = (*Veto_id_decisions)[elPtr].getCutResultByIndex(passConvCut);
 
+    ele_LooseID[nEle]  = (*Loose_id_decisions)[elPtr].getCutFlowResultMasking(isoCut).cutFlowPassed();
+    ele_MediumID[nEle] = (*Medium_id_decisions)[elPtr].getCutFlowResultMasking(isoCut).cutFlowPassed();
+    ele_TightID[nEle]  = (*Tight_id_decisions)[elPtr].getCutFlowResultMasking(isoCut).cutFlowPassed();
+
+/*
+0: MinPtCut_0
+1: GsfEleSCEtaMultiRangeCut_0
+2: GsfEleDEtaInSeedCut_0
+3: GsfEleDPhiInCut_0
+4: GsfEleFull5x5SigmaIEtaIEtaCut_0
+5: GsfEleHadronicOverEMCut_0
+6: GsfEleEInverseMinusPInverseCut_0
+7: GsfEleEffAreaPFIsoCut_0
+8: GsfEleConversionVetoCut_0
+9: GsfEleMissingHitsCut_0    
+*/
     nEle++;
   }
 
@@ -707,7 +729,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< edm::View<pat::MET> > mets;
   iEvent.getByToken(metTag_, mets);
 
-  pat::MET met = mets->at(0);
+  const pat::MET& met = mets->at(0);
 
   if (isMC_){
     const reco::GenMET *genmet = met.genMET();
