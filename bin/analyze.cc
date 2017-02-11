@@ -134,7 +134,7 @@ int main(int argc, char* argv[]){
 
   //Set Branches//
 
-  double weight = 1;
+  double weight = 1.;
 
   //ULong64_t event;
   //int run, lumi, bx;
@@ -146,11 +146,11 @@ int main(int argc, char* argv[]){
     //T->SetBranchAddress("bx", &bx);
   }
 
-  //vector<bool> *trig_failed = 0;
-  //vector<float> *trig_prescale = 0;
+  //vector<bool> *trig_passed = 0;
+  //vector<int> *trig_prescale = 0;
   //vector<string> *trig_name = 0;
 
-  //T->SetBranchAddress("trig_failed", &trig_failed);
+  //T->SetBranchAddress("trig_passed", &trig_passed);
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
@@ -188,8 +188,7 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int signCut = 0;
-  int etaCut = 0;
+  int channelCut = 0, signCut = 0, etaCut = 0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
@@ -202,6 +201,8 @@ int main(int argc, char* argv[]){
 
     if (channel == "mm"){
       if (lep0flavor == 'm' && lep1flavor == 'm'){
+        channelCut++;
+
         lep0charge = muon_charge[0]; lep1charge = muon_charge[1];
         if (lep0charge*lep1charge > 0) continue;
         signCut++;
@@ -216,6 +217,8 @@ int main(int argc, char* argv[]){
     }
     else if (channel == "ee"){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
+        channelCut++;
+
         lep0charge = ele_charge[0]; lep1charge = ele_charge[1];
         if (lep0charge*lep1charge > 0) continue;
         signCut++;
@@ -230,6 +233,8 @@ int main(int argc, char* argv[]){
     }
     else{
       if (lep0flavor == 'e' && lep1flavor == 'm'){
+        channelCut++;
+
         lep0charge = ele_charge[0]; lep1charge = muon_charge[0];
         if (lep0charge*lep1charge > 0) continue;
         signCut++;
@@ -241,6 +246,8 @@ int main(int argc, char* argv[]){
         lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
       }
       else if (lep0flavor == 'm' && lep1flavor == 'e'){
+        channelCut++;
+
         lep0charge = muon_charge[0]; lep1charge = ele_charge[0];
         if (lep0charge*lep1charge > 0) continue;
         signCut++;
@@ -311,7 +318,8 @@ int main(int argc, char* argv[]){
   cout<< Form("  Passed Dilepton Mass Cut        |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilepmass,float(float(countDilepmass)/float(countLeppt)),float(float(countDilepmass)/float(countEvts))) << "\n";
   cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %4.3f         ",countJetpteta,float(float(countJetpteta)/float(countDilepmass)),float(float(countJetpteta)/float(countEvts))) << "\n";
   cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %4.3f         ",countMet,float(float(countMet)/float(countJetpteta)),float(float(countMet)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(countMet)),float(float(signCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Correct Channel          |||         %10i          |||           %1.3f          |||       %4.3f         ",channelCut,float(float(channelCut)/float(countMet)),float(float(channelCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(channelCut)),float(float(signCut)/float(countEvts))) << "\n";
   cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(signCut)),float(float(etaCut)/float(countEvts))) << "\n";
 
   //Write Histograms//

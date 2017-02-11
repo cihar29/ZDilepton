@@ -60,6 +60,7 @@ const int MAXLEP = 20;
 const int MAXGEN = 20;
 const int MAXJET = 50;
 const int nFilters = 6;
+const int nTriggers = 8;
 const int METUNCERT = 4;
 
 bool sortLepPt(const pair<reco::CandidatePtr, char>& lep1, const pair<reco::CandidatePtr, char>& lep2){ return lep1.first->pt() > lep2.first->pt(); }
@@ -85,6 +86,18 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_globalTightHalo2016Filter"
     };
     vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
+
+    string triggers[nTriggers] = {
+      "HLT_Mu45_eta2p1_v",
+      "HLT_Mu50_v",
+      "HLT_TkMu50_v",
+      "HLT_Mu30_TkMu11_v",
+      "HLT_Mu30_Ele30_CaloIdL_GsfTrkIdVL_v",
+      "HLT_Ele105_CaloIdVT_GsfTrkIdT_v",
+      "HLT_Ele115_CaloIdVT_GsfTrkIdT_v",
+      "HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v"
+    };
+    vector<int> trig_prescale; vector<bool> trig_passed; vector<string> trig_name;
 
     ULong64_t event;
     int run, lumi, bx;
@@ -123,8 +136,6 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_pt, met_px, met_py, met_sumet, met_phi;
     int nMETUncert;
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
-
-    vector<float> trig_prescale; vector<bool> trig_failed; vector<string> trig_name;
 
     TString fileName_;
     string btag_;
@@ -199,8 +210,8 @@ void  ZDilepton::beginJob() {
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
 
-  tree->Branch("trig_prescale", "std::vector<float>", &trig_prescale);
-  tree->Branch("trig_failed", "std::vector<bool>", &trig_failed);
+  tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
+  tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
   tree->Branch("trig_name", "std::vector<string>", &trig_name);
 
   tree->Branch("run", &run, "run/I");
@@ -766,26 +777,24 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle<pat::PackedTriggerPrescales> triggerPrescales;
   iEvent.getByToken(prescalesTag_, triggerPrescales);
     
-  if (triggerResults.isValid()){
+  if (triggerResults.isValid()) {
     const edm::TriggerNames& triggerNames = iEvent.triggerNames(*triggerResults); 
-    
-    for (size_t i=0, n=triggerResults->size(); i<n; i++){
-      string name = triggerNames.triggerName(i);
-      size_t end = string::npos;
 
-      if (name.find("HLT")==end || name.find("PF")!=end || name.find("Photon")!=end || name.find("MET")!=end || name.find("eta")!=end
-           || name.find("Multiplicity")!=end || name.find("WP")!=end || name.find("Iso")!=end || name.find("Jpsi")!=end || name.find("DZ")!=end
-             || name.find("Upsilon")!=end || name.find("Eta")!=end || name.find("Vtx")!=end || name.find("Jet")!=end || name.find("Displaced")!=end
-               || (name.find("_Mu")==end && name.find("_Ele")==end && name.find("_DoubleMu")==end && name.find("_DoubleEle")==end) )
-                 continue;
-      
-      unsigned int index = triggerNames.triggerIndex(name);
-      bool failed = !triggerResults->accept(index);
-      float prescale = triggerPrescales->getPrescaleForIndex(index);
-      
-      trig_prescale.push_back(prescale);  
-      trig_failed.push_back(failed);
-      trig_name.push_back(name);
+    trig_prescale.clear(); trig_passed.clear(); trig_name.clear();
+
+    for (int i=0; i<nTriggers; i++) {
+      string myTrigger = triggers[i], name;
+      int len = myTrigger.length(), index = -1;
+
+      for (int i=0, n=triggerResults->size(); i<n; i++){
+        name = triggerNames.triggerName(i);
+        if (name.substr(0, len) == myTrigger) {index = i; break;}
+      }
+      if (index == -1) continue;
+
+      trig_prescale.push_back( triggerPrescales->getPrescaleForIndex(index) );  
+      trig_passed.push_back( triggerResults->accept(index) );
+      trig_name.push_back( name );
     }
   }
 
