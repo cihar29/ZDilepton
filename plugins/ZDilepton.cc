@@ -139,7 +139,7 @@ class ZDilepton : public edm::EDAnalyzer {
 
     TString fileName_;
     string btag_;
-    bool isMC_, metFilters_;
+    bool isMC_;
     double minLepPt_, minSubLepPt_, minDiLepMass_, minLeadJetPt_;
 
     EffectiveAreas ele_areas_;
@@ -173,7 +173,6 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   fileName_ = iConfig.getParameter<string>("fileName");
   btag_ = iConfig.getParameter<string>("btag");
   isMC_ = iConfig.getParameter<bool>("isMC");
-  metFilters_ = iConfig.getParameter<bool>("metFilters");
   patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< edm::View<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
@@ -292,11 +291,9 @@ void  ZDilepton::beginJob() {
   tree->Branch("ele_dPhiIn", ele_dPhiIn, "ele_dPhiIn[nEle]/F");
   tree->Branch("ele_etaSupClust", ele_etaSupClust, "ele_etaSupClust[nEle]/F");
   tree->Branch("ele_overEoverP", ele_overEoverP, "ele_overEoverP[nEle]/F");
-  if (!isMC_){
-    tree->Branch("ele_HE", ele_HE, "ele_HE[nEle]/F");
-    tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
-    tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/I");
-  }
+  tree->Branch("ele_HE", ele_HE, "ele_HE[nEle]/F");
+  tree->Branch("ele_rcpiwec", ele_rcpiwec, "ele_rcpiwec[nEle]/F");
+  tree->Branch("ele_missinghits", ele_missinghits, "ele_missinghits[nEle]/I");
 
   tree->Branch("nJet", &nJet, "nJet/I");
   tree->Branch("jet_pt", jet_pt, "jet_pt[nJet]/F");
@@ -446,50 +443,47 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ MET Filters ------------//
 
-  if (metFilters_){
+  Handle<edm::TriggerResults> patFilterHandle;
+  iEvent.getByToken(patTrgLabel_, patFilterHandle);
 
-    Handle<edm::TriggerResults> patFilterHandle;
-    iEvent.getByToken(patTrgLabel_, patFilterHandle);
+  if (patFilterHandle.isValid()){
+    const edm::TriggerNames& trigNames = iEvent.triggerNames(*patFilterHandle);
 
-    if (patFilterHandle.isValid()){
-      const edm::TriggerNames& trigNames = iEvent.triggerNames(*patFilterHandle);
+    //for (unsigned int i=0; i<trigNames.size(); i++) cout << trigNames.triggerName(i) << endl;
 
-      //for (unsigned int i=0; i<trigNames.size(); i++) cout << trigNames.triggerName(i) << endl;
+    for (int i=0; i<nFilters; i++){
 
-      for (int i=0; i<nFilters; i++){
+      if( filters[i] == "Flag_eeBadScFilter" && isMC_ ) continue;
 
-        if( filters[i] == "Flag_eeBadScFilter" && isMC_ ) continue;
-
-        const unsigned int trig = trigNames.triggerIndex(filters[i]);
-        if (trig != trigNames.size()){
-          if (!patFilterHandle->accept(trig)){
-            filter_failed[i]++;
-            return;
-          }
+      const unsigned int trig = trigNames.triggerIndex(filters[i]);
+      if (trig != trigNames.size()){
+        if (!patFilterHandle->accept(trig)){
+          filter_failed[i]++;
+          return;
         }
-        else cout << filters[i] << " not found." << endl;
       }
+      else cout << filters[i] << " not found." << endl;
     }
-
-    edm::Handle<bool> ifilterbadChCand;
-    iEvent.getByToken(BadChCandFilterToken_, ifilterbadChCand);
-    bool filterbadChCandidate = *ifilterbadChCand;
-
-    if (!filterbadChCandidate){
-      filter_failed[nFilters]++;
-      return;
-    }
-
-    edm::Handle<bool> ifilterbadPFMuon;
-    iEvent.getByToken(BadPFMuonFilterToken_, ifilterbadPFMuon);
-    bool filterbadPFMuon = *ifilterbadPFMuon;
-
-    if (!filterbadPFMuon){
-      filter_failed[nFilters+1]++;
-      return;
-    }
-    met_cut[0]++;
   }
+
+  edm::Handle<bool> ifilterbadChCand;
+  iEvent.getByToken(BadChCandFilterToken_, ifilterbadChCand);
+  bool filterbadChCandidate = *ifilterbadChCand;
+
+  if (!filterbadChCandidate){
+    filter_failed[nFilters]++;
+    return;
+  }
+
+  edm::Handle<bool> ifilterbadPFMuon;
+  iEvent.getByToken(BadPFMuonFilterToken_, ifilterbadPFMuon);
+  bool filterbadPFMuon = *ifilterbadPFMuon;
+
+  if (!filterbadPFMuon){
+    filter_failed[nFilters+1]++;
+    return;
+  }
+  met_cut[0]++;
 
   //------------ Event Info ------------//
 
@@ -699,14 +693,12 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     ele_dPhiIn[nEle] = ele.deltaPhiSuperClusterTrackAtVtx();
     ele_overEoverP[nEle] = fabs(1.0 - ele.eSuperClusterOverP()) / ele.ecalEnergy();
 
-    if (!isMC_){
-      ele_HE[nEle] = ele.hadronicOverEm();
-      ele_missinghits[nEle] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
+    ele_HE[nEle] = ele.hadronicOverEm();
+    ele_missinghits[nEle] = ele.gsfTrack()->hitPattern().numberOfHits(reco::HitPattern::MISSING_INNER_HITS);
 
-      reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
-      float eA = ele_areas_.getEffectiveArea( fabs(ele_etaSupClust[nEle]) );
-      ele_rcpiwec[nEle] = ( pfIso.sumChargedHadronPt + max( 0.0f, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eA*rho) ) / ele_pt[nEle];
-    }
+    reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
+    float eA = ele_areas_.getEffectiveArea( fabs(ele_etaSupClust[nEle]) );
+    ele_rcpiwec[nEle] = ( pfIso.sumChargedHadronPt + max( 0.0f, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eA*rho) ) / ele_pt[nEle];
 
     //if ( beamspot.isValid() && conversions.isValid() )
     //  ele_passConv[nEle] = !ConversionTools::hasMatchedConversion(ele, conversions, beamspot->position());
@@ -809,9 +801,8 @@ void ZDilepton::endJob() {
 
   if (root_file !=0) {
 
-    if (metFilters_) root_file->WriteObject(&filter_failed, "filter_failed");
-
     root_file->WriteObject(&totalEvts, "totalEvts");
+    root_file->WriteObject(&filter_failed, "filter_failed");
     root_file->WriteObject(&dilep_cut, "dilep_cut");
     root_file->WriteObject(&leppt_cut, "leppt_cut");
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");

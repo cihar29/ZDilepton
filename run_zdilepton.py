@@ -21,19 +21,13 @@ readFiles.extend( [
 
   #'/store/data/Run2016E/SingleMuon/MINIAOD/23Sep2016-v1/50000/00CFC689-8D8D-E611-9F90-0CC47A13D16E.root'
 
-  '/store/data/Run2016G/SingleMuon/MINIAOD/23Sep2016-v1/1110000/A2C0F697-B19C-E611-A4D8-F04DA275BFF2.root'
+  #'/store/data/Run2016G/SingleMuon/MINIAOD/23Sep2016-v1/1110000/A2C0F697-B19C-E611-A4D8-F04DA275BFF2.root'
 
   #'/store/data/Run2016B/SingleMuon/MINIAOD/23Sep2016-v1/70000/029A7F31-B187-E611-B7D5-0CC47A13CECE.root'
 
   #'/store/data/Run2016G/SingleElectron/MINIAOD/23Sep2016-v1/100000/004A7893-A990-E611-B29F-002590E7DE36.root'
 
-  #'/store/data/Run2016B/SingleElectron/MINIAOD/PromptReco-v2/000/273/158/00000/1CCC1100-0E1A-E611-98C7-02163E014332.root'
-
-  #'file:/uscms_data/d3/broozbah/Analysis_Zprime/CMSSW_8_0_19/src/Analysis_Zprime/ZDilepton/singleElectron.root'
-
-  #'/store/mc/RunIISpring16MiniAODv2/TT_TuneCUETP8M1_13TeV-powheg-pythia8/MINIAODSIM/PUSpring16_80X_mcRun2_asymptotic_2016_miniAODv2_v0_ext4-v1/00000/004A0552-3929-E611-BD44-0025905A48F0.root'
-
-  #'/store/mc/RunIISpring16MiniAODv2/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/MINIAODSIM/PUSpring16RAWAODSIM_80X_mcRun2_asymptotic_2016_miniAODv2_v0-v1/00000/02404626-C64D-E611-9744-485B39897231.root'
+  '/store/mc/RunIISummer16MiniAODv2/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/50000/0693E0E7-97BE-E611-B32F-0CC47A78A3D8.root'
 
 ] );
 
@@ -45,13 +39,15 @@ process.load( "Configuration.StandardSequences.FrontierConditions_GlobalTag_cond
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, gt)
 
-isMC = cms.bool(False)
+isMC = cms.bool(True)
 
 if isMC:
   OutputName = "_MC"  
+  metLabel = "SIM"
 
 else:
   OutputName = "_Data"
+  metLabel = "RECO"
 
 process.load('RecoMET.METFilters.BadPFMuonFilter_cfi')
 process.BadPFMuonFilter.muons = cms.InputTag("slimmedMuons")
@@ -72,8 +68,7 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     fileName = cms.string("analysis" + OutputName + ".root"),
     btag = cms.string("pfCombinedInclusiveSecondaryVertexV2BJetTags"),
     isMC = isMC,
-    metFilters = cms.bool(True),
-    patTrgLabel = cms.InputTag("TriggerResults", "", "RECO"),
+    patTrgLabel = cms.InputTag("TriggerResults", "", "metLabel"),
     BadPFMuonFilter = cms.InputTag("BadPFMuonFilter",""),
     BadChargedCandidateFilter = cms.InputTag("BadChargedCandidateFilter",""),
     rhoTag = cms.InputTag("fixedGridRhoFastjetAll"),
