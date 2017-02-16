@@ -79,23 +79,13 @@ int main(int argc, char* argv[]){
 
   TString hname = "nJet";
   m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "nJet_25";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "nJet_40";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "nJet_eta2p5";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "jet_pt2p5";
+  hname = "jet0pt";
   m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
-  hname = "jet_eta25";
+  hname = "jet1pt";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "jet0eta";
   m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "jet_eta40";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "jet_pt";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
-  hname = "jet_ptleadingcut";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
-  hname = "jet_eta";
+  hname = "jet1eta";
   m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
 
   hname = "nEle";
@@ -110,7 +100,7 @@ int main(int argc, char* argv[]){
   m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
   hname = "lep1eta";
   m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "lepmass";
+  hname = "dilepmass";
   m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
 
   //Jet Corrections//
@@ -146,11 +136,22 @@ int main(int argc, char* argv[]){
     //T->SetBranchAddress("bx", &bx);
   }
 
-  //vector<bool> *trig_passed = 0;
+ /* string triggers[nTriggers] = {
+    "HLT_Mu45_eta2p1_v",
+    "HLT_Mu50_v",
+    "HLT_TkMu50_v",
+    "HLT_Mu30_TkMu11_v",
+    "HLT_Mu30_Ele30_CaloIdL_GsfTrkIdVL_v",
+    "HLT_Ele105_CaloIdVT_GsfTrkIdT_v",
+    "HLT_Ele115_CaloIdVT_GsfTrkIdT_v",
+    "HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v"
+  };*/
+
+  vector<bool> *trig_passed = 0;
   //vector<int> *trig_prescale = 0;
   //vector<string> *trig_name = 0;
 
-  //T->SetBranchAddress("trig_passed", &trig_passed);
+  T->SetBranchAddress("trig_passed", &trig_passed);
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
@@ -160,21 +161,25 @@ int main(int argc, char* argv[]){
 
   int nMuon=MAXLEP, muon_charge[nMuon];
   float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon];
+  bool muon_IsMediumID[nMuon];
 
   T->SetBranchAddress("nMuon", &nMuon);
   T->SetBranchAddress("muon_charge", muon_charge);
   T->SetBranchAddress("muon_eta", muon_eta);
   T->SetBranchAddress("muon_pt", muon_pt);
   T->SetBranchAddress("muon_phi", muon_phi);
+  T->SetBranchAddress("muon_IsMediumID", muon_IsMediumID);
 
   int nEle=MAXLEP, ele_charge[nEle];
   float ele_eta[nEle], ele_pt[nEle], ele_phi[nEle];
+  bool ele_MediumID[nEle];
 
   T->SetBranchAddress("nEle", &nEle);
   T->SetBranchAddress("ele_charge", ele_charge);
   T->SetBranchAddress("ele_eta", ele_eta);
   T->SetBranchAddress("ele_pt", ele_pt);
   T->SetBranchAddress("ele_phi", ele_phi);
+  T->SetBranchAddress("ele_MediumID", ele_MediumID);
 
   int nJet=MAXJET;
   float jet_eta[nJet], jet_pt[nJet], jet_area[nJet];
@@ -188,24 +193,33 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int channelCut = 0, signCut = 0, etaCut = 0;
+  int channelCut=0, signCut=0, trigCut=0, lepptCut=0, etaCut=0, dilepmassCut=0, jetCut=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
-    if (n % 1000 == 0)
+    if (n % 10000 == 0)
       cout << "Processing Event " << n+1 << endl;
     T->GetEntry(n);
 
     TLorentzVector lep0, lep1;
-    int lep0charge, lep1charge;
 
-    if (channel == "mm"){
+   if (channel == "mm"){
       if (lep0flavor == 'm' && lep1flavor == 'm'){
         channelCut++;
 
-        lep0charge = muon_charge[0]; lep1charge = muon_charge[1];
-        if (lep0charge*lep1charge > 0) continue;
+        if (muon_charge[0]*muon_charge[1] > 0) continue;
         signCut++;
+
+        //HLT_Mu50 or HLT_TkMu50 triggers
+        if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
+        trigCut++;
+
+        if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
+        if ( muon_pt[0] < 52 || muon_pt[1] < 25 ) continue;
+        lepptCut++;
+
+        //use these events for em channel
+        if ( ele_MediumID[0] && ele_pt[0] > 25 ) continue;
 
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
         etaCut++;
@@ -219,8 +233,7 @@ int main(int argc, char* argv[]){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
         channelCut++;
 
-        lep0charge = ele_charge[0]; lep1charge = ele_charge[1];
-        if (lep0charge*lep1charge > 0) continue;
+        if (ele_charge[0]*ele_charge[1] > 0) continue;
         signCut++;
 
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
@@ -235,8 +248,7 @@ int main(int argc, char* argv[]){
       if (lep0flavor == 'e' && lep1flavor == 'm'){
         channelCut++;
 
-        lep0charge = ele_charge[0]; lep1charge = muon_charge[0];
-        if (lep0charge*lep1charge > 0) continue;
+        if (ele_charge[0]*muon_charge[0] > 0) continue;
         signCut++;
 
         if (fabs(ele_eta[0]) > 2.5 || fabs(muon_eta[0]) > 2.4) continue;
@@ -248,8 +260,7 @@ int main(int argc, char* argv[]){
       else if (lep0flavor == 'm' && lep1flavor == 'e'){
         channelCut++;
 
-        lep0charge = muon_charge[0]; lep1charge = ele_charge[0];
-        if (lep0charge*lep1charge > 0) continue;
+        if (muon_charge[0]*ele_charge[0] > 0) continue;
         signCut++;
 
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
@@ -260,20 +271,10 @@ int main(int argc, char* argv[]){
       }
       else continue;
     }
+    if ((lep0+lep1).M() < 20) continue;
+    dilepmassCut++;
 
-    FillHist1D("nEle", nEle, weight);
-    FillHist1D("nMuon", nMuon, weight);
-
-    FillHist1D("lep0eta", lep0.Eta(), weight);
-    FillHist1D("lep0pt", lep0.Pt(), weight);
-    FillHist1D("lep1pt", lep1.Pt(), weight);
-    FillHist1D("lep1eta", lep1.Eta(), weight);
-    FillHist1D("lepmass", (lep0+lep1).M(), weight);
-
-    int nJet_25=0, nJet_40=0, nJet_eta2p5=0;
-    FillHist1D("nJet", nJet, weight);
-
-    vector<pair<int, float> > jet_corrpt;
+    vector<pair<int, float> > jet_index_corrpt;
     for (int i=0; i<nJet; i++){
 
       float eta = jet_eta[i];
@@ -285,23 +286,30 @@ int main(int argc, char* argv[]){
       jetCorrector->setJetA(area);
       jetCorrector->setRho(rho); 
       double corr_pt = jetCorrector->getCorrection() * pt;
-      jet_corrpt.push_back( make_pair(i, corr_pt) );
-
-      FillHist1D("jet_pt", corr_pt, weight);
-      FillHist1D("jet_eta", eta, weight);
-
-      if (corr_pt>25) { nJet_25++; FillHist1D("jet_eta25", eta, weight); }
-      if (corr_pt>40) { nJet_40++; FillHist1D("jet_eta40", eta, weight); }
-      if (fabs(eta)<2.5) { nJet_eta2p5++; FillHist1D("jet_pt2p5", corr_pt, weight); }
+      jet_index_corrpt.push_back( make_pair(i, corr_pt) );
     }
-    FillHist1D("nJet_25", nJet_25, weight);
-    FillHist1D("nJet_40", nJet_40, weight);
-    FillHist1D("nJet_eta2p5", nJet_eta2p5, weight);
+    sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
 
-    sort(jet_corrpt.begin(), jet_corrpt.end(), sortJetPt);
-    int lead_index = jet_corrpt[0].first;
-    if ( fabs(jet_eta[lead_index])<2.5 && jet_corrpt[0].second>25 ) FillHist1D("jet_ptleadingcut", jet_corrpt[0].second, weight);
+    int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
 
+    if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
+    if ( jet_index_corrpt[0].second < 100 || jet_index_corrpt[1].second < 50 ) continue;
+    jetCut++;
+
+    FillHist1D("nEle", nEle, weight);
+    FillHist1D("nMuon", nMuon, weight);
+    FillHist1D("nJet", nJet, weight);
+
+    FillHist1D("lep0pt", lep0.Pt(), weight);
+    FillHist1D("lep0eta", lep0.Eta(), weight);
+    FillHist1D("lep1pt", lep1.Pt(), weight);
+    FillHist1D("lep1eta", lep1.Eta(), weight);
+    FillHist1D("dilepmass", (lep0+lep1).M(), weight);
+
+    FillHist1D("jet0pt", jet_index_corrpt[0].second, weight);
+    FillHist1D("jet0eta", jet_eta[jet0index], weight);
+    FillHist1D("jet1pt", jet_index_corrpt[1].second, weight);
+    FillHist1D("jet1eta", jet_eta[jet1index], weight);
   }
   cout << difftime(time(NULL), start) << " s" << endl;
 
@@ -320,7 +328,11 @@ int main(int argc, char* argv[]){
   cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %4.3f         ",countMet,float(float(countMet)/float(countJetpteta)),float(float(countMet)/float(countEvts))) << "\n";
   cout<< Form("  Passed Correct Channel          |||         %10i          |||           %1.3f          |||       %4.3f         ",channelCut,float(float(channelCut)/float(countMet)),float(float(channelCut)/float(countEvts))) << "\n";
   cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(channelCut)),float(float(signCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(signCut)),float(float(etaCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed HLT Trigger              |||         %10i          |||           %1.3f          |||       %4.3f         ",trigCut,float(float(trigCut)/float(signCut)),float(float(trigCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed lepton pt cut            |||         %10i          |||           %1.3f          |||       %4.3f         ",lepptCut,float(float(lepptCut)/float(trigCut)),float(float(lepptCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(lepptCut)),float(float(etaCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %4.3f         ",dilepmassCut,float(float(dilepmassCut)/float(etaCut)),float(float(dilepmassCut)/float(countEvts))) << "\n";
+  cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",jetCut,float(float(jetCut)/float(dilepmassCut)),float(float(jetCut)/float(countEvts))) << "\n";
 
   //Write Histograms//
 
