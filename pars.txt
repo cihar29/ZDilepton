@@ -1,7 +1,8 @@
-ISMC       false
-inName     MuonE.root
-outName    hist_MuonE_mm.root
+ISMC       true
+inName     highDY.root
+outName    hist_highDY_mm.root
 channel    mm
-era        Spring16_25nsV10BCD
+era        Summer16_25nsV5
 jet_type   AK4PFchs
-nFiles     991
+nFiles     82
+weight     0.63845

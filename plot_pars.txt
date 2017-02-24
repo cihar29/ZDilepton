@@ -1,0 +1,11 @@
+dataFileName   hist_MuonGH_mm.root
+dataName       Data
+mcFileNames    hist_TTbar_mm.root hist_highDY_mm.root hist_lowDY_mm.root
+mcNames        ttbar highDY lowDY
+outName        MuonGH/jet0pt
+hname          jet0pt
+leftText       CMS
+rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
+xmax           500
+ymax           14000
+logx           false

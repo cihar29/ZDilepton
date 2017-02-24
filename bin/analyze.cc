@@ -35,6 +35,7 @@ string channel = "mm";
 string era = "Spring16_25nsV10BCD";
 string jet_type = "AK4PFchs";
 int nFiles = 1;
+double weight = 1.;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
@@ -123,8 +124,6 @@ int main(int argc, char* argv[]){
   FactorizedJetCorrector *jetCorrector = new FactorizedJetCorrector(jetPars);
 
   //Set Branches//
-
-  double weight = 1.;
 
   //ULong64_t event;
   //int run, lumi, bx;
@@ -386,6 +385,7 @@ void setPars(const string& parFile){
     else if (var == "era") era = line;
     else if (var == "jet_type") jet_type = line;
     else if (var == "nFiles") nFiles = stoi(line);
+    else if (var == "weight") weight = stod(line);
   }
   file.close();
 }

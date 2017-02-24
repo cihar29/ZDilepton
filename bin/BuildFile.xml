@@ -3,3 +3,4 @@
 <use name="CondFormats/JetMETObjects"/>
 <use name="root"/>
 <bin name="analyze" file="analyze.cc"/>
+<bin name="plot" file="plot.cc"/>
