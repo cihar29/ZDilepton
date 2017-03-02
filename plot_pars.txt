@@ -1,11 +1,13 @@
-dataFileName   hist_MuonGH_mm.root
+dataFileName   MuonGH_mm.root
 dataName       Data
-mcFileNames    hist_TTbar_mm.root hist_highDY_mm.root hist_lowDY_mm.root
-mcNames        ttbar highDY lowDY
-outName        MuonGH/jet0pt
-hname          jet0pt
+mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STschannel_mm.root STtchannel_mm.root SaTtchannel_mm.root STtWchannel_mm.root SaTtWchannel_mm.root
+mcNames        ttbar highDY lowDY STs STt SaTt STtw SaTtw
+mcScales       1 1 1 1 1 1 1 1
+outName        MuonGH/dilepmass
+hname          dilepmass
 leftText       CMS
 rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
-xmax           500
-ymax           14000
+xmax           200
+ymax           50000
 logx           false
+subplot        ratio

@@ -2,6 +2,7 @@
 //execute as analyze pars.txt
 
 #include "TFile.h"
+#include "TKey.h"
 #include "TH1.h"
 #include "TTree.h"
 #include "TLorentzVector.h"
@@ -34,7 +35,6 @@ string outName = "hist.root";
 string channel = "mm";
 string era = "Spring16_25nsV10BCD";
 string jet_type = "AK4PFchs";
-int nFiles = 1;
 double weight = 1.;
 
 const int MAXJET = 50;
@@ -59,22 +59,20 @@ int main(int argc, char* argv[]){
 
   int countEvts=0, countDilep=0, countLeppt=0, countDilepmass=0, countJetpteta=0, countMet=0;
 
-  for (int i=1; i<=nFiles; i++){
-    //vector<int> *vFilter = (vector<int>*) inFile->Get( Form("filter_failed;%i", i) );
-    vector<int>* totalEvts = (vector<int>*) inFile->Get( Form("totalEvts;%i", i) );
-    vector<int>* dilep_cut = (vector<int>*) inFile->Get( Form("dilep_cut;%i", i) );
-    vector<int>* leppt_cut = (vector<int>*) inFile->Get( Form("leppt_cut;%i", i) );
-    vector<int>* dilepmass_cut = (vector<int>*) inFile->Get( Form("dilepmass_cut;%i", i) );
-    vector<int>* jetpteta_cut = (vector<int>*) inFile->Get( Form("jetpteta_cut;%i", i) );
-    vector<int>* met_cut = (vector<int>*) inFile->Get( Form("met_cut;%i", i) );
+  TIter nextkey(inFile->GetListOfKeys());
+  TKey *key;
+  while ( (key = (TKey*)nextkey()) ) {
+    TString keyname = key->GetName();
 
-    countEvts += (*totalEvts)[0];
-    countDilep += (*dilep_cut)[0];
-    countLeppt += (*leppt_cut)[0];
-    countDilepmass += (*dilepmass_cut)[0];
-    countJetpteta += (*jetpteta_cut)[0];
-    countMet += (*met_cut)[0];
+    if (keyname.EqualTo("totalEvts"))          countEvts += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilep_cut"))     countDilep += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("leppt_cut"))     countLeppt += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilepmass_cut")) countDilepmass += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("jetpteta_cut"))  countJetpteta += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("met_cut"))       countMet += (*(vector<int>*)key->ReadObj())[0];
+    //else if (keyname.EqualTo("filter_failed"))
   }
+  if (countMet != nEntries) { cout << "hadd added incorrectly" << endl; return 0; }
 
   //Histograms//
 
@@ -192,7 +190,7 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int channelCut=0, signCut=0, trigCut=0, lepptCut=0, etaCut=0, dilepmassCut=0, jetCut=0;
+  int channelCut=0, signCut=0, trigCut=0, lepptCut=0, thirdLepCut=0, etaCut=0, dilepmassCut=0, jetCut=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
@@ -218,7 +216,8 @@ int main(int argc, char* argv[]){
         lepptCut++;
 
         //use these events for em channel
-        if ( ele_MediumID[0] && ele_pt[0] > 25 ) continue;
+        if ( nEle>0 && ele_MediumID[0] && ele_pt[0] > 25 ) continue;
+        thirdLepCut++;
 
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
         etaCut++;
@@ -273,6 +272,7 @@ int main(int argc, char* argv[]){
     if ((lep0+lep1).M() < 20) continue;
     dilepmassCut++;
 
+    if (nJet < 2) continue;
     vector<pair<int, float> > jet_index_corrpt;
     for (int i=0; i<nJet; i++){
 
@@ -290,9 +290,10 @@ int main(int argc, char* argv[]){
     sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
 
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
+    float jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
 
     if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
-    if ( jet_index_corrpt[0].second < 100 || jet_index_corrpt[1].second < 50 ) continue;
+    if ( jet0pt < 100 || jet1pt < 50 ) continue;
     jetCut++;
 
     FillHist1D("nEle", nEle, weight);
@@ -305,9 +306,9 @@ int main(int argc, char* argv[]){
     FillHist1D("lep1eta", lep1.Eta(), weight);
     FillHist1D("dilepmass", (lep0+lep1).M(), weight);
 
-    FillHist1D("jet0pt", jet_index_corrpt[0].second, weight);
+    FillHist1D("jet0pt", jet0pt, weight);
     FillHist1D("jet0eta", jet_eta[jet0index], weight);
-    FillHist1D("jet1pt", jet_index_corrpt[1].second, weight);
+    FillHist1D("jet1pt", jet1pt, weight);
     FillHist1D("jet1eta", jet_eta[jet1index], weight);
   }
   cout << difftime(time(NULL), start) << " s" << endl;
@@ -318,20 +319,21 @@ int main(int argc, char* argv[]){
   cout<<"                                         Cut Flow Table                                                              "<< "\n" ;
   cout<<"====================================================================================================================="<< "\n" ;
 
-  cout<<      "                                  |||       Nevent          |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
-  cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %4.3f         ",countEvts,float(countEvts/countEvts),float(countEvts/countEvts)) << "\n";
-  cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilep,float(float(countDilep)/float(countEvts)),float(float(countDilep)/float(countEvts))) << "\n";
-  cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %4.3f         ",countLeppt,float(float(countLeppt)/float(countDilep)),float(float(countLeppt)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Dilepton Mass Cut        |||         %10i          |||           %1.3f          |||       %4.3f         ",countDilepmass,float(float(countDilepmass)/float(countLeppt)),float(float(countDilepmass)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %4.3f         ",countJetpteta,float(float(countJetpteta)/float(countDilepmass)),float(float(countJetpteta)/float(countEvts))) << "\n";
-  cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %4.3f         ",countMet,float(float(countMet)/float(countJetpteta)),float(float(countMet)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Correct Channel          |||         %10i          |||           %1.3f          |||       %4.3f         ",channelCut,float(float(channelCut)/float(countMet)),float(float(channelCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %4.3f         ",signCut,float(float(signCut)/float(channelCut)),float(float(signCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed HLT Trigger              |||         %10i          |||           %1.3f          |||       %4.3f         ",trigCut,float(float(trigCut)/float(signCut)),float(float(trigCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed lepton pt cut            |||         %10i          |||           %1.3f          |||       %4.3f         ",lepptCut,float(float(lepptCut)/float(trigCut)),float(float(lepptCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",etaCut,float(float(etaCut)/float(lepptCut)),float(float(etaCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %4.3f         ",dilepmassCut,float(float(dilepmassCut)/float(etaCut)),float(float(dilepmassCut)/float(countEvts))) << "\n";
-  cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %4.3f         ",jetCut,float(float(jetCut)/float(dilepmassCut)),float(float(jetCut)/float(countEvts))) << "\n";
+  cout<<      "                                  |||          Nevent          |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
+  cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %1.6f         ",countEvts,float(countEvts)/countEvts,float(countEvts)/countEvts) << "\n";
+  cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %1.6f         ",countDilep,float(countDilep)/countEvts,float(countDilep)/countEvts) << "\n";
+  cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %1.6f         ",countLeppt,float(countLeppt)/countDilep,float(countLeppt)/countEvts) << "\n";
+  cout<< Form("  Passed Dilepton Mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",countDilepmass,float(countDilepmass)/countLeppt,float(countDilepmass)/countEvts) << "\n";
+  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %1.6f         ",countJetpteta,float(countJetpteta)/countDilepmass,float(countJetpteta)/countEvts) << "\n";
+  cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %1.6f         ",countMet,float(countMet)/countJetpteta,float(countMet)/countEvts) << "\n";
+  cout<< Form("  Passed Correct Channel          |||         %10i          |||           %1.3f          |||       %1.6f         ",channelCut,float(channelCut)/countMet,float(channelCut)/countEvts) << "\n";
+  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %1.6f         ",signCut,float(signCut)/channelCut,float(signCut)/countEvts) << "\n";
+  cout<< Form("  Passed HLT Trigger              |||         %10i          |||           %1.3f          |||       %1.6f         ",trigCut,float(trigCut)/signCut,float(trigCut)/countEvts) << "\n";
+  cout<< Form("  Passed lepton pt cut            |||         %10i          |||           %1.3f          |||       %1.6f         ",lepptCut,float(lepptCut)/trigCut,float(lepptCut)/countEvts) << "\n";
+  cout<< Form("  Passed third Lepton Cut         |||         %10i          |||           %1.3f          |||       %1.6f         ",thirdLepCut,float(thirdLepCut)/lepptCut,float(thirdLepCut)/countEvts) << "\n";
+  cout<< Form("  Passed Eta Cut                  |||         %10i          |||           %1.3f          |||       %1.6f         ",etaCut,float(etaCut)/thirdLepCut,float(etaCut)/countEvts) << "\n";
+  cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",dilepmassCut,float(dilepmassCut)/etaCut,float(dilepmassCut)/countEvts) << "\n";
+  cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %1.6f         ",jetCut,float(jetCut)/dilepmassCut,float(jetCut)/countEvts) << "\n";
 
   //Write Histograms//
 
@@ -384,7 +386,6 @@ void setPars(const string& parFile){
     else if (var == "channel") channel = line;
     else if (var == "era") era = line;
     else if (var == "jet_type") jet_type = line;
-    else if (var == "nFiles") nFiles = stoi(line);
     else if (var == "weight") weight = stod(line);
   }
   file.close();

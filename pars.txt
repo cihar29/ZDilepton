@@ -1,8 +1,7 @@
 ISMC       true
-inName     highDY.root
-outName    hist_highDY_mm.root
+inName     lowDY.root
+outName    hist_lowDYrelaxed_mm.root
 channel    mm
 era        Summer16_25nsV5
 jet_type   AK4PFchs
-nFiles     82
-weight     0.63845
+weight     8.514
