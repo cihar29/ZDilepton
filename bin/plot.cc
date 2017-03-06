@@ -10,6 +10,8 @@
 #include "TLatex.h"
 
 #include <vector>
+#include <unordered_map>
+#include <utility>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -21,15 +23,17 @@ void setStyle();
 void plotHist(const TString& hname);
 
 //parameters- edit in plot_pars.txt
-vector<TString> mcFileNames, mcNames;
+vector<TString> mcFileNames;
 vector<int> mcScales;
-string subplot;
-TString dataFileName, dataName;
+string subplot, dataName;
+TString dataFileName;
 TString hname, outName, leftText, rightText;
 float xmax, ymax;
 bool logx, logy;
 
 int main(int argc, char* argv[]) {
+
+  if (argc == 1) { cout << "Please provide a parameter file." << endl; return -1; }
 
   string parFile = argv[1];
   setPars(parFile);
@@ -47,19 +51,33 @@ int main(int argc, char* argv[]) {
   h_Data->SetLineColor(kBlack);
   h_Data->SetMarkerSize(0.65);
 
-  vector<TH1F*> h_MCs;
-  THStack* mcStack = new THStack();
-
+  unordered_map<string, TH1F*> m_MCs;
   for (int i=0,n=mcFileNames.size(); i<n; i++) {
 
     TFile* mcFile = TFile::Open(mcFileNames[i]);
-    h_MCs.push_back( (TH1F*) mcFile->Get(hname) );
-    mcStack->Add( h_MCs.back() );
-    h_MCs.back()->Scale(mcScales[i]);
-    //h_MCs.back()->Sumw2();
-    h_MCs.back()->SetLineColor(i+2);
-    h_MCs.back()->SetFillColor(i+2);
-    //h_MCs.back()->Scale( 1 / h_MCs.back()->Integral() );
+    TH1F* h_MC = (TH1F*) mcFile->Get(hname);
+    h_MC->Scale(mcScales[i]);
+    //h_MC->Sumw2();
+
+    string key;
+    if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )    key = "t#bar{t}";
+    else if ( mcFileNames[i].Contains("dy", TString::kIgnoreCase) )  key = "Z/#gamma^{*}#rightarrowl^{+}l^{-}";
+    else if ( mcFileNames[i].Contains("st", TString::kIgnoreCase)
+           || mcFileNames[i].Contains("sat", TString::kIgnoreCase) ) key = "Single-Top";
+
+    if ( m_MCs.find(key) == m_MCs.end() ) m_MCs[key] = h_MC;
+    else m_MCs[key]->Add(h_MC);
+  }
+
+  THStack* mcStack = new THStack();
+  int color = 0;
+  for (unordered_map<string, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+
+    mcStack->Add( i_MC->second );
+    i_MC->second->SetLineColor(color+2);
+    i_MC->second->SetFillColor(color+2);
+    //i_MC->second->Scale( 1 / i_MC->second->Integral() );
+    color++;
   }
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
@@ -88,7 +106,7 @@ int main(int argc, char* argv[]) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
     hist->GetXaxis()->SetLabelSize(0);
     hist->GetYaxis()->SetTitleSize(0.06/t_scale);
-    hist->GetYaxis()->SetTitleOffset(1);
+    hist->GetYaxis()->SetTitleOffset(0.95);
     hist->GetYaxis()->SetLabelSize(0.05/t_scale);
   }
   else {
@@ -106,13 +124,14 @@ int main(int argc, char* argv[]) {
   mcStack->Draw("samehist");
   h_Data->Draw("sameP");
 
-  TLegend* leg = new TLegend(.7,.9-.05*(1.+mcNames.size()),.9,.9);
+  TLegend* leg = new TLegend(.7,.9-.05*(1.+m_MCs.size()),.9,.9);
   leg->SetBorderSize(0);
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
   leg->SetTextSize(0.04);
-  leg->AddEntry(h_Data, Form( "#bf{%s}", dataName.Data() ), "P");
-  for (int i=0, n=mcNames.size(); i<n; i++) leg->AddEntry(h_MCs[i], Form( "#bf{%s}", mcNames[i].Data() ), "L");
+  leg->AddEntry(h_Data, Form( "#bf{%s}", dataName.data() ), "P");
+  for (unordered_map<string, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
+    leg->AddEntry(i_MC->second, Form( "#bf{%s}", i_MC->first.data() ), "L");
 
   leg->Draw();
 
@@ -138,8 +157,10 @@ int main(int argc, char* argv[]) {
     TH1F* bhist = new TH1F("bhist", "bhist", h_Data->GetNbinsX(), h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(h_Data->GetNbinsX()+1));
 
     TH1F* hsubplot = (TH1F*) h_Data->Clone("hsubplot");
-    TH1F* h_MC = (TH1F*) h_MCs[0]->Clone("h_MC");
-    for (int i=1, n=h_MCs.size(); i<n; i++) h_MC->Add(h_MCs[i]);
+    TH1F* h_MC = new TH1F("h_MC", "h_MC", h_Data->GetNbinsX(), h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(h_Data->GetNbinsX()+1));
+
+    for (unordered_map<string, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
+      h_MC->Add(i_MC->second);
 
     TString subytitle = "Data/MC";
     if (subplot=="ratio") hsubplot->Divide(h_MC);
@@ -158,6 +179,7 @@ int main(int argc, char* argv[]) {
     bhist->GetXaxis()->SetTitleSize(0.06/b_scale);
     bhist->GetXaxis()->SetTitleOffset(0.75);
     bhist->GetXaxis()->SetTitle(xtitle);
+    bhist->GetXaxis()->SetRangeUser(0, xmax);
     bhist->GetYaxis()->SetRangeUser(0, subymax);
     bhist->GetYaxis()->SetNdivisions(5, 3, 0);
     bhist->GetYaxis()->SetLabelSize(0.05/b_scale);
@@ -193,7 +215,7 @@ void setPars(const string& parFile) {
     while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
     if (var == "dataFileName")   dataFileName = line.data();
-    else if (var == "dataName")  dataName = line.data();
+    else if (var == "dataName")  dataName = line;
     else if (var == "mcFileNames") {
       while ( (delim_pos = line.find(' ')) != -1) {
         mcFileNames.push_back( line.substr(0, delim_pos).data() );
@@ -201,14 +223,6 @@ void setPars(const string& parFile) {
         while (line.at(0) == ' ') line.erase(0, 1);
       }
       mcFileNames.push_back( line.data() );
-    }
-    else if (var == "mcNames") {
-      while ( (delim_pos = line.find(' ')) != -1) {
-        mcNames.push_back( line.substr(0, delim_pos).data() );
-        line.erase(0, delim_pos + 1);
-        while (line.at(0) == ' ') line.erase(0, 1);
-      }
-      mcNames.push_back( line.data() );
     }
     else if (var == "mcScales") {
       while ( (delim_pos = line.find(' ')) != -1) {

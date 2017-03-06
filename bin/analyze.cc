@@ -24,18 +24,16 @@ using namespace std;
 
 void FillHist1D(const TString& histName, const Double_t& value, const double& weight);
 void setPars(const string& parFile); 
+void setWeight(const string& parFile); 
 bool sortJetPt(pair<int, float> jet1, pair<int, float> jet2){ return jet1.second > jet2.second; }
 
 map<TString, TH1*> m_Histos1D;
 
-//default parameters- edit in pars.txt
-bool ISMC = false;
-string inName = "analysis_Data.root";
-string outName = "hist.root";
-string channel = "mm";
-string era = "Spring16_25nsV10BCD";
-string jet_type = "AK4PFchs";
-double weight = 1.;
+//parameters- edit in pars.txt
+bool ISMC;
+TString inName, outName;
+string channel, era, jet_type;
+double weight;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
@@ -44,12 +42,19 @@ const float ELEMASS = 0;
 
 int main(int argc, char* argv[]){
 
+  if (argc == 1) { cout << "Please provide a parameter file." << endl; return -1; }
+
   string parFile = argv[1];
   setPars(parFile);
 
+  weight = -1;
+  if (argc == 3)    { string wFile = argv[2]; setWeight(wFile); }
+  if (weight == -1) { cout << "Weight set to 1" << endl; weight = 1.; }
+  else                cout << "Weight set to " << weight << endl;
+
   //Open Files//
 
-  TFile* inFile = TFile::Open(inName.data());
+  TFile* inFile = TFile::Open(inName);
 
   TTree* T = (TTree*) inFile->Get("T");
   Long64_t nEntries = T->GetEntries();
@@ -60,7 +65,7 @@ int main(int argc, char* argv[]){
   int countEvts=0, countDilep=0, countLeppt=0, countDilepmass=0, countJetpteta=0, countMet=0;
 
   TIter nextkey(inFile->GetListOfKeys());
-  TKey *key;
+  TKey* key;
   while ( (key = (TKey*)nextkey()) ) {
     TString keyname = key->GetName();
 
@@ -72,7 +77,7 @@ int main(int argc, char* argv[]){
     else if (keyname.EqualTo("met_cut"))       countMet += (*(vector<int>*)key->ReadObj())[0];
     //else if (keyname.EqualTo("filter_failed"))
   }
-  if (countMet != nEntries) { cout << "hadd added incorrectly" << endl; return 0; }
+  if (countMet != nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
 
   //Histograms//
 
@@ -293,7 +298,8 @@ int main(int argc, char* argv[]){
     float jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
 
     if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
-    if ( jet0pt < 100 || jet1pt < 50 ) continue;
+    //if ( jet0pt < 100 || jet1pt < 50 ) continue;
+    if ( jet0pt < 100 ) continue;
     jetCut++;
 
     FillHist1D("nEle", nEle, weight);
@@ -316,10 +322,10 @@ int main(int argc, char* argv[]){
   //Cutflow Table//
 
   cout<<"====================================================================================================================="<< "\n" ;
-  cout<<"                                         Cut Flow Table                                                              "<< "\n" ;
+  cout<<"                                     Cut Flow Table: " + inName + "\n" ;
   cout<<"====================================================================================================================="<< "\n" ;
 
-  cout<<      "                                  |||          Nevent          |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
+  cout<<      "                                  |||         Nevent        |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
   cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %1.6f         ",countEvts,float(countEvts)/countEvts,float(countEvts)/countEvts) << "\n";
   cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %1.6f         ",countDilep,float(countDilep)/countEvts,float(countDilep)/countEvts) << "\n";
   cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %1.6f         ",countLeppt,float(countLeppt)/countDilep,float(countLeppt)/countEvts) << "\n";
@@ -337,7 +343,7 @@ int main(int argc, char* argv[]){
 
   //Write Histograms//
 
-  TFile* outFile = new TFile(outName.data(),"RECREATE");
+  TFile* outFile = new TFile(outName,"RECREATE");
   outFile->cd();
 
   for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++)
@@ -348,8 +354,7 @@ int main(int argc, char* argv[]){
   outFile = 0;
 }
 
-void FillHist1D(const TString& histName, const Double_t& value, const double& weight) 
-{
+void FillHist1D(const TString& histName, const Double_t& value, const double& weight) {
   map<TString, TH1*>::iterator hid=m_Histos1D.find(histName);
   if (hid==m_Histos1D.end())
     cout << "%FillHist1D -- Could not find histogram with name: " << histName << endl;
@@ -357,7 +362,38 @@ void FillHist1D(const TString& histName, const Double_t& value, const double& we
     hid->second->Fill(value, weight);
 }
 
-void setPars(const string& parFile){
+void setWeight(const string& wFile) {
+
+  ifstream file(wFile);
+  string line;
+
+  while (getline(file, line)){
+
+    if (line.length() > 0) {
+      while (line.at(0) == ' ') line.erase(0, 1);
+    }
+
+    int delim_pos = line.find(' ');
+    if (delim_pos == -1) continue;
+
+    TString dataset = line.substr(0, delim_pos).data();
+    if ( inName.Contains(dataset, TString::kIgnoreCase) ) {
+
+      while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
+
+      //weight is found in the last column
+      delim_pos = line.length()-1;
+      while (line.at(delim_pos) != ' ') delim_pos--;
+
+      line.erase(0, delim_pos+1);
+      weight = stod(line);
+      break;
+    }
+  }
+  file.close();
+}
+
+void setPars(const string& parFile) {
 
   ifstream file(parFile);
   string line;
@@ -381,12 +417,11 @@ void setPars(const string& parFile){
       if (line == "true") ISMC = true;
       else ISMC = false;
     }
-    else if (var == "inName") inName = line;
-    else if (var == "outName") outName = line;
+    else if (var == "inName") inName = line.data();
+    else if (var == "outName") outName = line.data();
     else if (var == "channel") channel = line;
     else if (var == "era") era = line;
     else if (var == "jet_type") jet_type = line;
-    else if (var == "weight") weight = stod(line);
   }
   file.close();
 }

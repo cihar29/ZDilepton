@@ -1,13 +1,12 @@
-dataFileName   MuonGH_mm.root
+dataFileName   MuonGHrelaxed_mm.root
 dataName       Data
-mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STschannel_mm.root STtchannel_mm.root SaTtchannel_mm.root STtWchannel_mm.root SaTtWchannel_mm.root
-mcNames        ttbar highDY lowDY STs STt SaTt STtw SaTtw
+mcFileNames    TTbarrelaxed_mm.root highDYrelaxed_mm.root lowDYrelaxed_mm.root STsrelaxed_mm.root STtrelaxed_mm.root SaTtrelaxed_mm.root STtWrelaxed_mm.root SaTtWrelaxed_mm.root
 mcScales       1 1 1 1 1 1 1 1
 outName        MuonGH/dilepmass
 hname          dilepmass
 leftText       CMS
 rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
 xmax           200
-ymax           50000
+ymax           100000
 logx           false
 subplot        ratio

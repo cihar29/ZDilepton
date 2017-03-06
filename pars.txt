@@ -1,7 +1,6 @@
 ISMC       true
-inName     lowDY.root
-outName    hist_lowDYrelaxed_mm.root
+inName     TTbar.root
+outName    TTbarrelaxed_mm.root
 channel    mm
 era        Summer16_25nsV5
 jet_type   AK4PFchs
-weight     8.514
