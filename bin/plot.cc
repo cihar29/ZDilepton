@@ -20,7 +20,6 @@ using namespace std;
 
 void setPars(const string& parFile);
 void setStyle();
-void plotHist(const TString& hname);
 
 //parameters- edit in plot_pars.txt
 vector<TString> mcFileNames;
@@ -28,7 +27,7 @@ vector<int> mcScales;
 string subplot, dataName;
 TString dataFileName;
 TString hname, outName, leftText, rightText;
-float xmax, ymax;
+float xmax, ymax, subymin, subymax;
 bool logx, logy;
 
 int main(int argc, char* argv[]) {
@@ -99,8 +98,12 @@ int main(int argc, char* argv[]) {
   TH1F* hist = new TH1F("hist", "hist", h_Data->GetNbinsX(), h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(h_Data->GetNbinsX()+1));
 
   TString xtitle = "";
-  if (hname.EqualTo("jet0pt")) xtitle = "Leading Jet p_{T} (Gev)";
-  else if (hname.EqualTo("dilepmass")) xtitle = "M_{ll} (Gev)";
+  unordered_map<string, string> xtitles = {{"dilepmass","M_{ll} (Gev)"},{"lep0eta","#eta_{Leading Lepton}"},
+  {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T}(GeV)"},{"lep1pt","Subleading Lepton p_{T}(GeV)"},
+  {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T}(GeV)"},
+  {"jet1pt","Subleading Jet p_{T}(GeV)"},{"nEle","Electron Multiplicity"},{"nMuon","Muon Multiplicity"}};
+
+  if (xtitles.find(hname.Data()) != xtitles.end()) xtitle = xtitles[hname.Data()];
 
   if ( subplot=="ratio" || subplot=="diff" ) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
@@ -171,8 +174,6 @@ int main(int argc, char* argv[]) {
 //        hsubplot->SetBinContent( i, hsubplot->GetBinContent(i) / hsubplot->GetBinError(i) );
     }
 
-    int subymax = hsubplot->GetMaximum()+0.5;
-
     bhist->GetXaxis()->SetNdivisions(5, 5, 0);
     bhist->GetXaxis()->SetLabelSize(0.05/b_scale);
     bhist->GetXaxis()->SetTickLength(0.03/b_scale);
@@ -180,7 +181,7 @@ int main(int argc, char* argv[]) {
     bhist->GetXaxis()->SetTitleOffset(0.75);
     bhist->GetXaxis()->SetTitle(xtitle);
     bhist->GetXaxis()->SetRangeUser(0, xmax);
-    bhist->GetYaxis()->SetRangeUser(0, subymax);
+    bhist->GetYaxis()->SetRangeUser(subymin, subymax);
     bhist->GetYaxis()->SetNdivisions(5, 3, 0);
     bhist->GetYaxis()->SetLabelSize(0.05/b_scale);
     bhist->GetYaxis()->SetTitle(subytitle);
@@ -238,6 +239,8 @@ void setPars(const string& parFile) {
     else if (var == "rightText") rightText = line.data();
     else if (var == "xmax")      xmax = stof(line);
     else if (var == "ymax")      ymax = stof(line);
+    else if (var == "subymin")   subymin = stof(line);
+    else if (var == "subymax")   subymax = stof(line);
     else if (var == "logx") {
       if (line == "true") logx = true;
       else logx = false;

@@ -1,6 +1,6 @@
-ISMC       true
-inName     TTbar.root
-outName    TTbarrelaxed_mm.root
+ISMC       false
+inName     MuonGH.root
+outName    MuonGH_mm.root
 channel    mm
-era        Summer16_25nsV5
+era        Summer16_23Sep2016GHV0
 jet_type   AK4PFchs
