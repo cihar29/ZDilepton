@@ -1,6 +1,6 @@
-ISMC       false
-inName     MuonGH.root
-outName    MuonGH_mm.root
+ISMC       true
+inName     Wjet.root
+outName    Wjet_mm.root
 channel    mm
-era        Summer16_23Sep2016GHV0
+era        Summer16_25nsV5
 jet_type   AK4PFchs

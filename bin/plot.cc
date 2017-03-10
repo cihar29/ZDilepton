@@ -27,7 +27,7 @@ vector<int> mcScales;
 string subplot, dataName;
 TString dataFileName;
 TString hname, outName, leftText, rightText;
-float xmax, ymax, subymin, subymax;
+float xmin, xmax, ymin, ymax, subymin, subymax;
 bool logx, logy;
 
 int main(int argc, char* argv[]) {
@@ -41,9 +41,9 @@ int main(int argc, char* argv[]) {
 
   TFile* dataFile = TFile::Open(dataFileName);
 
-  //TString className = dataFile->Get(hname)->ClassName();
+  //TString className = dataFile->FindObjectAny(hname)->ClassName();
 
-  TH1F* h_Data = (TH1F*) dataFile->Get(hname);
+  TH1F* h_Data = (TH1F*) dataFile->FindObjectAny(hname);
   //h_Data->Scale( 1 / h_Data->Integral() );  //make this bool, as well as exponents?
 
   h_Data->SetMarkerStyle(20);
@@ -54,15 +54,16 @@ int main(int argc, char* argv[]) {
   for (int i=0,n=mcFileNames.size(); i<n; i++) {
 
     TFile* mcFile = TFile::Open(mcFileNames[i]);
-    TH1F* h_MC = (TH1F*) mcFile->Get(hname);
+    TH1F* h_MC = (TH1F*) mcFile->FindObjectAny(hname);
     h_MC->Scale(mcScales[i]);
     //h_MC->Sumw2();
 
     string key;
-    if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )    key = "t#bar{t}";
-    else if ( mcFileNames[i].Contains("dy", TString::kIgnoreCase) )  key = "Z/#gamma^{*}#rightarrowl^{+}l^{-}";
+    if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )     key = "t#bar{t}";
+    else if ( mcFileNames[i].Contains("dy", TString::kIgnoreCase) )   key = "Z/#gamma^{*}#rightarrowl^{+}l^{-}";
+    else if ( mcFileNames[i].Contains("wjet", TString::kIgnoreCase) ) key = "W+Jets";
     else if ( mcFileNames[i].Contains("st", TString::kIgnoreCase)
-           || mcFileNames[i].Contains("sat", TString::kIgnoreCase) ) key = "Single-Top";
+           || mcFileNames[i].Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
 
     if ( m_MCs.find(key) == m_MCs.end() ) m_MCs[key] = h_MC;
     else m_MCs[key]->Add(h_MC);
@@ -98,12 +99,13 @@ int main(int argc, char* argv[]) {
   TH1F* hist = new TH1F("hist", "hist", h_Data->GetNbinsX(), h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(h_Data->GetNbinsX()+1));
 
   TString xtitle = "";
+  string keytitle = hname(2, hname.Length()).Data();
   unordered_map<string, string> xtitles = {{"dilepmass","M_{ll} (Gev)"},{"lep0eta","#eta_{Leading Lepton}"},
   {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T}(GeV)"},{"lep1pt","Subleading Lepton p_{T}(GeV)"},
   {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T}(GeV)"},
   {"jet1pt","Subleading Jet p_{T}(GeV)"},{"nEle","Electron Multiplicity"},{"nMuon","Muon Multiplicity"}};
 
-  if (xtitles.find(hname.Data()) != xtitles.end()) xtitle = xtitles[hname.Data()];
+  if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   if ( subplot=="ratio" || subplot=="diff" ) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
@@ -118,11 +120,11 @@ int main(int argc, char* argv[]) {
     hist->GetXaxis()->SetNdivisions(5, 5, 0);
   }
 
-  hist->GetXaxis()->SetRangeUser(0, xmax);
+  hist->GetXaxis()->SetRangeUser(xmin, xmax);
   //hist->GetXaxis()->SetNoExponent(false);
   //hist->GetXaxis()->SetMoreLogLabels();
   hist->GetYaxis()->SetTitle("Events");
-  hist->GetYaxis()->SetRangeUser(0, ymax);
+  hist->GetYaxis()->SetRangeUser(ymin, ymax);
   hist->Draw();
   mcStack->Draw("samehist");
   h_Data->Draw("sameP");
@@ -180,7 +182,7 @@ int main(int argc, char* argv[]) {
     bhist->GetXaxis()->SetTitleSize(0.06/b_scale);
     bhist->GetXaxis()->SetTitleOffset(0.75);
     bhist->GetXaxis()->SetTitle(xtitle);
-    bhist->GetXaxis()->SetRangeUser(0, xmax);
+    bhist->GetXaxis()->SetRangeUser(xmin, xmax);
     bhist->GetYaxis()->SetRangeUser(subymin, subymax);
     bhist->GetYaxis()->SetNdivisions(5, 3, 0);
     bhist->GetYaxis()->SetLabelSize(0.05/b_scale);
@@ -237,7 +239,9 @@ void setPars(const string& parFile) {
     else if (var == "hname")     hname = line.data();
     else if (var == "leftText")  leftText = line.data();
     else if (var == "rightText") rightText = line.data();
+    else if (var == "xmin")      xmin = stof(line);
     else if (var == "xmax")      xmax = stof(line);
+    else if (var == "ymin")      ymin = stof(line);
     else if (var == "ymax")      ymax = stof(line);
     else if (var == "subymin")   subymin = stof(line);
     else if (var == "subymax")   subymax = stof(line);

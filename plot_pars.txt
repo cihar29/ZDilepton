@@ -1,14 +1,17 @@
 dataFileName   MuonGH_mm.root
 dataName       Data
-mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STs_mm.root STt_mm.root SaTt_mm.root STtW_mm.root SaTtW_mm.root
-mcScales       1 1 1 1 1 1 1 1
-outName        MuonGH/jet1pt
-hname          jet1pt
+mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STschannel_mm.root STtchannel_mm.root SaTtchannel_mm.root STtWchannel_mm.root SaTtWchannel_mm.root Wjet_mm.root
+mcScales       1 1 1 1 1 1 1 1 1
 leftText       CMS
 rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
-xmax           500
-ymax           60000
-subymin        0
-subymax        2
 logx           false
 subplot        ratio
+outName        MuonGH/sT
+hname          0_sT
+xmin           0
+xmax           500
+ymin           0
+ymax           50000
+subymin        0
+subymax        4
+

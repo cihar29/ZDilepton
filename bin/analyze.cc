@@ -26,7 +26,7 @@ void FillHist1D(const TString& histName, const Double_t& value, const double& we
 void setPars(const string& parFile); 
 void setWeight(const string& parFile); 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
-bool sortJetPt(pair<int, float> jet1, pair<int, float> jet2){ return jet1.second > jet2.second; }
+bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 
 map<TString, TH1*> m_Histos1D;
 
@@ -60,6 +60,7 @@ int main(int argc, char* argv[]){
   TTree* T = (TTree*) inFile->Get("T");
   Long64_t nEntries = T->GetEntries();
   cout << nEntries << " Events" << endl;
+  cout << "Processing " + inName << endl;
 
   //Skims//
 
@@ -82,54 +83,57 @@ int main(int argc, char* argv[]){
 
   //Histograms//
 
-  TString hname = "nJet";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "nGoodJet";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "nJetDiff";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
-  hname = "jet0pt";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
-  hname = "jet1pt";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
-  hname = "jet0eta";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "jet1eta";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "jet0btag";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
-  hname = "jet1btag";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
-  hname = "jethT";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  int nDirs = 2;
+  for (int i=0; i<nDirs; i++) {
+    TString hname = Form("%i_nJet",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+    hname = Form("%i_nGoodJet",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+    hname = Form("%i_nJetDiff",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
+    hname = Form("%i_jet0pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_jet1pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_jet0eta",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_jet1eta",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_jet0btag",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
+    hname = Form("%i_jet1btag",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
+    hname = Form("%i_jethT",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
 
-  hname = "nEle";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "nEleDiff";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "nMuon";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "nMuonDiff";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "nGoodEle";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "nGoodMuon";
-  m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
-  hname = "lep0pt";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
-  hname = "lep0eta";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "lep1pt";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
-  hname = "lep1eta";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
-  hname = "dilepmass";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_nEle",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_nEleDiff",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_nMuon",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_nMuonDiff",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_nGoodEle",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_nGoodMuon",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
+    hname = Form("%i_lep0pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_lep0eta",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_lep1pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_lep1eta",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_dilepmass",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
 
-  hname = "metpt";
-  m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
-  hname = "sT";
-  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_metpt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_sT",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  }
 
   //Jet Corrections//
 
@@ -240,12 +244,10 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0;
+  int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0, btagCut=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
-    if (n % 10000 == 0)
-      cout << "Processing Event " << n+1 << endl;
     T->GetEntry(n);
 
     TLorentzVector lep0, lep1;
@@ -345,11 +347,10 @@ int main(int argc, char* argv[]){
       }
 
       float pt = jet_pt[i];
-      float area = jet_area[i];
 
       jetCorrector->setJetEta(eta);
       jetCorrector->setJetPt(pt);
-      jetCorrector->setJetA(area);
+      jetCorrector->setJetA( jet_area[i] );
       jetCorrector->setRho(rho); 
       double corr_pt = jetCorrector->getCorrection() * pt;
       jet_index_corrpt.push_back( make_pair(i, corr_pt) );
@@ -391,32 +392,64 @@ int main(int argc, char* argv[]){
       if ( corr_pt>30 && fabs(jet_eta[index])<2.5 ) hT+=corr_pt;
     }
 
-    FillHist1D("nEleDiff", nEle-nGoodEle, weight);
-    FillHist1D("nMuonDiff", nMuon-nGoodMuon, weight);
-    FillHist1D("nJetDiff", nJet-nGoodJet, weight);
-    FillHist1D("nEle", nEle, weight);
-    FillHist1D("nMuon", nMuon, weight);
-    FillHist1D("nJet", nJet, weight);
-    FillHist1D("nGoodEle", nGoodEle, weight);
-    FillHist1D("nGoodMuon", nGoodMuon, weight);
-    FillHist1D("nGoodJet", nGoodJet, weight);
+    TString prefix = "0_";
+    FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
+    FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
+    FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
+    FillHist1D(prefix+"nEle", nEle, weight);
+    FillHist1D(prefix+"nMuon", nMuon, weight);
+    FillHist1D(prefix+"nJet", nJet, weight);
+    FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
+    FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
+    FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
 
-    FillHist1D("lep0pt", lep0.Pt(), weight);
-    FillHist1D("lep0eta", lep0.Eta(), weight);
-    FillHist1D("lep1pt", lep1.Pt(), weight);
-    FillHist1D("lep1eta", lep1.Eta(), weight);
-    FillHist1D("dilepmass", (lep0+lep1).M(), weight);
+    FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
+    FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
+    FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
+    FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
+    FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
 
-    FillHist1D("jet0pt", jet0pt, weight);
-    FillHist1D("jet0eta", jet_eta[jet0index], weight);
-    FillHist1D("jet0btag", jet_btag[jet0index], weight);
-    FillHist1D("jet1pt", jet1pt, weight);
-    FillHist1D("jet1eta", jet_eta[jet1index], weight);
-    FillHist1D("jet1btag", jet_btag[jet1index], weight);
-    FillHist1D("jethT", hT, weight);
+    FillHist1D(prefix+"jet0pt", jet0pt, weight);
+    FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
+    FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
+    FillHist1D(prefix+"jet1pt", jet1pt, weight);
+    FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
+    FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+    FillHist1D(prefix+"jethT", hT, weight);
 
-    FillHist1D("metpt", met_pt, weight);
-    FillHist1D("sT", hT+lep0.Pt()+lep1.Pt(), weight);
+    FillHist1D(prefix+"metpt", met_pt, weight);
+    FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
+
+    if (jet_btag[jet0index] < 0.8484) continue;
+    btagCut++;
+
+    prefix = "1_";
+    FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
+    FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
+    FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
+    FillHist1D(prefix+"nEle", nEle, weight);
+    FillHist1D(prefix+"nMuon", nMuon, weight);
+    FillHist1D(prefix+"nJet", nJet, weight);
+    FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
+    FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
+    FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
+
+    FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
+    FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
+    FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
+    FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
+    FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
+
+    FillHist1D(prefix+"jet0pt", jet0pt, weight);
+    FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
+    FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
+    FillHist1D(prefix+"jet1pt", jet1pt, weight);
+    FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
+    FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+    FillHist1D(prefix+"jethT", hT, weight);
+
+    FillHist1D(prefix+"metpt", met_pt, weight);
+    FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
   }
   cout << difftime(time(NULL), start) << " s" << endl;
 
@@ -440,14 +473,23 @@ int main(int argc, char* argv[]){
   cout<< Form("  Passed third Lepton Cut         |||         %10i          |||           %1.3f          |||       %1.6f         ",thirdLepCut,float(thirdLepCut)/lepkinCut,float(thirdLepCut)/countEvts) << "\n";
   cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",dilepmassCut,float(dilepmassCut)/thirdLepCut,float(dilepmassCut)/countEvts) << "\n";
   cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %1.6f         ",jetCut,float(jetCut)/dilepmassCut,float(jetCut)/countEvts) << "\n";
+  cout<< Form("  Passed btag Cut                 |||         %10i          |||           %1.3f          |||       %1.6f         ",btagCut,float(btagCut)/jetCut,float(btagCut)/countEvts) << "\n";
 
   //Write Histograms//
 
   TFile* outFile = new TFile(outName,"RECREATE");
   outFile->cd();
 
-  for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++)
+  for (int i=0; i<nDirs; i++) outFile->mkdir( Form("%i/", i) );
+
+  for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++) {
+    outFile->cd();
+    TString prefix = hid->first(0, 1);
+
+    if ( prefix.IsDigit() ) outFile->cd(outName + ":/" + prefix);
+
     hid->second->Write();
+  }
 
   outFile->Write();
   delete outFile;
