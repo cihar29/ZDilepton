@@ -70,15 +70,27 @@ int main(int argc, char* argv[]) {
   }
 
   THStack* mcStack = new THStack();
-  int color = 0;
+  //int color = 4;
   for (unordered_map<string, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
 
     mcStack->Add( i_MC->second );
-    i_MC->second->SetLineColor(color+2);
-    i_MC->second->SetFillColor(color+2);
+    //i_MC->second->SetLineColor(color+2);
+    //i_MC->second->SetFillColor(color+2);
     //i_MC->second->Scale( 1 / i_MC->second->Integral() );
-    color++;
+    //color++;
   }
+
+  m_MCs["t#bar{t}"]->SetLineColor(2);
+  m_MCs["t#bar{t}"]->SetFillColor(2);
+
+  m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetLineColor(8);      
+  m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetFillColor(8);
+
+  m_MCs["W+Jets"]->SetLineColor(4);      
+  m_MCs["W+Jets"]->SetFillColor(4);
+
+  m_MCs["Single-Top"]->SetLineColor(28);      
+  m_MCs["Single-Top"]->SetFillColor(28); 
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
   if (logx) c->SetLogx();
@@ -103,16 +115,19 @@ int main(int argc, char* argv[]) {
   unordered_map<string, string> xtitles = {{"dilepmass","M_{ll} (Gev)"},{"lep0eta","#eta_{Leading Lepton}"},
   {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T}(GeV)"},{"lep1pt","Subleading Lepton p_{T}(GeV)"},
   {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T}(GeV)"},
-  {"jet1pt","Subleading Jet p_{T}(GeV)"},{"nEle","Electron Multiplicity"},{"nMuon","Muon Multiplicity"}};
-
+  {"jet1pt","Subleading Jet p_{T}(GeV)"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
+  {"nJet","Number of Jets"},{"nEleDiff","N_{Electrons}-N_{Good Electrons}"},{"nMuonDiff","N_{Muons}-N_{Good Muons} "},
+  {"nJetDiff","N_{Jets}-N_{Good Jets} "},{"nGoodEle","N_{Good Electrons}"},{"nGoodMuon","N_{Good Muons}"},
+  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","S_{T} (GeV)"},
+  {"metpt","MET p_{T} (GeV)"},{"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   if ( subplot=="ratio" || subplot=="diff" ) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
     hist->GetXaxis()->SetLabelSize(0);
-    hist->GetYaxis()->SetTitleSize(0.06/t_scale);
+    hist->GetYaxis()->SetTitleSize(0.04/t_scale);
     hist->GetYaxis()->SetTitleOffset(0.95);
-    hist->GetYaxis()->SetLabelSize(0.05/t_scale);
+    hist->GetYaxis()->SetLabelSize(0.03/t_scale);
   }
   else {
     hist->GetXaxis()->SetTitle(xtitle);
@@ -123,7 +138,7 @@ int main(int argc, char* argv[]) {
   hist->GetXaxis()->SetRangeUser(xmin, xmax);
   //hist->GetXaxis()->SetNoExponent(false);
   //hist->GetXaxis()->SetMoreLogLabels();
-  hist->GetYaxis()->SetTitle("Events");
+  //hist->GetYaxis()->SetTitle("Events");
   hist->GetYaxis()->SetRangeUser(ymin, ymax);
   hist->Draw();
   mcStack->Draw("samehist");
@@ -152,10 +167,18 @@ int main(int argc, char* argv[]) {
   text.SetTextFont(61);
   text.DrawLatex(0.18, 0.96, "CMS");
   //text.DrawLatex(0.18, 0.96, leftText);
+  text.SetTextSize(0.03);
 
   //text.SetTextSize(0.04);
   //text.SetTextFont(52);
   //text.DrawLatex(0.29, 0.96, "Simulation Preliminary"); //make bool
+
+  TLatex latex;
+  latex.SetTextSize(0.04);
+  latex.SetNDC(); 
+  latex.SetTextFont(42);
+  if(hname.Contains("1_")||hname.Contains("2_")) latex.DrawLatex(0.22,0.85,"Medium btagged Leading Jet");
+  if(hname.Contains("2_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
 
   if (subplot=="ratio" || subplot=="diff" ) {
     bottom->cd();
@@ -177,17 +200,17 @@ int main(int argc, char* argv[]) {
     }
 
     bhist->GetXaxis()->SetNdivisions(5, 5, 0);
-    bhist->GetXaxis()->SetLabelSize(0.05/b_scale);
+    bhist->GetXaxis()->SetLabelSize(0.02/b_scale);
     bhist->GetXaxis()->SetTickLength(0.03/b_scale);
-    bhist->GetXaxis()->SetTitleSize(0.06/b_scale);
+    bhist->GetXaxis()->SetTitleSize(0.04/b_scale);
     bhist->GetXaxis()->SetTitleOffset(0.75);
     bhist->GetXaxis()->SetTitle(xtitle);
     bhist->GetXaxis()->SetRangeUser(xmin, xmax);
     bhist->GetYaxis()->SetRangeUser(subymin, subymax);
     bhist->GetYaxis()->SetNdivisions(5, 3, 0);
-    bhist->GetYaxis()->SetLabelSize(0.05/b_scale);
+    bhist->GetYaxis()->SetLabelSize(0.03/b_scale);
     bhist->GetYaxis()->SetTitle(subytitle);
-    bhist->GetYaxis()->SetTitleSize(0.055/b_scale);
+    bhist->GetYaxis()->SetTitleSize(0.035/b_scale);
     bhist->GetYaxis()->SetTitleOffset(0.43);
 
     bhist->Draw();

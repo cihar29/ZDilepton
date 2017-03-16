@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
 
   //Histograms//
 
-  int nDirs = 2;
+  int nDirs = 3;
   for (int i=0; i<nDirs; i++) {
     TString hname = Form("%i_nJet",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
@@ -244,7 +244,7 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0, btagCut=0;
+  int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0, btagCut=0 , DilepVetoCut=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
@@ -303,29 +303,38 @@ int main(int argc, char* argv[]){
       else continue;
     }
     else{
-      if (lep0flavor == 'e' && lep1flavor == 'm'){
+      if ( (lep0flavor=='e' && lep1flavor=='m') || (lep0flavor=='m' && lep1flavor=='e') ) {
         channelCut++;
 
         if (ele_charge[0]*muon_charge[0] > 0) continue;
         signCut++;
 
-        if (fabs(ele_eta[0]) > 2.5 || fabs(muon_eta[0]) > 2.4) continue;
-        lepkinCut++;
+        //HLT_Mu50 or HLT_TkMu50 triggers
+        if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
+        trigCut++;
 
-        lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
-        lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
-      }
-      else if (lep0flavor == 'm' && lep1flavor == 'e'){
-        channelCut++;
+        if ( !ele_MediumID[0] ) continue;
 
-        if (muon_charge[0]*ele_charge[0] > 0) continue;
-        signCut++;
-
+        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+          if ( !muon_IsMediumID[0] ) continue;
+        }
+        else {
+          //cout<< "custom made medium muons"<<endl;
+          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
+        }
+        if ( muon_pt[0] < 52 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
         lepkinCut++;
+        thirdLepCut++;
 
-        lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
-        lep1.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
+        if (lep0flavor=='e') {
+          lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
+          lep1.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
+        }
+        else {
+          lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
+          lep1.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
+        }
       }
       else continue;
     }
@@ -450,6 +459,40 @@ int main(int argc, char* argv[]){
 
     FillHist1D(prefix+"metpt", met_pt, weight);
     FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
+
+
+    if (channel=="mm" || channel=="ee") {
+      if ( 76<(lep0+lep1).M() && (lep0+lep1).M()<106 ) continue;
+
+      DilepVetoCut++;
+      prefix = "2_";
+      FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
+      FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
+      FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
+      FillHist1D(prefix+"nEle", nEle, weight);
+      FillHist1D(prefix+"nMuon", nMuon, weight);
+      FillHist1D(prefix+"nJet", nJet, weight);
+      FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
+      FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
+      FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
+
+      FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
+      FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
+      FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
+      FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
+      FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
+
+      FillHist1D(prefix+"jet0pt", jet0pt, weight);
+      FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
+      FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
+      FillHist1D(prefix+"jet1pt", jet1pt, weight);
+      FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
+      FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+      FillHist1D(prefix+"jethT", hT, weight);
+
+      FillHist1D(prefix+"metpt", met_pt, weight);
+      FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
+    }
   }
   cout << difftime(time(NULL), start) << " s" << endl;
 
@@ -474,6 +517,7 @@ int main(int argc, char* argv[]){
   cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",dilepmassCut,float(dilepmassCut)/thirdLepCut,float(dilepmassCut)/countEvts) << "\n";
   cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %1.6f         ",jetCut,float(jetCut)/dilepmassCut,float(jetCut)/countEvts) << "\n";
   cout<< Form("  Passed btag Cut                 |||         %10i          |||           %1.3f          |||       %1.6f         ",btagCut,float(btagCut)/jetCut,float(btagCut)/countEvts) << "\n";
+  cout<< Form("  Passed Dilepmass window Cut     |||         %10i          |||           %1.3f          |||       %1.6f         ",DilepVetoCut,float(DilepVetoCut)/btagCut,float(DilepVetoCut)/countEvts) << "\n";
 
   //Write Histograms//
 
