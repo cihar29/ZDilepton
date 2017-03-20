@@ -1,5 +1,5 @@
 //charles harrington and bahareh roozbahani
-//execute as analyze pars.txt
+//execute as analyze pars.txt mc_weights.txt
 
 #include "TFile.h"
 #include "TKey.h"
@@ -103,6 +103,8 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
     hname = Form("%i_jet1btag",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
+    hname = Form("%i_nbtag",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,5,0,5);
     hname = Form("%i_jethT",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
 
@@ -129,7 +131,22 @@ int main(int argc, char* argv[]){
     hname = Form("%i_dilepmass",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
 
+    hname = Form("%i_muonD0",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-20,20);
+    hname = Form("%i_muonDz",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-50,50);
+    hname = Form("%i_rmin0",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_rmin1",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_lep0perp",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_lep1perp",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+
     hname = Form("%i_metpt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_metcorrpt",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
     hname = Form("%i_sT",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
@@ -153,6 +170,10 @@ int main(int argc, char* argv[]){
   jetPars.push_back(*ResJetPar);
 
   FactorizedJetCorrector *jetCorrector = new FactorizedJetCorrector(jetPars);
+
+  vector<JetCorrectorParameters> jetL1Pars;
+  jetL1Pars.push_back(*L1JetPar);
+  FactorizedJetCorrector *jetL1Corrector = new FactorizedJetCorrector(jetL1Pars);
 
   //Set Branches//
 
@@ -179,27 +200,30 @@ int main(int argc, char* argv[]){
 
   vector<bool> *trig_passed = 0;
   //vector<int> *trig_prescale = 0;
-  //vector<string> *trig_name = 0;
+  vector<string> *trig_name = 0;
 
   T->SetBranchAddress("trig_passed", &trig_passed);
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
-  //T->SetBranchAddress("trig_name", &trig_name);
+  T->SetBranchAddress("trig_name", &trig_name);
 
   char lep0flavor, lep1flavor;
   T->SetBranchAddress("lep0flavor", &lep0flavor);
   T->SetBranchAddress("lep1flavor", &lep1flavor);
 
   int nMuon=MAXLEP, muon_charge[nMuon];
-  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon];
+  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon], muon_D0[nMuon], muon_Dz[nMuon];
   float muon_chi2[nMuon], muon_tspm[nMuon], muon_kinkf[nMuon], muon_segcom[nMuon], muon_ftrackhits[nMuon];
-  bool muon_isGlob[nMuon], muon_IsMediumID[nMuon];
+  bool muon_isGlob[nMuon], muon_IsMediumID[nMuon], muon_IsTightID[nMuon];
 
   T->SetBranchAddress("nMuon", &nMuon);
   T->SetBranchAddress("muon_charge", muon_charge);
   T->SetBranchAddress("muon_eta", muon_eta);
   T->SetBranchAddress("muon_pt", muon_pt);
   T->SetBranchAddress("muon_phi", muon_phi);
+  T->SetBranchAddress("muon_D0", muon_D0);
+  T->SetBranchAddress("muon_Dz", muon_Dz);
   T->SetBranchAddress("muon_IsMediumID", muon_IsMediumID);
+  T->SetBranchAddress("muon_IsTightID", muon_IsTightID);
 
   T->SetBranchAddress("muon_isGlob", muon_isGlob);
   T->SetBranchAddress("muon_chi2", muon_chi2);
@@ -220,12 +244,14 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("ele_MediumID", ele_MediumID);
 
   int nJet=MAXJET;
-  float jet_eta[nJet], jet_pt[nJet], jet_area[nJet];
+  float jet_eta[nJet], jet_phi[nJet], jet_pt[nJet], jet_mass[nJet], jet_area[nJet];
   float jet_btag[nJet], jet_nhf[nJet], jet_nef[nJet], jet_chf[nJet], jet_muf[nJet], jet_elef[nJet], jet_numneutral[nJet], jet_chmult[nJet];
 
   T->SetBranchAddress("nJet", &nJet);
   T->SetBranchAddress("jet_eta", jet_eta);
+  T->SetBranchAddress("jet_phi", jet_phi);
   T->SetBranchAddress("jet_pt", jet_pt);
+  T->SetBranchAddress("jet_mass", jet_mass);
   T->SetBranchAddress("jet_area", jet_area);
 
   T->SetBranchAddress("jet_btag", jet_btag);
@@ -237,14 +263,17 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("jet_numneutral", jet_numneutral);
   T->SetBranchAddress("jet_chmult", jet_chmult);
 
-  float met_pt;
+  float met_pt, met_px, met_py;
   T->SetBranchAddress("met_pt", &met_pt);
+  T->SetBranchAddress("met_px", &met_px);
+  T->SetBranchAddress("met_py", &met_py);
 
   float rho;
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
   int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0, btagCut=0 , DilepVetoCut=0;
+  int sameRlepjet=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++){
@@ -260,16 +289,24 @@ int main(int argc, char* argv[]){
         signCut++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
+        TString trig1 = (*trig_name)[1].data(), trig2 = (*trig_name)[2].data();
+        if ( !trig1.Contains("HLT_Mu50_v", TString::kIgnoreCase) || !trig2.Contains("HLT_TkMu50_v", TString::kIgnoreCase) ) {
+          cout << "wrong trigger\t" << trig1 << "\t" << trig2 << endl;
+          return -1;
+        }
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
         trigCut++;
 
-        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-          if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
-        }
-        else {
-          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ||
-               !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
-        }
+        //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+        //  if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
+        //}
+        //else {
+        //  if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ||
+        //       !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
+        //}
+
+        if ( !muon_IsTightID[0] || !muon_IsTightID[1] ) continue;
+
         if ( muon_pt[0] < 52 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
         lepkinCut++;
@@ -310,18 +347,26 @@ int main(int argc, char* argv[]){
         signCut++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
+        TString trig1 = (*trig_name)[1].data(), trig2 = (*trig_name)[2].data();
+        if ( !trig1.Contains("HLT_Mu50_v", TString::kIgnoreCase) || !trig2.Contains("HLT_TkMu50_v", TString::kIgnoreCase) ) {
+          cout << "wrong trigger\t" << trig1 << "\t" << trig2 << endl;
+          return -1;
+        }
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
         trigCut++;
 
         if ( !ele_MediumID[0] ) continue;
 
-        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-          if ( !muon_IsMediumID[0] ) continue;
-        }
-        else {
-          //cout<< "custom made medium muons"<<endl;
-          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
-        }
+        //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+        //  if ( !muon_IsMediumID[0] ) continue;
+        //}
+        //else {
+        //  //cout<< "custom made medium muons"<<endl;
+        //  if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
+        //}
+
+        if ( !muon_IsTightID[0] ) continue;
+
         if ( muon_pt[0] < 52 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
         lepkinCut++;
@@ -341,7 +386,12 @@ int main(int argc, char* argv[]){
     dilepmassCut++;
 
     vector<pair<int, float> > jet_index_corrpt;
+    TLorentzVector minjet0, minjet1;
+    float rmin0=99, rmin1=99;
+    double ctype1_x=0, ctype1_y=0;
+
     for (int i=0; i<nJet; i++){
+      float pt = jet_pt[i];
       float eta = jet_eta[i];
 
       if (fabs(eta) <= 2.7) {
@@ -355,14 +405,38 @@ int main(int argc, char* argv[]){
         if (jet_nef[i]>=0.9 || jet_numneutral[i]<=10) continue;
       }
 
-      float pt = jet_pt[i];
-
       jetCorrector->setJetEta(eta);
       jetCorrector->setJetPt(pt);
       jetCorrector->setJetA( jet_area[i] );
-      jetCorrector->setRho(rho); 
+      jetCorrector->setRho(rho);
       double corr_pt = jetCorrector->getCorrection() * pt;
       jet_index_corrpt.push_back( make_pair(i, corr_pt) );
+
+      TLorentzVector jet;
+      jet.SetPtEtaPhiM(corr_pt, eta, jet_phi[i], jet_mass[i]);
+
+      if (lep0.DeltaR(jet) < rmin0) {
+        rmin0 = lep0.DeltaR(jet);
+        minjet0 = jet;
+      }
+      if (lep1.DeltaR(jet) < rmin1) {
+        rmin1 = lep1.DeltaR(jet);
+        minjet1 = jet;
+      }
+
+      //corrected MET
+      if ( corr_pt>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
+        jetL1Corrector->setJetEta(eta);
+        jetL1Corrector->setJetPt(pt);
+        jetL1Corrector->setJetA( jet_area[i] );
+        jetL1Corrector->setRho(rho);
+
+        TLorentzVector jetL1;
+        jetL1.SetPtEtaPhiM( jetL1Corrector->getCorrection()*pt, eta, jet_phi[i], jet_mass[i] );
+
+        ctype1_x += (jet.Px()-jetL1.Px());
+        ctype1_y += (jet.Py()-jetL1.Py());
+      }
     }
     sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
 
@@ -378,14 +452,24 @@ int main(int argc, char* argv[]){
     if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
     jetCut++;
 
+    if (minjet0 == minjet1) sameRlepjet++;
+    float perp0 = lep0.Perp( minjet0.Vect() );
+    float perp1 = lep1.Perp( minjet1.Vect() );
+
+    double met_corrpx = met_px - ctype1_x;
+    double met_corrpy = met_py - ctype1_y;
+    double met_corrpt = sqrt(met_corrpx*met_corrpx + met_corrpy*met_corrpy);
+
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
-      if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-        if (muon_IsMediumID[i]) nGoodMuon++;
-      }
-      else {
-        if (isMediumMuonBCDEF(muon_isGlob[i], muon_chi2[i], muon_tspm[i], muon_kinkf[i], muon_segcom[i], muon_ftrackhits[i])) nGoodMuon++;
-      }
+      if (muon_IsTightID[i]) nGoodMuon++;
+
+      //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+      //  if (muon_IsMediumID[i]) nGoodMuon++;
+      //}
+      //else {
+      //  if (isMediumMuonBCDEF(muon_isGlob[i], muon_chi2[i], muon_tspm[i], muon_kinkf[i], muon_segcom[i], muon_ftrackhits[i])) nGoodMuon++;
+      //}
     }
 
     int nGoodEle=0;
@@ -400,6 +484,9 @@ int main(int argc, char* argv[]){
 
       if ( corr_pt>30 && fabs(jet_eta[index])<2.5 ) hT+=corr_pt;
     }
+
+    bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
+    bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
     TString prefix = "0_";
     FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
@@ -418,18 +505,33 @@ int main(int argc, char* argv[]){
     FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
     FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
 
+    if (lep0flavor == 'm') {
+      FillHist1D(prefix+"muonD0", muon_D0[0], weight);
+      FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
+    }
+    if (lep1flavor == 'm') {
+      FillHist1D(prefix+"muonD0", muon_D0[1], weight);
+      FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
+    }
+    FillHist1D(prefix+"rmin0", rmin0, weight);
+    FillHist1D(prefix+"rmin1", rmin1, weight);
+    FillHist1D(prefix+"lep0perp", perp0, weight);
+    FillHist1D(prefix+"lep1perp", perp1, weight);
+
     FillHist1D(prefix+"jet0pt", jet0pt, weight);
     FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
     FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
     FillHist1D(prefix+"jet1pt", jet1pt, weight);
     FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
     FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+    FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
     FillHist1D(prefix+"jethT", hT, weight);
 
     FillHist1D(prefix+"metpt", met_pt, weight);
+    FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
     FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
 
-    if (jet_btag[jet0index] < 0.8484) continue;
+    if ( !jet0btag && !jet1btag ) continue;
     btagCut++;
 
     prefix = "1_";
@@ -449,15 +551,30 @@ int main(int argc, char* argv[]){
     FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
     FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
 
+    if (lep0flavor == 'm') {
+      FillHist1D(prefix+"muonD0", muon_D0[0], weight);
+      FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
+    }
+    if (lep1flavor == 'm') {
+      FillHist1D(prefix+"muonD0", muon_D0[1], weight);
+      FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
+    }
+    FillHist1D(prefix+"rmin0", rmin0, weight);
+    FillHist1D(prefix+"rmin1", rmin1, weight);
+    FillHist1D(prefix+"lep0perp", perp0, weight);
+    FillHist1D(prefix+"lep1perp", perp1, weight);
+
     FillHist1D(prefix+"jet0pt", jet0pt, weight);
     FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
     FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
     FillHist1D(prefix+"jet1pt", jet1pt, weight);
     FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
     FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+    FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
     FillHist1D(prefix+"jethT", hT, weight);
 
     FillHist1D(prefix+"metpt", met_pt, weight);
+    FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
     FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
 
 
@@ -482,19 +599,35 @@ int main(int argc, char* argv[]){
       FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
       FillHist1D(prefix+"dilepmass", (lep0+lep1).M(), weight);
 
+      if (lep0flavor == 'm') {
+        FillHist1D(prefix+"muonD0", muon_D0[0], weight);
+        FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
+      }
+      if (lep1flavor == 'm') {
+        FillHist1D(prefix+"muonD0", muon_D0[1], weight);
+        FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
+      }
+      FillHist1D(prefix+"rmin0", rmin0, weight);
+      FillHist1D(prefix+"rmin1", rmin1, weight);
+      FillHist1D(prefix+"lep0perp", perp0, weight);
+      FillHist1D(prefix+"lep1perp", perp1, weight);
+
       FillHist1D(prefix+"jet0pt", jet0pt, weight);
       FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
       FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
       FillHist1D(prefix+"jet1pt", jet1pt, weight);
       FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
       FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+      FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
       FillHist1D(prefix+"jethT", hT, weight);
 
       FillHist1D(prefix+"metpt", met_pt, weight);
+      FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
       FillHist1D(prefix+"sT", hT+lep0.Pt()+lep1.Pt(), weight);
     }
   }
   cout << difftime(time(NULL), start) << " s" << endl;
+  cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
 
   //Cutflow Table//
 
