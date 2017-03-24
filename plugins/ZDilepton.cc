@@ -409,16 +409,24 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     const pat::Jet& jet = jets->at(i).correctedJet(0);
     reco::Candidate::LorentzVector jet_p4 = jet.p4();
 
+    jet_clean[i] = 'n';
     if ( reco::deltaR(jet, *leps[0].first) < 0.4 || reco::deltaR(jet, *leps[1].first) < 0.4 ){
 
       const vector<reco::CandidatePtr> & dvec = jet.daughterPtrVector();
       for (vector<reco::CandidatePtr>::const_iterator i_d = dvec.begin(); i_d != dvec.end(); ++i_d){
 
-        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 'l';}
-        else if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) {jet_p4 -= (*i_d)->p4(); jet_clean[i] = 's';}
+        if ( find(lep0Sources.begin(), lep0Sources.end(), *i_d ) != lep0Sources.end() ) {
+          jet_p4 -= (*i_d)->p4();
+          if (jet_clean[i] == 'n') jet_clean[i] = 'l';
+          else if (jet_clean[i] == 's') jet_clean[i] = 'b';
+        }
+        else if ( find(lep1Sources.begin(), lep1Sources.end(), *i_d ) != lep1Sources.end() ) {
+          jet_p4 -= (*i_d)->p4();
+          if (jet_clean[i] == 'n') jet_clean[i] = 's';
+          else if (jet_clean[i] == 'l') jet_clean[i] = 'b';
+        }
       }
     }
-    if (jet_clean[i] != 'l' && jet_clean[i] != 's') jet_clean[i] = 'n';
 
     jet_pt[i] = jet_p4.Pt();
     jet_eta[i] = jet_p4.Eta();

@@ -113,13 +113,15 @@ int main(int argc, char* argv[]) {
   TString xtitle = "";
   string keytitle = hname(2, hname.Length()).Data();
   unordered_map<string, string> xtitles = {{"dilepmass","M_{ll} (Gev)"},{"lep0eta","#eta_{Leading Lepton}"},
-  {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T}(GeV)"},{"lep1pt","Subleading Lepton p_{T}(GeV)"},
-  {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T}(GeV)"},
-  {"jet1pt","Subleading Jet p_{T}(GeV)"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
+  {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T} (GeV)"},{"lep1pt","Subleading Lepton p_{T} (GeV)"},
+  {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T} (GeV)"},
+  {"jet1pt","Subleading Jet p_{T} (GeV)"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
   {"nJet","Number of Jets"},{"nEleDiff","N_{Electrons}-N_{Good Electrons}"},{"nMuonDiff","N_{Muons}-N_{Good Muons} "},
   {"nJetDiff","N_{Jets}-N_{Good Jets} "},{"nGoodEle","N_{Good Electrons}"},{"nGoodMuon","N_{Good Muons}"},
-  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","S_{T} (GeV)"},
-  {"metpt","MET p_{T} (GeV)"},{"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"}};
+  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","S_{T} (GeV)"},{"metpt","MET p_{T} (GeV)"},
+  {"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"},{"nbtag","Number of btagged Jets"},
+  {"metcorrpt","Corrected MET p_{T} (GeV)"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
+  {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   if ( subplot=="ratio" || subplot=="diff" ) {
