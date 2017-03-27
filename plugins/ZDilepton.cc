@@ -366,31 +366,33 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   if (leps[0].first->pt() < minLepPt_ || leps[1].first->pt() < minSubLepPt_) return;
   leppt_cut[0]++;
 
-  bool dilepmass_flag = false;
-  for (int i=0, n=leps.size(); i<n && !dilepmass_flag; i++) {
-
-    char flavi = leps[i].second;
-    reco::CandidatePtr lepi = leps[i].first;
-    TLorentzVector vlepi;
-    vlepi.SetPtEtaPhiM( lepi->pt(), lepi->eta(), lepi->phi(), lepi->mass() );
-
-    for (int j=i+1; j<n && !dilepmass_flag; j++) {
-      char flavj = leps[j].second;
-
-      if (flavi==flavj) {
-        reco::CandidatePtr lepj = leps[j].first;
-        TLorentzVector vlepj;
-        vlepj.SetPtEtaPhiM( lepj->pt(), lepj->eta(), lepj->phi(), lepj->mass() );
-
-        if ( (vlepi+vlepj).M() > minDiLepMass_ ) dilepmass_flag = true;
-      }
-    }
-  }
-  if (!dilepmass_flag) return;
-  dilepmass_cut[0]++;
-
   lep0flavor = leps[0].second;
   lep1flavor = leps[1].second;
+
+  if (lep0flavor == lep1flavor) {
+    bool dilepmass_flag = false;
+    for (int i=0, n=leps.size(); i<n && !dilepmass_flag; i++) {
+
+      char flavi = leps[i].second;
+      reco::CandidatePtr lepi = leps[i].first;
+      TLorentzVector vlepi;
+      vlepi.SetPtEtaPhiM( lepi->pt(), lepi->eta(), lepi->phi(), lepi->mass() );
+
+      for (int j=i+1; j<n && !dilepmass_flag; j++) {
+        char flavj = leps[j].second;
+
+        if (flavi==flavj) {
+          reco::CandidatePtr lepj = leps[j].first;
+          TLorentzVector vlepj;
+          vlepj.SetPtEtaPhiM( lepj->pt(), lepj->eta(), lepj->phi(), lepj->mass() );
+
+          if ( (vlepi+vlepj).M() > minDiLepMass_ ) dilepmass_flag = true;
+        }
+      }
+    }
+    if (!dilepmass_flag) return;
+  }
+  dilepmass_cut[0]++;
 
   vector<reco::CandidatePtr> lep0Sources, lep1Sources;
   for (unsigned int i=0, n=leps[0].first->numberOfSourceCandidatePtrs(); i<n; i++) lep0Sources.push_back(leps[0].first->sourceCandidatePtr(i));
@@ -780,7 +782,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   if (triggerResults.isValid()) {
     const edm::TriggerNames& triggerNames = iEvent.triggerNames(*triggerResults); 
 
-    trig_prescale.clear(); trig_passed.clear(); trig_name.clear();
+    trig_prescale.assign(nTriggers, 0); trig_passed.assign(nTriggers, false); trig_name.assign(nTriggers, "");
 
     for (int i=0; i<nTriggers; i++) {
       string myTrigger = triggers[i], name;
@@ -792,9 +794,9 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
       if (index == -1) continue;
 
-      trig_prescale.push_back( triggerPrescales->getPrescaleForIndex(index) );  
-      trig_passed.push_back( triggerResults->accept(index) );
-      trig_name.push_back( name );
+      trig_prescale[i] = triggerPrescales->getPrescaleForIndex(index);
+      trig_passed[i] = triggerResults->accept(index);
+      trig_name[i] = name;
     }
   }
 
