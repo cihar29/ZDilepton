@@ -139,6 +139,12 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_rmin1",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_rl0l1",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_rl0j",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_rl1j",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_lep0perp",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
     hname = Form("%i_lep1perp",i);
@@ -392,6 +398,7 @@ int main(int argc, char* argv[]){
     TLorentzVector minjet0, minjet1;
     float rmin0=99, rmin1=99;
     double ctype1_x=0, ctype1_y=0;
+    float rl0j=-1, rl1j=-1;
 
     for (int i=0; i<nJet; i++){
 
@@ -425,6 +432,9 @@ int main(int argc, char* argv[]){
         rmin1 = lep1.DeltaR(jet);
         minjet1 = jet;
       }
+
+      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') rl0j = lep0.DeltaR(jet);
+      if (jet_clean[i] == 's' || jet_clean[i] == 'b') rl1j = lep1.DeltaR(jet);
 
       //corrected MET
       if ( corr_pt>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
@@ -491,6 +501,8 @@ int main(int argc, char* argv[]){
     bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
+    float rl0l1 = lep0.DeltaR(lep1);
+
     TString prefix = "0_";
     FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
     FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
@@ -518,6 +530,9 @@ int main(int argc, char* argv[]){
     }
     FillHist1D(prefix+"rmin0", rmin0, weight);
     FillHist1D(prefix+"rmin1", rmin1, weight);
+    FillHist1D(prefix+"rl0l1", rl0l1, weight);
+    FillHist1D(prefix+"rl0j", rl0j, weight);
+    FillHist1D(prefix+"rl1j", rl1j, weight);
     FillHist1D(prefix+"lep0perp", perp0, weight);
     FillHist1D(prefix+"lep1perp", perp1, weight);
 
@@ -564,6 +579,9 @@ int main(int argc, char* argv[]){
     }
     FillHist1D(prefix+"rmin0", rmin0, weight);
     FillHist1D(prefix+"rmin1", rmin1, weight);
+    FillHist1D(prefix+"rl0l1", rl0l1, weight);
+    FillHist1D(prefix+"rl0j", rl0j, weight);
+    FillHist1D(prefix+"rl1j", rl1j, weight);
     FillHist1D(prefix+"lep0perp", perp0, weight);
     FillHist1D(prefix+"lep1perp", perp1, weight);
 
@@ -612,6 +630,9 @@ int main(int argc, char* argv[]){
       }
       FillHist1D(prefix+"rmin0", rmin0, weight);
       FillHist1D(prefix+"rmin1", rmin1, weight);
+      FillHist1D(prefix+"rl0l1", rl0l1, weight);
+      FillHist1D(prefix+"rl0j", rl0j, weight);
+      FillHist1D(prefix+"rl1j", rl1j, weight);
       FillHist1D(prefix+"lep0perp", perp0, weight);
       FillHist1D(prefix+"lep1perp", perp1, weight);
 

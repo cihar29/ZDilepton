@@ -121,7 +121,8 @@ int main(int argc, char* argv[]) {
   {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","S_{T} (GeV)"},{"metpt","MET p_{T} (GeV)"},
   {"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"},{"nbtag","Number of btagged Jets"},
   {"metcorrpt","Corrected MET p_{T} (GeV)"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
-  {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"}};
+  {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"},
+  {"rl0j","#DeltaR(leading lepton, cleaned jet)"},{"rl1j","#DeltaR(subleading lepton, cleaned jet)"},{"rl0l1","#DeltaR(leading lepton, subleading lepton)"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   if ( subplot=="ratio" || subplot=="diff" ) {
@@ -179,8 +180,11 @@ int main(int argc, char* argv[]) {
   latex.SetTextSize(0.04);
   latex.SetNDC(); 
   latex.SetTextFont(42);
-  if(hname.Contains("1_")||hname.Contains("2_")) latex.DrawLatex(0.22,0.85,"Medium btagged Leading Jet");
-  if(hname.Contains("2_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
+  if (dataFileName.Contains("mm", TString::kIgnoreCase)) latex.DrawLatex(0.22,0.85,"#bf{#mu#mu}");
+  else if (dataFileName.Contains("ee", TString::kIgnoreCase)) latex.DrawLatex(0.22,0.85,"#bf{ee}");
+  else latex.DrawLatex(0.22,0.85,"#bf{e#mu}");
+  if (hname.Contains("1_")||hname.Contains("2_")) latex.DrawLatex(0.22,0.8,"Medium btagged Leading Jet");
+  if (hname.Contains("2_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
 
   if (subplot=="ratio" || subplot=="diff" ) {
     bottom->cd();
