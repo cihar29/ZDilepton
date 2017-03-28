@@ -27,6 +27,12 @@ void setPars(const string& parFile);
 void setWeight(const string& parFile); 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
+void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
+               const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
+               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0j, const float& rl1j, const float& lep0perp, const float& lep1perp,
+               const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
+               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
+               const float& rbal, const float& rabl);
 
 map<TString, TH1*> m_Histos1D;
 
@@ -38,6 +44,7 @@ double weight;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
+const int MAXGEN = 20;
 const float MUONMASS = 0.10566;
 const float ELEMASS = 0.;
 
@@ -83,7 +90,7 @@ int main(int argc, char* argv[]){
 
   //Histograms//
 
-  int nDirs = 3;
+  int nDirs = 7;
   for (int i=0; i<nDirs; i++) {
     TString hname = Form("%i_nJet",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
@@ -99,6 +106,10 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
     hname = Form("%i_jet1eta",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_jet0phi",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
+    hname = Form("%i_jet1phi",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
     hname = Form("%i_jet0btag",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,1);
     hname = Form("%i_jet1btag",i);
@@ -128,7 +139,15 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
     hname = Form("%i_lep1eta",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    hname = Form("%i_lep0phi",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
+    hname = Form("%i_lep1phi",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
     hname = Form("%i_dilepmass",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_lepept",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_lepmpt",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
 
     hname = Form("%i_muonD0",i);
@@ -138,6 +157,8 @@ int main(int argc, char* argv[]){
     hname = Form("%i_rmin0",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_rmin1",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
+    hname = Form("%i_rbl",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_rl0l1",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
@@ -211,6 +232,21 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("trig_passed", &trig_passed);
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
+
+  int nGen=MAXGEN, gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
+  float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
+
+  if (inName.EqualTo("TTbar.root")) {
+    T->SetBranchAddress("nGen", &nGen);
+    T->SetBranchAddress("gen_PID", gen_PID);
+    T->SetBranchAddress("gen_pt", gen_pt);
+    T->SetBranchAddress("gen_mass", gen_mass);
+    T->SetBranchAddress("gen_eta", gen_eta);
+    T->SetBranchAddress("gen_phi", gen_phi);
+    T->SetBranchAddress("gen_index",  gen_index);
+    T->SetBranchAddress("gen_mother0", gen_mother0);
+    T->SetBranchAddress("gen_mother1", gen_mother1);
+  }
 
   char lep0flavor, lep1flavor;
   T->SetBranchAddress("lep0flavor", &lep0flavor);
@@ -297,11 +333,6 @@ int main(int argc, char* argv[]){
         signCut++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
-        //TString trig1 = (*trig_name)[1].data(), trig2 = (*trig_name)[2].data();
-        //if ( !trig1.Contains("HLT_Mu50_v", TString::kIgnoreCase) || !trig2.Contains("HLT_TkMu50_v", TString::kIgnoreCase) ) {
-        //  cout << "wrong trigger\t" << trig1 << "\t" << trig2 << endl;
-        //  return -1;
-        //}
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
         trigCut++;
 
@@ -355,11 +386,6 @@ int main(int argc, char* argv[]){
         signCut++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
-        //TString trig1 = (*trig_name)[1].data(), trig2 = (*trig_name)[2].data();
-        //if ( !trig1.Contains("HLT_Mu50_v", TString::kIgnoreCase) || !trig2.Contains("HLT_TkMu50_v", TString::kIgnoreCase) ) {
-        //  cout << "wrong trigger\t" << trig1 << "\t" << trig2 << endl;
-        //  return -1;
-        //}
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
         trigCut++;
 
@@ -400,6 +426,7 @@ int main(int argc, char* argv[]){
     double ctype1_x=0, ctype1_y=0;
     float rl0j=-1, rl1j=-1;
 
+    int nGoodJet=0;
     for (int i=0; i<nJet; i++){
 
       //loose jet cut
@@ -420,6 +447,8 @@ int main(int argc, char* argv[]){
       jetCorrector->setRho(rho);
       double corr_pt = jetCorrector->getCorrection() * jet_pt[i];
       jet_index_corrpt.push_back( make_pair(i, corr_pt) );
+
+      if (corr_pt>30) nGoodJet++;
 
       TLorentzVector jet;
       jet.SetPtEtaPhiM(corr_pt, jet_eta[i], jet_phi[i], jet_mass[i]);
@@ -450,10 +479,9 @@ int main(int argc, char* argv[]){
         ctype1_y += (jet.Py()-jetL1.Py());
       }
     }
-    sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
-
-    int nGoodJet = jet_index_corrpt.size();
     if (nGoodJet < 2) continue;
+
+    sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
 
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
     float jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
@@ -465,8 +493,8 @@ int main(int argc, char* argv[]){
     jetCut++;
 
     if (minjet0 == minjet1) sameRlepjet++;
-    float perp0 = lep0.Perp( minjet0.Vect() );
-    float perp1 = lep1.Perp( minjet1.Vect() );
+    float lep0perp = lep0.Perp( minjet0.Vect() );
+    float lep1perp = lep1.Perp( minjet1.Vect() );
 
     double met_corrpx = met_px - ctype1_x;
     double met_corrpy = met_py - ctype1_y;
@@ -502,152 +530,75 @@ int main(int argc, char* argv[]){
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
     float rl0l1 = lep0.DeltaR(lep1);
+    float lepept=0, lepmpt=0;
+    if (lep0flavor == 'm') lepmpt += lep0.Pt();
+    else lepept += lep0.Pt();
+    if (lep1flavor == 'm') lepmpt += lep1.Pt();
+    else lepept += lep1.Pt();
 
-    TString prefix = "0_";
-    FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
-    FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
-    FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
-    FillHist1D(prefix+"nEle", nEle, weight);
-    FillHist1D(prefix+"nMuon", nMuon, weight);
-    FillHist1D(prefix+"nJet", nJet, weight);
-    FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
-    FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
-    FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
+    float rbal=-1, rabl=-1;
+    if (inName.EqualTo("TTbar.root")) {
+      //lepton, anti-lepton, b quark, anti-b quark
+      TLorentzVector glep, galep, gb, gab;
 
-    FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
-    FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
-    FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
-    FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
-    FillHist1D(prefix+"dilepmass", dilepmass, weight);
+      for (int i=0; i<nGen; i++) {
 
-    if (lep0flavor == 'm') {
-      FillHist1D(prefix+"muonD0", muon_D0[0], weight);
-      FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
+        if (gen_PID[i] == 5) gb.SetPtEtaPhiM(gen_pt[i], gen_eta[i], gen_phi[i], gen_mass[i]);
+        else if (gen_PID[i] == -5) gab.SetPtEtaPhiM(gen_pt[i], gen_eta[i], gen_phi[i], gen_mass[i]);
+        else if (gen_PID[i] == 11 || gen_PID[i] == 13) glep.SetPtEtaPhiM(gen_pt[i], gen_eta[i], gen_phi[i], gen_mass[i]);
+        else if (gen_PID[i] == -11 || gen_PID[i] == -13) galep.SetPtEtaPhiM(gen_pt[i], gen_eta[i], gen_phi[i], gen_mass[i]);
+      }
+
+      //b goes with anti-lepton and anti-b goes with lepton
+      if (gb.Pt() != 0 && galep.Pt() != 0) rbal = gb.DeltaR(galep);
+      if (gab.Pt() != 0 && glep.Pt() != 0) rabl = gab.DeltaR(glep);
     }
-    if (lep1flavor == 'm') {
-      FillHist1D(prefix+"muonD0", muon_D0[1], weight);
-      FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
-    }
-    FillHist1D(prefix+"rmin0", rmin0, weight);
-    FillHist1D(prefix+"rmin1", rmin1, weight);
-    FillHist1D(prefix+"rl0l1", rl0l1, weight);
-    FillHist1D(prefix+"rl0j", rl0j, weight);
-    FillHist1D(prefix+"rl1j", rl1j, weight);
-    FillHist1D(prefix+"lep0perp", perp0, weight);
-    FillHist1D(prefix+"lep1perp", perp1, weight);
 
-    FillHist1D(prefix+"jet0pt", jet0pt, weight);
-    FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
-    FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
-    FillHist1D(prefix+"jet1pt", jet1pt, weight);
-    FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
-    FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
-    FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
-    FillHist1D(prefix+"jethT", hT, weight);
+    FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+              rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+              jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+              hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    FillHist1D(prefix+"metpt", met_pt, weight);
-    FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
-    FillHist1D(prefix+"sT", sT, weight);
+    if (jet0btag || jet1btag)
+      FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    if ( !jet0btag && !jet1btag ) continue;
-    btagCut++;
+    else if (jet0btag && jet1btag)
+      FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    prefix = "1_";
-    FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
-    FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
-    FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
-    FillHist1D(prefix+"nEle", nEle, weight);
-    FillHist1D(prefix+"nMuon", nMuon, weight);
-    FillHist1D(prefix+"nJet", nJet, weight);
-    FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
-    FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
-    FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
+    if ( jet1pt < 50 ) continue;
+    if ( fabs(jet_eta[jet1index]) > 2.5 ) continue;
 
-    FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
-    FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
-    FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
-    FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
-    FillHist1D(prefix+"dilepmass", dilepmass, weight);
+    FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+              rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+              jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+              hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    if (lep0flavor == 'm') {
-      FillHist1D(prefix+"muonD0", muon_D0[0], weight);
-      FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
-    }
-    if (lep1flavor == 'm') {
-      FillHist1D(prefix+"muonD0", muon_D0[1], weight);
-      FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
-    }
-    FillHist1D(prefix+"rmin0", rmin0, weight);
-    FillHist1D(prefix+"rmin1", rmin1, weight);
-    FillHist1D(prefix+"rl0l1", rl0l1, weight);
-    FillHist1D(prefix+"rl0j", rl0j, weight);
-    FillHist1D(prefix+"rl1j", rl1j, weight);
-    FillHist1D(prefix+"lep0perp", perp0, weight);
-    FillHist1D(prefix+"lep1perp", perp1, weight);
+    if (jet0btag || jet1btag)
+      FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    FillHist1D(prefix+"jet0pt", jet0pt, weight);
-    FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
-    FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
-    FillHist1D(prefix+"jet1pt", jet1pt, weight);
-    FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
-    FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
-    FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
-    FillHist1D(prefix+"jethT", hT, weight);
-
-    FillHist1D(prefix+"metpt", met_pt, weight);
-    FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
-    FillHist1D(prefix+"sT", sT, weight);
-
+    else if (jet0btag && jet1btag)
+      FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl);
 
     if (lep0flavor == lep1flavor) {
       if ( 76<dilepmass && dilepmass<106 ) continue;
-
       DilepVetoCut++;
-      prefix = "2_";
-      FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
-      FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
-      FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
-      FillHist1D(prefix+"nEle", nEle, weight);
-      FillHist1D(prefix+"nMuon", nMuon, weight);
-      FillHist1D(prefix+"nJet", nJet, weight);
-      FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
-      FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
-      FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
 
-      FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
-      FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
-      FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
-      FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
-      FillHist1D(prefix+"dilepmass", dilepmass, weight);
-
-      if (lep0flavor == 'm') {
-        FillHist1D(prefix+"muonD0", muon_D0[0], weight);
-        FillHist1D(prefix+"muonDz", muon_Dz[0], weight);
-      }
-      if (lep1flavor == 'm') {
-        FillHist1D(prefix+"muonD0", muon_D0[1], weight);
-        FillHist1D(prefix+"muonDz", muon_Dz[1], weight);
-      }
-      FillHist1D(prefix+"rmin0", rmin0, weight);
-      FillHist1D(prefix+"rmin1", rmin1, weight);
-      FillHist1D(prefix+"rl0l1", rl0l1, weight);
-      FillHist1D(prefix+"rl0j", rl0j, weight);
-      FillHist1D(prefix+"rl1j", rl1j, weight);
-      FillHist1D(prefix+"lep0perp", perp0, weight);
-      FillHist1D(prefix+"lep1perp", perp1, weight);
-
-      FillHist1D(prefix+"jet0pt", jet0pt, weight);
-      FillHist1D(prefix+"jet0eta", jet_eta[jet0index], weight);
-      FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
-      FillHist1D(prefix+"jet1pt", jet1pt, weight);
-      FillHist1D(prefix+"jet1eta", jet_eta[jet1index], weight);
-      FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
-      FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
-      FillHist1D(prefix+"jethT", hT, weight);
-
-      FillHist1D(prefix+"metpt", met_pt, weight);
-      FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
-      FillHist1D(prefix+"sT", sT, weight);
+      FillHists("6_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl);
     }
   }
   cout << difftime(time(NULL), start) << " s" << endl;
@@ -703,6 +654,60 @@ void FillHist1D(const TString& histName, const Double_t& value, const double& we
     cout << "%FillHist1D -- Could not find histogram with name: " << histName << endl;
   else
     hid->second->Fill(value, weight);
+}
+
+void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
+               const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
+               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0j, const float& rl1j, const float& lep0perp, const float& lep1perp,
+               const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
+               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
+               const float& rbal, const float& rabl) {
+
+    FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
+    FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
+    FillHist1D(prefix+"nJetDiff", nJet-nGoodJet, weight);
+    FillHist1D(prefix+"nEle", nEle, weight);
+    FillHist1D(prefix+"nMuon", nMuon, weight);
+    FillHist1D(prefix+"nJet", nJet, weight);
+    FillHist1D(prefix+"nGoodEle", nGoodEle, weight);
+    FillHist1D(prefix+"nGoodMuon", nGoodMuon, weight);
+    FillHist1D(prefix+"nGoodJet", nGoodJet, weight);
+
+    FillHist1D(prefix+"lep0pt", lep0.Pt(), weight);
+    FillHist1D(prefix+"lep0eta", lep0.Eta(), weight);
+    FillHist1D(prefix+"lep0phi", lep0.Phi(), weight);
+    FillHist1D(prefix+"lep1pt", lep1.Pt(), weight);
+    FillHist1D(prefix+"lep1eta", lep1.Eta(), weight);
+    FillHist1D(prefix+"lep1phi", lep1.Phi(), weight);
+    FillHist1D(prefix+"dilepmass", dilepmass, weight);
+    FillHist1D(prefix+"lepept", lepept, weight);
+    FillHist1D(prefix+"lepmpt", lepmpt, weight);
+
+    FillHist1D(prefix+"rmin0", rmin0, weight);
+    FillHist1D(prefix+"rmin1", rmin1, weight);
+    FillHist1D(prefix+"rl0l1", rl0l1, weight);
+    FillHist1D(prefix+"rl0j", rl0j, weight);
+    FillHist1D(prefix+"rl1j", rl1j, weight);
+    FillHist1D(prefix+"lep0perp", lep0perp, weight);
+    FillHist1D(prefix+"lep1perp", lep1perp, weight);
+
+    FillHist1D(prefix+"jet0pt", jet0pt, weight);
+    FillHist1D(prefix+"jet0eta", jet0eta, weight);
+    FillHist1D(prefix+"jet0phi", jet0phi, weight);
+    FillHist1D(prefix+"jet0btag", jet0btag, weight);
+    FillHist1D(prefix+"jet1pt", jet1pt, weight);
+    FillHist1D(prefix+"jet1eta", jet1eta, weight);
+    FillHist1D(prefix+"jet1phi", jet1phi, weight);
+    FillHist1D(prefix+"jet1btag", jet1btag, weight);
+    FillHist1D(prefix+"nbtag", nbtag, weight);
+    FillHist1D(prefix+"jethT", hT, weight);
+
+    FillHist1D(prefix+"metpt", met_pt, weight);
+    FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
+    FillHist1D(prefix+"sT", sT, weight);
+
+    if (rbal != -1) FillHist1D(prefix+"rbl", rbal, weight);
+    if (rabl != -1) FillHist1D(prefix+"rbl", rabl, weight);
 }
 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits) {

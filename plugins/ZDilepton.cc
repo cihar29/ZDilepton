@@ -125,7 +125,7 @@ class ZDilepton : public edm::EDAnalyzer {
     float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP], ele_etaSupClust[MAXLEP];
     float ele_dPhiIn[MAXLEP], ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP];
 
-    int nJet;
+    int nJet, jet_flavor[MAXJET];
     float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_mass[MAXJET], jet_area[MAXJET], jet_jec[MAXJET], jet_btag[MAXJET];
     float jet_nhf[MAXJET], jet_nef[MAXJET], jet_chf[MAXJET], jet_muf[MAXJET];
     float jet_elef[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
@@ -304,6 +304,7 @@ void  ZDilepton::beginJob() {
   tree->Branch("jet_jec", jet_jec, "jet_jec[nJet]/F");
   tree->Branch("jet_btag", jet_btag, "jet_btag[nJet]/F");
   tree->Branch("jet_clean", jet_clean, "jet_clean[nJet]/B");
+  if (isMC_) tree->Branch("jet_flavor", jet_flavor, "jet_flavor[nJet]/I");
 
   tree->Branch("jet_nhf", jet_nhf, "jet_nhf[nJet]/F");
   tree->Branch("jet_nef", jet_nef, "jet_nef[nJet]/F");
@@ -446,6 +447,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     jet_chmult[i] = jet.chargedMultiplicity();
     jet_btag[i] = jet.bDiscriminator(btag_);
 
+    if (isMC_) jet_flavor[i] = jet.partonFlavour();
+
     if ( jet_pt[i]>minLeadJetPt_ && fabs(jet_eta[i])<2.5 ) leadJetPt_flag = true;
   }
   if (!leadJetPt_flag) return;
@@ -571,7 +574,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //b or W (first)
       }
 
-      else if (fabs(id)==24 && nDaught==2){   //W's
+      else if (fabs(id)==24 && nDaught==2){   //last W's
+        reducedGens.push_back(make_pair(p,i));
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(0).key()),p.daughterRef(0).key()) ); //q or lep
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //q or lep
       }
