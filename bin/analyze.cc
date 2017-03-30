@@ -565,7 +565,7 @@ int main(int argc, char* argv[]){
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    else if (jet0btag && jet1btag)
+    if (jet0btag && jet1btag)
       FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
@@ -585,7 +585,7 @@ int main(int argc, char* argv[]){
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, rbal, rabl);
 
-    else if (jet0btag && jet1btag)
+    if (jet0btag && jet1btag)
       FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
