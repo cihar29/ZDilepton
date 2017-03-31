@@ -16,7 +16,7 @@ if [ $# -eq 1 ] ; then
 
   line1="ISMC       true"
   line4="channel    $channel"
-  line5="era        Summer16_25nsV5"
+  line5="eras       Summer16_23Sep2016V4_MC"
   line6="jet_type   AK4PFchs"
 
   for i in "${mcfiles[@]}"
@@ -24,9 +24,9 @@ if [ $# -eq 1 ] ; then
 
     line2="inName     "$i".root"
     line3="outName    "$i"_"$channel".root"
-    echo -e "$line1\n$line2\n$line3\n$line4\n$line5\n$line6" > pars.txt
+    echo -e "$line1\n$line2\n$line3\n$line4\n$line5\n$line6" > parsMC.txt
 
-    analyze pars.txt mc_weights.txt
+    analyze parsMC.txt mc_weights.txt
 
   done
 

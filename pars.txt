@@ -1,6 +1,0 @@
-ISMC       true
-inName     Wjet.root
-outName    Wjet_mm.root
-channel    mm
-era        Summer16_25nsV5
-jet_type   AK4PFchs

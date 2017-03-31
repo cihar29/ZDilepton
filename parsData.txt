@@ -1,0 +1,6 @@
+ISMC       false
+inName     MuonGH.root
+outName    MuonGH_mm.root
+channel    mm
+eras       Summer16_23Sep2016GV6_DATA  Summer16_23Sep2016HV6_DATA
+jet_type   AK4PFchs

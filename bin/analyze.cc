@@ -29,17 +29,19 @@ bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm,
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
-               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0j, const float& rl1j, const float& lep0perp, const float& lep1perp,
+               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
                const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
-               const float& rbal, const float& rabl);
+               const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
+               const float& masslmin0, const float& masslmin1, const float& masslljjm);
 
 map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
 bool ISMC;
 TString inName, outName;
-string channel, era, jet_type;
+string channel, jet_type;
+vector<string> eras;
 double weight;
 
 const int MAXJET = 50;
@@ -60,13 +62,52 @@ int main(int argc, char* argv[]){
   if (weight == -1) { cout << "Weight set to 1" << endl; weight = 1.; }
   else                cout << "Weight set to " << weight << endl;
 
+  //Jet Corrections//
+
+  map<string, JetCorrectorParameters*> ResJetPars, L3JetPars, L2JetPars, L1JetPars;
+  map<string, vector<JetCorrectorParameters> > jetPars, jetL1Pars;
+  map<string, FactorizedJetCorrector*> jetCorrectors, jetL1Correctors;
+  map<string, pair<int, int> > m_IOV;
+
+  cout << endl << "Using eras: " << endl;
+  for(vector<string>::iterator i_era = eras.begin(); i_era != eras.end(); ++i_era) {
+    string era = *i_era;
+
+    ResJetPars[era] = new JetCorrectorParameters(era + "/" + era + "_L2L3Residual_" + jet_type + ".txt");
+    L3JetPars[era] = new JetCorrectorParameters(era + "/" + era + "_L3Absolute_" + jet_type + ".txt");
+    L2JetPars[era] = new JetCorrectorParameters(era + "/" + era + "_L2Relative_" + jet_type + ".txt");
+    L1JetPars[era] = new JetCorrectorParameters(era + "/" + era + "_L1FastJet_" + jet_type + ".txt");
+
+    jetPars[era].push_back( *L1JetPars[era] );
+    jetPars[era].push_back( *L2JetPars[era] );
+    jetPars[era].push_back( *L3JetPars[era] );
+    jetPars[era].push_back( *ResJetPars[era] );
+
+    jetCorrectors[era] = new FactorizedJetCorrector( jetPars[era] );
+
+    jetL1Pars[era].push_back( *L1JetPars[era] );
+    jetL1Correctors[era] = new FactorizedJetCorrector( jetL1Pars[era] );
+
+    if (ISMC) cout << era << endl;
+    else {
+      TString tera = era.data();
+
+      if ( tera.Contains("BCDV", TString::kIgnoreCase) ) { cout << "BCD "; m_IOV[era] = make_pair(1, 276811); }
+      else if ( tera.Contains("EFV", TString::kIgnoreCase) ) { cout << "EF "; m_IOV[era] = make_pair(276831, 278801); }
+      else if ( tera.Contains("GV", TString::kIgnoreCase) ) { cout << "G "; m_IOV[era] = make_pair(278802, 280385); }
+      else if ( tera.Contains("HV", TString::kIgnoreCase) ) { cout << "H "; m_IOV[era] = make_pair(280919, 300000); }
+
+      cout << "[" << m_IOV[era].first << ", " << m_IOV[era].second << "]" << endl;
+    }   
+  }
+
   //Open Files//
 
   TFile* inFile = TFile::Open(inName);
 
   TTree* T = (TTree*) inFile->Get("T");
   Long64_t nEntries = T->GetEntries();
-  cout << nEntries << " Events" << endl;
+  cout << endl << nEntries << " Events" << endl;
   cout << "Processing " + inName << endl;
 
   //Skims//
@@ -119,6 +160,21 @@ int main(int argc, char* argv[]){
     hname = Form("%i_jethT",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
 
+    hname = Form("%i_minjet0pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_minjet1pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_cleanjet0pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_cleanjet1pt",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_masslmin0",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_masslmin1",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    hname = Form("%i_masslljjm",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,5000);
+
     hname = Form("%i_nEle",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
     hname = Form("%i_nEleDiff",i);
@@ -162,9 +218,9 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_rl0l1",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
-    hname = Form("%i_rl0j",i);
+    hname = Form("%i_rl0cleanj",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
-    hname = Form("%i_rl1j",i);
+    hname = Form("%i_rl1cleanj",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_lep0perp",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
@@ -179,37 +235,14 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
   }
 
-  //Jet Corrections//
-
-  string data = "DATA";
-  if (ISMC) data = "MC";
-  era += "_" + data;
-
-  JetCorrectorParameters *ResJetPar = new JetCorrectorParameters(era + "/" + era + "_L2L3Residual_" + jet_type + ".txt"); 
-  JetCorrectorParameters *L3JetPar  = new JetCorrectorParameters(era + "/" + era + "_L3Absolute_" + jet_type + ".txt");
-  JetCorrectorParameters *L2JetPar  = new JetCorrectorParameters(era + "/" + era + "_L2Relative_" + jet_type + ".txt");
-  JetCorrectorParameters *L1JetPar  = new JetCorrectorParameters(era + "/" + era + "_L1FastJet_" + jet_type + ".txt");
-
-  vector<JetCorrectorParameters> jetPars;
-  jetPars.push_back(*L1JetPar);
-  jetPars.push_back(*L2JetPar);
-  jetPars.push_back(*L3JetPar);
-  jetPars.push_back(*ResJetPar);
-
-  FactorizedJetCorrector *jetCorrector = new FactorizedJetCorrector(jetPars);
-
-  vector<JetCorrectorParameters> jetL1Pars;
-  jetL1Pars.push_back(*L1JetPar);
-  FactorizedJetCorrector *jetL1Corrector = new FactorizedJetCorrector(jetL1Pars);
-
   //Set Branches//
 
   //ULong64_t event;
-  //int run, lumi, bx;
+  int run; //, lumi, bx;
 
   if (!ISMC){
     //T->SetBranchAddress("event", &event);
-    //T->SetBranchAddress("run", &run);
+    T->SetBranchAddress("run", &run);
     //T->SetBranchAddress("lumi", &lumi);
     //T->SetBranchAddress("bx", &bx);
   }
@@ -307,10 +340,12 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("jet_numneutral", jet_numneutral);
   T->SetBranchAddress("jet_chmult", jet_chmult);
 
-  float met_pt, met_px, met_py;
+  float met_pt, met_px, met_py, met_phi, met_sumet;
   T->SetBranchAddress("met_pt", &met_pt);
   T->SetBranchAddress("met_px", &met_px);
   T->SetBranchAddress("met_py", &met_py);
+  T->SetBranchAddress("met_phi", &met_phi);
+  T->SetBranchAddress("met_sumet", &met_sumet);
 
   float rho;
   T->SetBranchAddress("rho", &rho);
@@ -420,11 +455,17 @@ int main(int argc, char* argv[]){
     dilepmassCut++;
     double dilepmass = (lep0+lep1).M();
 
+    string era = eras[0];
+    for( map<string, pair<int, int> >::const_iterator it = m_IOV.begin(); it != m_IOV.end(); ++it ) {
+      const pair<int, int>& interval = it->second;
+      if (interval.first <= run && run <= interval.second) { era = it->first; break; }
+    }
+
     vector<pair<int, float> > jet_index_corrpt;
     TLorentzVector minjet0, minjet1;
     float rmin0=99, rmin1=99;
     double ctype1_x=0, ctype1_y=0;
-    float rl0j=-1, rl1j=-1;
+    float rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
     int nGoodJet=0;
     for (int i=0; i<nJet; i++){
@@ -441,39 +482,41 @@ int main(int argc, char* argv[]){
         if (jet_nef[i]>=0.9 || jet_numneutral[i]<=10) continue;
       }
 
-      jetCorrector->setJetEta( jet_eta[i] );
-      jetCorrector->setJetPt( jet_pt[i] );
-      jetCorrector->setJetA( jet_area[i] );
-      jetCorrector->setRho(rho);
-      double corr_pt = jetCorrector->getCorrection() * jet_pt[i];
+      jetCorrectors[era]->setJetEta( jet_eta[i] );
+      jetCorrectors[era]->setJetPt( jet_pt[i] );
+      jetCorrectors[era]->setJetA( jet_area[i] );
+      jetCorrectors[era]->setRho(rho);
+      double corr_pt = jetCorrectors[era]->getCorrection() * jet_pt[i];
       jet_index_corrpt.push_back( make_pair(i, corr_pt) );
-
-      if (corr_pt>30) nGoodJet++;
 
       TLorentzVector jet;
       jet.SetPtEtaPhiM(corr_pt, jet_eta[i], jet_phi[i], jet_mass[i]);
 
-      if (lep0.DeltaR(jet) < rmin0) {
-        rmin0 = lep0.DeltaR(jet);
-        minjet0 = jet;
-      }
-      if (lep1.DeltaR(jet) < rmin1) {
-        rmin1 = lep1.DeltaR(jet);
-        minjet1 = jet;
+      if (corr_pt>30) {
+        nGoodJet++;
+
+        if (lep0.DeltaR(jet) < rmin0) {
+          rmin0 = lep0.DeltaR(jet);
+          minjet0 = jet;
+        }
+        if (lep1.DeltaR(jet) < rmin1) {
+          rmin1 = lep1.DeltaR(jet);
+          minjet1 = jet;
+        }
       }
 
-      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') rl0j = lep0.DeltaR(jet);
-      if (jet_clean[i] == 's' || jet_clean[i] == 'b') rl1j = lep1.DeltaR(jet);
+      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = corr_pt; }
+      if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = corr_pt; }
 
       //corrected MET
       if ( corr_pt>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
-        jetL1Corrector->setJetEta( jet_eta[i] );
-        jetL1Corrector->setJetPt( jet_pt[i] );
-        jetL1Corrector->setJetA( jet_area[i] );
-        jetL1Corrector->setRho(rho);
+        jetL1Correctors[era]->setJetEta( jet_eta[i] );
+        jetL1Correctors[era]->setJetPt( jet_pt[i] );
+        jetL1Correctors[era]->setJetA( jet_area[i] );
+        jetL1Correctors[era]->setRho(rho);
 
         TLorentzVector jetL1;
-        jetL1.SetPtEtaPhiM( jetL1Corrector->getCorrection()*jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
+        jetL1.SetPtEtaPhiM( jetL1Correctors[era]->getCorrection()*jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
 
         ctype1_x += (jet.Px()-jetL1.Px());
         ctype1_y += (jet.Py()-jetL1.Py());
@@ -495,10 +538,22 @@ int main(int argc, char* argv[]){
     if (minjet0 == minjet1) sameRlepjet++;
     float lep0perp = lep0.Perp( minjet0.Vect() );
     float lep1perp = lep1.Perp( minjet1.Vect() );
+    float minjet0pt = minjet0.Pt();
+    float minjet1pt = minjet1.Pt();
+    float masslmin0 = (lep0+minjet0).M();
+    float masslmin1 = (lep1+minjet1).M();
 
     double met_corrpx = met_px - ctype1_x;
     double met_corrpy = met_py - ctype1_y;
     double met_corrpt = sqrt(met_corrpx*met_corrpx + met_corrpy*met_corrpy);
+
+    TLorentzVector met;
+    met.SetPtEtaPhiE(met_corrpt, 0, met_phi, met_sumet);
+    TLorentzVector jet0, jet1;
+    jet0.SetPtEtaPhiM(jet0pt, jet_eta[jet0index], jet_phi[jet0index], jet_mass[jet0index]);
+    jet1.SetPtEtaPhiM(jet1pt, jet_eta[jet1index], jet_phi[jet1index], jet_mass[jet1index]);
+
+    float masslljjm = (lep0+lep1+jet0+jet1+met).M();
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
@@ -555,50 +610,52 @@ int main(int argc, char* argv[]){
     }
 
     FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-              rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+              rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-              hT, met_pt, met_corrpt, sT, rbal, rabl);
+              hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
-    if (jet0btag || jet1btag)
+    if (jet0btag || jet1btag) {
       FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl);
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+      btagCut++;
+    }
 
     if (jet0btag && jet1btag)
       FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl);
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if ( jet1pt < 50 ) continue;
     if ( fabs(jet_eta[jet1index]) > 2.5 ) continue;
 
     FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-              rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+              rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-              hT, met_pt, met_corrpt, sT, rbal, rabl);
+              hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if (jet0btag || jet1btag)
       FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl);
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if (jet0btag && jet1btag)
       FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl);
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if (lep0flavor == lep1flavor) {
       if ( 76<dilepmass && dilepmass<106 ) continue;
-      DilepVetoCut++;
+      //DilepVetoCut++;
 
       FillHists("6_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0j, rl1j, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl);
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
     }
   }
   cout << difftime(time(NULL), start) << " s" << endl;
@@ -658,10 +715,11 @@ void FillHist1D(const TString& histName, const Double_t& value, const double& we
 
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
-               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0j, const float& rl1j, const float& lep0perp, const float& lep1perp,
+               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
                const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
-               const float& rbal, const float& rabl) {
+               const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
+               const float& masslmin0, const float& masslmin1, const float& masslljjm) {
 
     FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
     FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
@@ -686,8 +744,8 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"rmin0", rmin0, weight);
     FillHist1D(prefix+"rmin1", rmin1, weight);
     FillHist1D(prefix+"rl0l1", rl0l1, weight);
-    FillHist1D(prefix+"rl0j", rl0j, weight);
-    FillHist1D(prefix+"rl1j", rl1j, weight);
+    FillHist1D(prefix+"rl0cleanj", rl0cleanj, weight);
+    FillHist1D(prefix+"rl1cleanj", rl1cleanj, weight);
     FillHist1D(prefix+"lep0perp", lep0perp, weight);
     FillHist1D(prefix+"lep1perp", lep1perp, weight);
 
@@ -708,6 +766,14 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
 
     if (rbal != -1) FillHist1D(prefix+"rbl", rbal, weight);
     if (rabl != -1) FillHist1D(prefix+"rbl", rabl, weight);
+
+    FillHist1D(prefix+"minjet0pt", minjet0pt, weight);
+    FillHist1D(prefix+"minjet1pt", minjet1pt, weight);
+    FillHist1D(prefix+"cleanjet0pt", cleanjet0pt, weight);
+    FillHist1D(prefix+"cleanjet1pt", cleanjet1pt, weight);
+    FillHist1D(prefix+"masslmin0", masslmin0, weight);
+    FillHist1D(prefix+"masslmin1", masslmin1, weight);
+    FillHist1D(prefix+"masslljjm", masslljjm, weight);
 }
 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits) {
@@ -766,7 +832,7 @@ void setPars(const string& parFile) {
     line.erase(0, delim_pos + 1);
 
     while (line.at(0) == ' ') line.erase(0, 1);
-    if ((delim_pos = line.find(' ')) != -1) line.erase(delim_pos, line.length());
+    while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
     if (var == "ISMC"){
       if (line == "true") ISMC = true;
@@ -775,7 +841,14 @@ void setPars(const string& parFile) {
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();
     else if (var == "channel") channel = line;
-    else if (var == "era") era = line;
+    else if (var == "eras") {
+      while ( (delim_pos = line.find(' ')) != -1) {
+        eras.push_back( line.substr(0, delim_pos) );
+        line.erase(0, delim_pos + 1);
+        while (line.at(0) == ' ') line.erase(0, 1);
+      }
+      eras.push_back( line );
+    }
     else if (var == "jet_type") jet_type = line;
   }
   file.close();

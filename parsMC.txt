@@ -1,0 +1,6 @@
+ISMC       true
+inName     Wjet.root
+outName    Wjet_mm.root
+channel    mm
+eras       Summer16_23Sep2016V4_MC
+jet_type   AK4PFchs

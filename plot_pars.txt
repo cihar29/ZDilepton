@@ -6,12 +6,11 @@ leftText       CMS
 rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
 logx           false
 subplot        ratio
-outName        MuonGH/sT
-hname          0_sT
+outName        MuonGH/masslljjm
+hname          0_masslljjm
 xmin           0
-xmax           500
+xmax           5000
 ymin           0
-ymax           50000
 subymin        0
-subymax        4
+subymax        3
 

@@ -80,17 +80,19 @@ int main(int argc, char* argv[]) {
     //color++;
   }
 
-  m_MCs["t#bar{t}"]->SetLineColor(2);
-  m_MCs["t#bar{t}"]->SetFillColor(2);
+  if ( !m_MCs.empty() ) {
+    m_MCs["t#bar{t}"]->SetLineColor(2);
+    m_MCs["t#bar{t}"]->SetFillColor(2);
 
-  m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetLineColor(8);      
-  m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetFillColor(8);
+    m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetLineColor(8);      
+    m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetFillColor(8);
 
-  m_MCs["W+Jets"]->SetLineColor(4);      
-  m_MCs["W+Jets"]->SetFillColor(4);
+    m_MCs["W+Jets"]->SetLineColor(4);      
+    m_MCs["W+Jets"]->SetFillColor(4);
 
-  m_MCs["Single-Top"]->SetLineColor(28);      
-  m_MCs["Single-Top"]->SetFillColor(28);
+    m_MCs["Single-Top"]->SetLineColor(28);      
+    m_MCs["Single-Top"]->SetFillColor(28);
+  }
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
   if (logx) c->SetLogx();
@@ -124,7 +126,10 @@ int main(int argc, char* argv[]) {
   {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"},
   {"rl0j","#DeltaR(leading lepton, cleaned jet)"},{"rl1j","#DeltaR(subleading lepton, cleaned jet)"},{"rl0l1","#DeltaR(leading lepton, subleading lepton)"},
   {"jet0phi","#phi_{Leading Jet}"}, {"jet1phi","#phi_{Subleading Jet}"}, {"lep0phi","#phi_{Leading Lepton}"}, {"lep1phi","#phi_{Subleading Lepton}"},
-  {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"}};
+  {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} (GeV)"},
+  {"minjet1pt","Jet p_{T}^{rmin subleading lepton} (GeV)"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} (GeV)"},
+  {"cleanjet1pt","Jet p_{T}^{cleaned from subleading lepton} (GeV)"},{"masslmin0","M_{leading lep,rmin jet} (Gev)"},{"masslmin1","M_{subleading lep,rmin jet} (Gev)"},
+  {"masslljjm","M_{lljjmet} (Gev)"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   if ( subplot=="ratio" || subplot=="diff" ) {

@@ -15,26 +15,26 @@ if [ $# -eq 2 ] ; then
   scale="1"
 
   hists=( "dilepmass" "jet0btag" "jet0eta" "jet0pt" "jet1btag" "jet1eta" "jet1pt" "jethT" "lep0eta" "lep0perp" "lep0pt" "lep1eta" "lep1perp" "lep1pt"
-          "jet0phi" "jet1phi" "lep0phi" "lep1phi" "lepept" "lepmpt" "metpt" "metcorrpt" "sT" "nEle" "nGoodEle" "nGoodJet" "nGoodMuon" "nJet" "nMuon"
-          "nbtag" "rl0j" "rl1j" "rl0l1" "rmin0" "rmin1" "rbl" )
+          "lepept" "lepmpt" "metpt" "metcorrpt" "sT" "nGoodEle" "nGoodMuon" "nGoodJet" "minjet0pt" "minjet1pt" "cleanjet0pt" "cleanjet1pt"
+          "nbtag" "rl0cleanj" "rl1cleanj" "rl0l1" "rmin0" "rmin1" "rbl" "masslmin0" "masslmin1" "masslljjm" )
 
   xmins=( 0 0 -5 0 0 -5 0 0 -5 0 0 -5 0 0
-          -4 -4 -4 -4 0 0 0 0 0 0 0 0 0 0 0
-          0 0 0 0 0 0 0 )
+          0 0 0 0 0 0 0 0 0 0 0 0
+          0 0 0 0 0 0 0 0 0 0)
   xmaxs=( 400 1 5 750 1 5 500 1000 5 200 500 5 200 300
-          4 4 4 4 300 300 300 300 1500 5 5 15 5 30 5 30 5
-          5 5 5 5 1 1 5 )
+          300 300 300 300 1500 5 5 15 1000 1000 1000 1000
+          5 5 5 5 5 5 5 500 500 5000)
 
   ymins=( 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
-          0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-          0 0 0 0 0 0 0 )
+          0 0 0 0 0 0 0 0 0 0 0 0
+          0 0 0 0 0 0 0 0 0 0 )
 
   subymins=( 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
-             0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-             0 0 0 0 0 0 0 )
+             0 0 0 0 0 0 0 0 0 0 0 0
+             0 0 0 0 0 0 0 0 0 0)
   subymaxs=( 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
-             3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
-             3 3 3 3 3 3 3 )
+             3 3 3 3 3 3 3 3 3 3 3 3
+             3 3 3 3 3 3 3 3 3 3 )
 
   for ((i=0;i<${#hists[@]};++i)); do
 
