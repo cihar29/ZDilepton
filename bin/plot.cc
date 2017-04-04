@@ -22,8 +22,8 @@ void setPars(const string& parFile);
 void setStyle();
 
 //parameters- edit in plot_pars.txt
-vector<TString> mcFileNames;
-vector<int> mcScales;
+vector<TString> mcFileNames, sigFileNames;
+vector<int> mcScales, sigScales;
 string subplot, dataName;
 TString dataFileName;
 TString hname, outName, leftText, rightText;
@@ -55,12 +55,12 @@ int main(int argc, char* argv[]) {
 
     TFile* mcFile = TFile::Open(mcFileNames[i]);
     TH1F* h_MC = (TH1F*) mcFile->FindObjectAny(hname);
-    h_MC->Scale(mcScales[i]);
+    //h_MC->Scale(mcScales[i]);
     //h_MC->Sumw2();
 
     string key;
     if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )     key = "t#bar{t}";
-    else if ( mcFileNames[i].Contains("dy", TString::kIgnoreCase) )   key = "Z/#gamma^{*}#rightarrowl^{+}l^{-}";
+    else if ( mcFileNames[i].Contains("dy", TString::kIgnoreCase) )   key = "Z/#gamma*#rightarrowl^{+}l^{-}";
     else if ( mcFileNames[i].Contains("wjet", TString::kIgnoreCase) ) key = "W+Jets";
     else if ( mcFileNames[i].Contains("st", TString::kIgnoreCase)
            || mcFileNames[i].Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
@@ -84,14 +84,36 @@ int main(int argc, char* argv[]) {
     m_MCs["t#bar{t}"]->SetLineColor(2);
     m_MCs["t#bar{t}"]->SetFillColor(2);
 
-    m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetLineColor(8);      
-    m_MCs["Z/#gamma^{*}#rightarrowl^{+}l^{-}"]->SetFillColor(8);
+    m_MCs["Z/#gamma*#rightarrowl^{+}l^{-}"]->SetLineColor(8);      
+    m_MCs["Z/#gamma*#rightarrowl^{+}l^{-}"]->SetFillColor(8);
 
     m_MCs["W+Jets"]->SetLineColor(4);      
     m_MCs["W+Jets"]->SetFillColor(4);
 
     m_MCs["Single-Top"]->SetLineColor(28);      
     m_MCs["Single-Top"]->SetFillColor(28);
+  }
+
+  unordered_map<string, TH1F*> m_sigs;
+  for (int i=0,n=sigFileNames.size(); i<n; i++) {
+
+    TFile* sigFile = TFile::Open(sigFileNames[i]);
+    TH1F* h_sig = (TH1F*) sigFile->FindObjectAny(hname);
+    //h_sig->Scale(sigScales[i]);
+    //h_sig->Sumw2();
+
+    string key="";
+    if ( sigFileNames[i].Contains("zprime", TString::kIgnoreCase) )     key = "Z' 3 TeV (x300)";
+    else if ( sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) key = "g_{kk} 3 TeV";
+    m_sigs[key] = h_sig;
+  }
+
+  if ( !m_sigs.empty() ) {
+    m_sigs["Z' 3 TeV (x300)"]->SetLineColor(5);
+    //m_sigs["Z' 3 TeV (x300)"]->SetFillColor(9);
+
+    m_sigs["g_{kk} 3 TeV"]->SetLineColor(6);      
+    //m_sigs["g_{kk} 3 TeV"]->SetFillColor(12);
   }
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
@@ -124,7 +146,7 @@ int main(int argc, char* argv[]) {
   {"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"},{"nbtag","Number of btagged Jets"},
   {"metcorrpt","Corrected MET p_{T} (GeV)"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
   {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"},
-  {"rl0j","#DeltaR(leading lepton, cleaned jet)"},{"rl1j","#DeltaR(subleading lepton, cleaned jet)"},{"rl0l1","#DeltaR(leading lepton, subleading lepton)"},
+  {"rl0cleanj","#DeltaR(leading lepton, cleaned jet)"},{"rl1cleanj","#DeltaR(subleading lepton, cleaned jet)"},{"rl0l1","#DeltaR(leading lepton, subleading lepton)"},
   {"jet0phi","#phi_{Leading Jet}"}, {"jet1phi","#phi_{Subleading Jet}"}, {"lep0phi","#phi_{Leading Lepton}"}, {"lep1phi","#phi_{Subleading Lepton}"},
   {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} (GeV)"},
   {"minjet1pt","Jet p_{T}^{rmin subleading lepton} (GeV)"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} (GeV)"},
@@ -152,9 +174,12 @@ int main(int argc, char* argv[]) {
   hist->GetYaxis()->SetRangeUser(ymin, int(h_Data->GetMaximum()*1.2) );
   hist->Draw();
   mcStack->Draw("samehist");
-  h_Data->Draw("sameP");
+  h_Data->Draw("samePE");
 
-  TLegend* leg = new TLegend(.7,.9-.05*(1.+m_MCs.size()),.9,.9);
+  for (unordered_map<string, TH1F*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
+    i_sig->second->Draw("samehist");
+
+  TLegend* leg = new TLegend(.7,.9-.05*(1.+m_MCs.size()+m_sigs.size()),.9,.9);
   leg->SetBorderSize(0);
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
@@ -162,6 +187,8 @@ int main(int argc, char* argv[]) {
   leg->AddEntry(h_Data, Form( "#bf{%s}", dataName.data() ), "P");
   for (unordered_map<string, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
     leg->AddEntry(i_MC->second, Form( "#bf{%s}", i_MC->first.data() ), "L");
+  for (unordered_map<string, TH1F*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
+    leg->AddEntry(i_sig->second, Form( "#bf{%s}", i_sig->first.data() ), "L");
 
   leg->Draw();
 
@@ -193,11 +220,10 @@ int main(int argc, char* argv[]) {
 
   if (hname.Contains("0_")) { latex.DrawLatex(0.22,0.8,"0 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV"); }
   else if (hname.Contains("1_")) { latex.DrawLatex(0.22,0.8,"1 btag"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV"); }
-  else if (hname.Contains("2_")) { latex.DrawLatex(0.22,0.8,"2 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV"); }
-  else if (hname.Contains("3_")) { latex.DrawLatex(0.22,0.8,"0 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  else if (hname.Contains("4_")) { latex.DrawLatex(0.22,0.8,"1 btag"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  else if (hname.Contains("5_")) { latex.DrawLatex(0.22,0.8,"2 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  //if (hname.Contains("6_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
+  else if (hname.Contains("2_")) { latex.DrawLatex(0.22,0.8,"0 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
+  else if (hname.Contains("3_")) { latex.DrawLatex(0.22,0.8,"1 btag"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
+  else if (hname.Contains("4_")) { latex.DrawLatex(0.22,0.8,"2 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
+  //if (hname.Contains("5_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
 
   if (subplot=="ratio" || subplot=="diff" ) {
     bottom->cd();
@@ -269,6 +295,14 @@ void setPars(const string& parFile) {
       }
       mcFileNames.push_back( line.data() );
     }
+    else if (var == "sigFileNames") {
+      while ( (delim_pos = line.find(' ')) != -1) {
+        sigFileNames.push_back( line.substr(0, delim_pos).data() );
+        line.erase(0, delim_pos + 1);
+        while (line.at(0) == ' ') line.erase(0, 1);
+      }
+      sigFileNames.push_back( line.data() );
+    }
     else if (var == "mcScales") {
       while ( (delim_pos = line.find(' ')) != -1) {
         mcScales.push_back( stoi( line.substr(0, delim_pos) ) );
@@ -276,6 +310,14 @@ void setPars(const string& parFile) {
         while (line.at(0) == ' ') line.erase(0, 1);
       }
       mcScales.push_back( stoi(line) );
+    }
+    else if (var == "sigScales") {
+      while ( (delim_pos = line.find(' ')) != -1) {
+        sigScales.push_back( stoi( line.substr(0, delim_pos) ) );
+        line.erase(0, delim_pos + 1);
+        while (line.at(0) == ' ') line.erase(0, 1);
+      }
+      sigScales.push_back( stoi(line) );
     }
     else if (var == "outName")   outName = line.data();
     else if (var == "hname")     hname = line.data();

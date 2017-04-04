@@ -4,3 +4,4 @@
 <use name="root"/>
 <bin name="analyze" file="analyze.cc"/>
 <bin name="plot" file="plot.cc"/>
+<bin name="createLog" file="createLog.cc"/>

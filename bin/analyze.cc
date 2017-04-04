@@ -112,26 +112,38 @@ int main(int argc, char* argv[]){
 
   //Skims//
 
-  int countEvts=0, countDilep=0, countLeppt=0, countDilepmass=0, countJetpteta=0, countMet=0;
+  enum Cuts{
+    countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
+    channelCut, signCut, trigCut, lepkinCut, thirdLepCut, dilepmassCut, jetCut, ptrelCut, jetCut2, btagCut, dilepVetoCut, numCuts
+  };
+  vector<pair<string, int> > v_cuts(numCuts);
+
+  v_cuts[countEvts]=make_pair("Initial",0); v_cuts[countDilep]=make_pair("Passed Dilepton selection",0); v_cuts[countLeppt]=make_pair("Passed Lepton Pt Cut",0);
+  v_cuts[countDilepmass]=make_pair("Passed Dilepton Mass Cut",0); v_cuts[countJetpteta]=make_pair("Passed Leading Jet Pt/eta cut",0);
+  v_cuts[countMet]=make_pair("Passed MET Filters",0); v_cuts[channelCut]=make_pair("Passed Correct Channel",0); v_cuts[signCut]=make_pair("Passed Opposite Lepton Sign",0);
+  v_cuts[trigCut]=make_pair("Passed HLT Trigger",0); v_cuts[lepkinCut]=make_pair("Passed lepton kinematics cut",0); v_cuts[thirdLepCut]=make_pair("Passed third lepton cut",0);
+  v_cuts[dilepmassCut]=make_pair("Passed dilepton mass cut",0); v_cuts[jetCut]=make_pair("Passed jet cut",0); v_cuts[ptrelCut]=make_pair("Passed pTrel cut",0);
+  v_cuts[jetCut2]=make_pair("Passed second jet cut",0); v_cuts[btagCut]=make_pair("Passed two btags cut",0); v_cuts[dilepVetoCut]=make_pair("Passed Dilepmass window Cut",0);
 
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
   while ( (key = (TKey*)nextkey()) ) {
     TString keyname = key->GetName();
 
-    if (keyname.EqualTo("totalEvts"))          countEvts += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("dilep_cut"))     countDilep += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("leppt_cut"))     countLeppt += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("dilepmass_cut")) countDilepmass += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("jetpteta_cut"))  countJetpteta += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("met_cut"))       countMet += (*(vector<int>*)key->ReadObj())[0];
+    if (keyname.EqualTo("totalEvts"))          v_cuts[countEvts].second += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilep_cut"))     v_cuts[countDilep].second += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("leppt_cut"))     v_cuts[countLeppt].second += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilepmass_cut")) v_cuts[countDilepmass].second += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("jetpteta_cut"))  v_cuts[countJetpteta].second += (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("met_cut"))       v_cuts[countMet].second += (*(vector<int>*)key->ReadObj())[0];
     //else if (keyname.EqualTo("filter_failed"))
   }
-  if (countMet != nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
+
+  if (v_cuts[countMet].second != nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
 
   //Histograms//
 
-  int nDirs = 7;
+  int nDirs = 5;
   for (int i=0; i<nDirs; i++) {
     TString hname = Form("%i_nJet",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXJET,0,MAXJET);
@@ -173,7 +185,7 @@ int main(int argc, char* argv[]){
     hname = Form("%i_masslmin1",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
     hname = Form("%i_masslljjm",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,200,0,5000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,3000);
 
     hname = Form("%i_nEle",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
@@ -207,9 +219,9 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
 
     hname = Form("%i_muonD0",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-1,1);
     hname = Form("%i_muonDz",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,-10,10);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,-1,1);
     hname = Form("%i_rmin0",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_rmin1",i);
@@ -340,18 +352,16 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("jet_numneutral", jet_numneutral);
   T->SetBranchAddress("jet_chmult", jet_chmult);
 
-  float met_pt, met_px, met_py, met_phi, met_sumet;
+  float met_pt, met_px, met_py, met_phi;
   T->SetBranchAddress("met_pt", &met_pt);
   T->SetBranchAddress("met_px", &met_px);
   T->SetBranchAddress("met_py", &met_py);
   T->SetBranchAddress("met_phi", &met_phi);
-  T->SetBranchAddress("met_sumet", &met_sumet);
 
   float rho;
   T->SetBranchAddress("rho", &rho);
 
   //Loop Over Entries//
-  int channelCut=0, signCut=0, trigCut=0, lepkinCut=0, thirdLepCut=0, dilepmassCut=0, jetCut=0, btagCut=0 , DilepVetoCut=0;
   int sameRlepjet=0;
   time_t start = time(NULL);
 
@@ -362,14 +372,14 @@ int main(int argc, char* argv[]){
 
    if (channel == "mm"){
       if (lep0flavor == 'm' && lep1flavor == 'm'){
-        channelCut++;
+        v_cuts[channelCut].second++;
 
         if (muon_charge[0]*muon_charge[1] > 0) continue;
-        signCut++;
+        v_cuts[signCut].second++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
-        trigCut++;
+        v_cuts[trigCut].second++;
 
         //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
         //  if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
@@ -383,11 +393,11 @@ int main(int argc, char* argv[]){
 
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
-        lepkinCut++;
+        v_cuts[lepkinCut].second++;
 
         //use these events for em channel
         if ( nEle>0 && ele_MediumID[0] && ele_pt[0] > 25 ) continue;
-        thirdLepCut++;
+        v_cuts[thirdLepCut].second++;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
         lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], MUONMASS);
@@ -398,13 +408,13 @@ int main(int argc, char* argv[]){
     }
     else if (channel == "ee"){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
-        channelCut++;
+        v_cuts[channelCut].second++;
 
         if (ele_charge[0]*ele_charge[1] > 0) continue;
-        signCut++;
+        v_cuts[signCut].second++;
 
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
-        lepkinCut++;
+        v_cuts[lepkinCut].second++;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
         lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ELEMASS);
@@ -415,14 +425,14 @@ int main(int argc, char* argv[]){
     }
     else{
       if (lep0flavor != lep1flavor) {
-        channelCut++;
+        v_cuts[channelCut].second++;
 
         if (ele_charge[0]*muon_charge[0] > 0) continue;
-        signCut++;
+        v_cuts[signCut].second++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
-        trigCut++;
+        v_cuts[trigCut].second++;
 
         if ( !ele_MediumID[0] ) continue;
 
@@ -438,8 +448,8 @@ int main(int argc, char* argv[]){
 
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
-        lepkinCut++;
-        thirdLepCut++;
+        v_cuts[lepkinCut].second++;
+        v_cuts[thirdLepCut].second++;
 
         if (lep0flavor=='e') {
           lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
@@ -452,7 +462,7 @@ int main(int argc, char* argv[]){
       }
       else continue;
     }
-    dilepmassCut++;
+    v_cuts[dilepmassCut].second++;
     double dilepmass = (lep0+lep1).M();
 
     string era = eras[0];
@@ -461,11 +471,11 @@ int main(int argc, char* argv[]){
       if (interval.first <= run && run <= interval.second) { era = it->first; break; }
     }
 
-    vector<pair<int, float> > jet_index_corrpt;
+    vector<pair<int, double> > jet_index_corrpt;
     TLorentzVector minjet0, minjet1;
-    float rmin0=99, rmin1=99;
+    double rmin0=99, rmin1=99;
     double ctype1_x=0, ctype1_y=0;
-    float rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
+    double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
     int nGoodJet=0;
     for (int i=0; i<nJet; i++){
@@ -527,33 +537,37 @@ int main(int argc, char* argv[]){
     sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
 
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
-    float jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
+    double jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
 
     //if ( jet0pt < 100 || jet1pt < 50 ) continue;
     //if ( fabs(jet_eta[jet0index]) > 2.5 || fabs(jet_eta[jet1index]) > 2.5 ) continue;
     if ( jet0pt < 100 ) continue;
     if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
-    jetCut++;
+    v_cuts[jetCut].second++;
 
     if (minjet0 == minjet1) sameRlepjet++;
-    float lep0perp = lep0.Perp( minjet0.Vect() );
-    float lep1perp = lep1.Perp( minjet1.Vect() );
-    float minjet0pt = minjet0.Pt();
-    float minjet1pt = minjet1.Pt();
-    float masslmin0 = (lep0+minjet0).M();
-    float masslmin1 = (lep1+minjet1).M();
+    double lep0perp = lep0.Perp( minjet0.Vect() );
+    double lep1perp = lep1.Perp( minjet1.Vect() );
+
+    if (lep0perp<10 || lep1perp<10) continue;
+    v_cuts[ptrelCut].second++;
+
+    double minjet0pt = minjet0.Pt();
+    double minjet1pt = minjet1.Pt();
+    double masslmin0 = (lep0+minjet0).M();
+    double masslmin1 = (lep1+minjet1).M();
 
     double met_corrpx = met_px - ctype1_x;
     double met_corrpy = met_py - ctype1_y;
     double met_corrpt = sqrt(met_corrpx*met_corrpx + met_corrpy*met_corrpy);
 
     TLorentzVector met;
-    met.SetPtEtaPhiE(met_corrpt, 0, met_phi, met_sumet);
+    met.SetPtEtaPhiE(met_corrpt, 0, met_phi, met_corrpt);
     TLorentzVector jet0, jet1;
     jet0.SetPtEtaPhiM(jet0pt, jet_eta[jet0index], jet_phi[jet0index], jet_mass[jet0index]);
     jet1.SetPtEtaPhiM(jet1pt, jet_eta[jet1index], jet_phi[jet1index], jet_mass[jet1index]);
 
-    float masslljjm = (lep0+lep1+jet0+jet1+met).M();
+    double masslljjm = (lep0+lep1+jet0+jet1+met).M();
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
@@ -572,26 +586,26 @@ int main(int argc, char* argv[]){
       if (ele_MediumID[i]) nGoodEle++;
     }
 
-    float hT=0;
+    double hT=0;
     for (int i=0; i<nGoodJet; i++) {
       int index = jet_index_corrpt[i].first;
-      float corr_pt = jet_index_corrpt[i].second;
+      double corr_pt = jet_index_corrpt[i].second;
 
       if ( corr_pt>30 && fabs(jet_eta[index])<2.5 ) hT+=corr_pt;
     }
-    float sT = hT+lep0.Pt()+lep1.Pt();
+    double sT = hT+lep0.Pt()+lep1.Pt();
 
     bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
-    float rl0l1 = lep0.DeltaR(lep1);
-    float lepept=0, lepmpt=0;
+    double rl0l1 = lep0.DeltaR(lep1);
+    double lepept=0, lepmpt=0;
     if (lep0flavor == 'm') lepmpt += lep0.Pt();
     else lepept += lep0.Pt();
     if (lep1flavor == 'm') lepmpt += lep1.Pt();
     else lepept += lep1.Pt();
 
-    float rbal=-1, rabl=-1;
+    double rbal=-1, rabl=-1;
     if (inName.EqualTo("TTbar.root")) {
       //lepton, anti-lepton, b quark, anti-b quark
       TLorentzVector glep, galep, gb, gab;
@@ -614,80 +628,71 @@ int main(int argc, char* argv[]){
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
               hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
-    if (jet0btag || jet1btag) {
+    if (jet0btag || jet1btag)
       FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
-                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-      btagCut++;
-    }
-
-    if (jet0btag && jet1btag)
-      FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if ( jet1pt < 50 ) continue;
     if ( fabs(jet_eta[jet1index]) > 2.5 ) continue;
+    v_cuts[jetCut2].second++;
 
-    FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+    FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
               rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
               hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
     if (jet0btag || jet1btag)
+      FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
+                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+
+    if (jet0btag && jet1btag) {
+      v_cuts[btagCut].second++;
       FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+    }
 
-    if (jet0btag && jet1btag)
+    /*if (lep0flavor == lep1flavor) {
+      if ( 76<dilepmass && dilepmass<106 ) continue;
+      v_cuts[dilepVetoCut].second++;
+
       FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-
-    if (lep0flavor == lep1flavor) {
-      if ( 76<dilepmass && dilepmass<106 ) continue;
-      //DilepVetoCut++;
-
-      FillHists("6_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
-                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-    }
+    }*/
   }
   cout << difftime(time(NULL), start) << " s" << endl;
   cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
 
+  TH1D* cuts = new TH1D("cuts","cuts",numCuts,0,numCuts);
+
   //Cutflow Table//
 
-  cout<<"====================================================================================================================="<< "\n" ;
+  cout<<"=====================================================================================================================\n";
   cout<<"                                     Cut Flow Table: " + inName + "\n" ;
-  cout<<"====================================================================================================================="<< "\n" ;
+  cout<<"=====================================================================================================================\n";
 
-  cout<<      "                                  |||         Nevent        |||   Relative Efficiency    |||     Efficiency      " << "\n" ;
-  cout<< Form("        Initial                   |||         %10i          |||           %1.3f          |||       %1.6f         ",countEvts,float(countEvts)/countEvts,float(countEvts)/countEvts) << "\n";
-  cout<< Form("  Passed Dilepton selection       |||         %10i          |||           %1.3f          |||       %1.6f         ",countDilep,float(countDilep)/countEvts,float(countDilep)/countEvts) << "\n";
-  cout<< Form("  Passed lepton Pt Cut            |||         %10i          |||           %1.3f          |||       %1.6f         ",countLeppt,float(countLeppt)/countDilep,float(countLeppt)/countEvts) << "\n";
-  cout<< Form("  Passed Dilepton Mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",countDilepmass,float(countDilepmass)/countLeppt,float(countDilepmass)/countEvts) << "\n";
-  cout<< Form("  Passed Leading Jet Pt_eta cut   |||         %10i          |||           %1.3f          |||       %1.6f         ",countJetpteta,float(countJetpteta)/countDilepmass,float(countJetpteta)/countEvts) << "\n";
-  cout<< Form("  Passed MET Filters              |||         %10i          |||           %1.3f          |||       %1.6f         ",countMet,float(countMet)/countJetpteta,float(countMet)/countEvts) << "\n";
-  cout<< Form("  Passed Correct Channel          |||         %10i          |||           %1.3f          |||       %1.6f         ",channelCut,float(channelCut)/countMet,float(channelCut)/countEvts) << "\n";
-  cout<< Form("  Passed Opposite Lepton Sign     |||         %10i          |||           %1.3f          |||       %1.6f         ",signCut,float(signCut)/channelCut,float(signCut)/countEvts) << "\n";
-  cout<< Form("  Passed HLT Trigger              |||         %10i          |||           %1.3f          |||       %1.6f         ",trigCut,float(trigCut)/signCut,float(trigCut)/countEvts) << "\n";
-  cout<< Form("  Passed lepton kinematics cut    |||         %10i          |||           %1.3f          |||       %1.6f         ",lepkinCut,float(lepkinCut)/trigCut,float(lepkinCut)/countEvts) << "\n";
-  cout<< Form("  Passed third Lepton Cut         |||         %10i          |||           %1.3f          |||       %1.6f         ",thirdLepCut,float(thirdLepCut)/lepkinCut,float(thirdLepCut)/countEvts) << "\n";
-  cout<< Form("  Passed dilepton mass Cut        |||         %10i          |||           %1.3f          |||       %1.6f         ",dilepmassCut,float(dilepmassCut)/thirdLepCut,float(dilepmassCut)/countEvts) << "\n";
-  cout<< Form("  Passed jet Cut                  |||         %10i          |||           %1.3f          |||       %1.6f         ",jetCut,float(jetCut)/dilepmassCut,float(jetCut)/countEvts) << "\n";
-  cout<< Form("  Passed btag Cut                 |||         %10i          |||           %1.3f          |||       %1.6f         ",btagCut,float(btagCut)/jetCut,float(btagCut)/countEvts) << "\n";
-  cout<< Form("  Passed Dilepmass window Cut     |||         %10i          |||           %1.3f          |||       %1.6f         ",DilepVetoCut,float(DilepVetoCut)/btagCut,float(DilepVetoCut)/countEvts) << "\n";
+  cout<<      "                               |||            Nevent           |||     Efficiency (Relative Efficiency)\n";
+
+  for (int i=0; i<numCuts; i++) {
+    cout << Form("%-30s |||         %11i         |||         %1.6f (%1.4f)",
+                 v_cuts[i].first.data(), v_cuts[i].second,
+                 float(v_cuts[i].second)/v_cuts[0].second, float(v_cuts[i].second)/(i==0 ? v_cuts[0].second : v_cuts[i-1].second) ) << endl;
+    cuts->SetBinContent(i+1, v_cuts[i].second);
+  }
 
   //Write Histograms//
 
   TFile* outFile = new TFile(outName,"RECREATE");
   outFile->cd();
+
+  cuts->Write();
 
   for (int i=0; i<nDirs; i++) outFile->mkdir( Form("%i/", i) );
 

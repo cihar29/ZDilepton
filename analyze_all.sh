@@ -12,7 +12,8 @@ if [ $# -eq 1 ] ; then
 
   channel=${args[0]}
 
-  mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet" )
+  mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
+            "zprime-M3000-W300" "gluon-M3000" )
 
   line1="ISMC       true"
   line4="channel    $channel"
