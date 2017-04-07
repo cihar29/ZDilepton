@@ -31,7 +31,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
-               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
+               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm);
 
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]){
 
   enum Cuts{
     countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
-    channelCut, signCut, trigCut, lepkinCut, thirdLepCut, dilepmassCut, jetCut, ptrelCut, jetCut2, btagCut, dilepVetoCut, numCuts
+    channelCut, trigCut, lepkinCut, signCut, thirdLepCut, dilepmassCut, dilepVetoCut, jetCut, ptrelCut, onebtagCut1jet, jetCut2, onebtagCut2jets, twobtagsCut2jets, numCuts
   };
   vector<pair<string, int> > v_cuts(numCuts);
 
@@ -123,7 +123,9 @@ int main(int argc, char* argv[]){
   v_cuts[countMet]=make_pair("Passed MET Filters",0); v_cuts[channelCut]=make_pair("Passed Correct Channel",0); v_cuts[signCut]=make_pair("Passed Opposite Lepton Sign",0);
   v_cuts[trigCut]=make_pair("Passed HLT Trigger",0); v_cuts[lepkinCut]=make_pair("Passed lepton kinematics cut",0); v_cuts[thirdLepCut]=make_pair("Passed third lepton cut",0);
   v_cuts[dilepmassCut]=make_pair("Passed dilepton mass cut",0); v_cuts[jetCut]=make_pair("Passed jet cut",0); v_cuts[ptrelCut]=make_pair("Passed pTrel cut",0);
-  v_cuts[jetCut2]=make_pair("Passed second jet cut",0); v_cuts[btagCut]=make_pair("Passed two btags cut",0); v_cuts[dilepVetoCut]=make_pair("Passed Dilepmass window Cut",0);
+  v_cuts[jetCut2]=make_pair("Passed second jet cut",0); v_cuts[dilepVetoCut]=make_pair("Passed Dilepmass window Cut",0);
+  v_cuts[onebtagCut1jet]=make_pair("Passed 1 btag, 1 jet cut",0); v_cuts[onebtagCut2jets]=make_pair("Passed 1 btag, 2 jets cut",0);
+  v_cuts[twobtagsCut2jets]=make_pair("Passed 2 btags, 2 jets cut",0);
 
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
@@ -181,11 +183,11 @@ int main(int argc, char* argv[]){
     hname = Form("%i_cleanjet1pt",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
     hname = Form("%i_masslmin0",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1000);
     hname = Form("%i_masslmin1",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1000);
     hname = Form("%i_masslljjm",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,200,0,3000);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,10000);
 
     hname = Form("%i_nEle",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
@@ -200,11 +202,11 @@ int main(int argc, char* argv[]){
     hname = Form("%i_nGoodMuon",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
     hname = Form("%i_lep0pt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,5000);
     hname = Form("%i_lep0eta",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
     hname = Form("%i_lep1pt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,5000);
     hname = Form("%i_lep1eta",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
     hname = Form("%i_lep0phi",i);
@@ -212,11 +214,11 @@ int main(int argc, char* argv[]){
     hname = Form("%i_lep1phi",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
     hname = Form("%i_dilepmass",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,2000);
     hname = Form("%i_lepept",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,1000);
     hname = Form("%i_lepmpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,1000);
 
     hname = Form("%i_muonD0",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-1,1);
@@ -235,16 +237,18 @@ int main(int argc, char* argv[]){
     hname = Form("%i_rl1cleanj",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_lep0perp",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
     hname = Form("%i_lep1perp",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
 
     hname = Form("%i_metpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
     hname = Form("%i_metcorrpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,100,0,500);
+    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
     hname = Form("%i_sT",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,300,0,3000);
+    hname = Form("%i_sT_met",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,300,0,3000);
   }
 
   //Set Branches//
@@ -374,9 +378,6 @@ int main(int argc, char* argv[]){
       if (lep0flavor == 'm' && lep1flavor == 'm'){
         v_cuts[channelCut].second++;
 
-        if (muon_charge[0]*muon_charge[1] > 0) continue;
-        v_cuts[signCut].second++;
-
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
         v_cuts[trigCut].second++;
@@ -395,6 +396,9 @@ int main(int argc, char* argv[]){
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
         v_cuts[lepkinCut].second++;
 
+        if (muon_charge[0]*muon_charge[1] > 0) continue;
+        v_cuts[signCut].second++;
+
         //use these events for em channel
         if ( nEle>0 && ele_MediumID[0] && ele_pt[0] > 25 ) continue;
         v_cuts[thirdLepCut].second++;
@@ -410,11 +414,11 @@ int main(int argc, char* argv[]){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
         v_cuts[channelCut].second++;
 
-        if (ele_charge[0]*ele_charge[1] > 0) continue;
-        v_cuts[signCut].second++;
-
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
         v_cuts[lepkinCut].second++;
+
+        if (ele_charge[0]*ele_charge[1] > 0) continue;
+        v_cuts[signCut].second++;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
         lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ELEMASS);
@@ -426,9 +430,6 @@ int main(int argc, char* argv[]){
     else{
       if (lep0flavor != lep1flavor) {
         v_cuts[channelCut].second++;
-
-        if (ele_charge[0]*muon_charge[0] > 0) continue;
-        v_cuts[signCut].second++;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
@@ -449,6 +450,10 @@ int main(int argc, char* argv[]){
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
         v_cuts[lepkinCut].second++;
+
+        if (ele_charge[0]*muon_charge[0] > 0) continue;
+        v_cuts[signCut].second++;
+
         v_cuts[thirdLepCut].second++;
 
         if (lep0flavor=='e') {
@@ -464,6 +469,9 @@ int main(int argc, char* argv[]){
     }
     v_cuts[dilepmassCut].second++;
     double dilepmass = (lep0+lep1).M();
+
+    if ( lep0flavor==lep1flavor && (76<dilepmass && dilepmass<106) ) continue;
+    v_cuts[dilepVetoCut].second++;
 
     string era = eras[0];
     for( map<string, pair<int, int> >::const_iterator it = m_IOV.begin(); it != m_IOV.end(); ++it ) {
@@ -502,7 +510,7 @@ int main(int argc, char* argv[]){
       TLorentzVector jet;
       jet.SetPtEtaPhiM(corr_pt, jet_eta[i], jet_phi[i], jet_mass[i]);
 
-      if (corr_pt>30) {
+      if (corr_pt>30 && fabs(jet_eta[i])<2.5) {
         nGoodJet++;
 
         if (lep0.DeltaR(jet) < rmin0) {
@@ -549,7 +557,7 @@ int main(int argc, char* argv[]){
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
-    if (lep0perp<10 || lep1perp<10) continue;
+    if ( (lep0perp<10 && rmin0<0.4) || (lep1perp<10 && rmin1<0.4) ) continue;
     v_cuts[ptrelCut].second++;
 
     double minjet0pt = minjet0.Pt();
@@ -594,6 +602,7 @@ int main(int argc, char* argv[]){
       if ( corr_pt>30 && fabs(jet_eta[index])<2.5 ) hT+=corr_pt;
     }
     double sT = hT+lep0.Pt()+lep1.Pt();
+    double sT_met = sT + met_corrpt;
 
     bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
@@ -626,13 +635,15 @@ int main(int argc, char* argv[]){
     FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
               rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-              hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+              hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
-    if (jet0btag || jet1btag)
+    if (jet0btag || jet1btag) {
       FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+                hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+      v_cuts[onebtagCut1jet].second++;
+    }
 
     if ( jet1pt < 50 ) continue;
     if ( fabs(jet_eta[jet1index]) > 2.5 ) continue;
@@ -641,36 +652,27 @@ int main(int argc, char* argv[]){
     FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
               rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
               jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-              hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+              hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
 
-    if (jet0btag || jet1btag)
+    if (jet0btag || jet1btag) {
       FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-
+                hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+      v_cuts[onebtagCut2jets].second++;
+    }
     if (jet0btag && jet1btag) {
-      v_cuts[btagCut].second++;
       FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+                hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
+      v_cuts[twobtagsCut2jets].second++;
     }
-
-    /*if (lep0flavor == lep1flavor) {
-      if ( 76<dilepmass && dilepmass<106 ) continue;
-      v_cuts[dilepVetoCut].second++;
-
-      FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
-                jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                hT, met_pt, met_corrpt, sT, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-    }*/
   }
   cout << difftime(time(NULL), start) << " s" << endl;
   cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
 
-  TH1D* cuts = new TH1D("cuts","cuts",numCuts,0,numCuts);
+  TH1D* cuts = new TH1D("cuts","cuts",numCuts,-0.5,float(numCuts)-0.5);
 
   //Cutflow Table//
 
@@ -685,6 +687,7 @@ int main(int argc, char* argv[]){
                  v_cuts[i].first.data(), v_cuts[i].second,
                  float(v_cuts[i].second)/v_cuts[0].second, float(v_cuts[i].second)/(i==0 ? v_cuts[0].second : v_cuts[i-1].second) ) << endl;
     cuts->SetBinContent(i+1, v_cuts[i].second);
+    cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1));
   }
 
   //Write Histograms//
@@ -722,7 +725,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const float& jet0pt, const float& jet1pt, const float& jet0eta, const float& jet1eta, const float& jet0phi, const float& jet1phi,
-               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT,
+               const float& jet0btag, const float& jet1btag, const int& nbtag, const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm) {
 
@@ -768,6 +771,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"metpt", met_pt, weight);
     FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
     FillHist1D(prefix+"sT", sT, weight);
+    FillHist1D(prefix+"sT_met", sT_met, weight);
 
     if (rbal != -1) FillHist1D(prefix+"rbl", rbal, weight);
     if (rabl != -1) FillHist1D(prefix+"rbl", rabl, weight);

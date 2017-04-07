@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
   }
 
   if ( !m_sigs.empty() ) {
-    m_sigs["Z' 3 TeV (x300)"]->SetLineColor(5);
+    m_sigs["Z' 3 TeV (x300)"]->SetLineColor(30);
     //m_sigs["Z' 3 TeV (x300)"]->SetFillColor(9);
 
     m_sigs["g_{kk} 3 TeV"]->SetLineColor(6);      
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
   {"jet1pt","Subleading Jet p_{T} (GeV)"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
   {"nJet","Number of Jets"},{"nEleDiff","N_{Electrons}-N_{Good Electrons}"},{"nMuonDiff","N_{Muons}-N_{Good Muons} "},
   {"nJetDiff","N_{Jets}-N_{Good Jets} "},{"nGoodEle","N_{Good Electrons}"},{"nGoodMuon","N_{Good Muons}"},
-  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","S_{T} (GeV)"},{"metpt","MET p_{T} (GeV)"},
+  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","H_{T}^{L} (GeV)"},{"sT_met","S_{T} (GeV)"},{"metpt","MET p_{T} (GeV)"},
   {"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"},{"nbtag","Number of btagged Jets"},
   {"metcorrpt","Corrected MET p_{T} (GeV)"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
   {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"},
@@ -172,6 +172,7 @@ int main(int argc, char* argv[]) {
   //hist->GetXaxis()->SetMoreLogLabels();
   //hist->GetYaxis()->SetTitle("Events");
   hist->GetYaxis()->SetRangeUser(ymin, int(h_Data->GetMaximum()*1.2) );
+  //hist->GetYaxis()->SetRangeUser(ymin, ymax);
   hist->Draw();
   mcStack->Draw("samehist");
   h_Data->Draw("samePE");
@@ -218,12 +219,11 @@ int main(int argc, char* argv[]) {
   else if (dataFileName.Contains("ee", TString::kIgnoreCase)) latex.DrawLatex(0.22,0.85,"#bf{ee}");
   else latex.DrawLatex(0.22,0.85,"#bf{e#mu}");
 
-  if (hname.Contains("0_")) { latex.DrawLatex(0.22,0.8,"0 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV"); }
-  else if (hname.Contains("1_")) { latex.DrawLatex(0.22,0.8,"1 btag"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV"); }
-  else if (hname.Contains("2_")) { latex.DrawLatex(0.22,0.8,"0 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  else if (hname.Contains("3_")) { latex.DrawLatex(0.22,0.8,"1 btag"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  else if (hname.Contains("4_")) { latex.DrawLatex(0.22,0.8,"2 btags"); latex.DrawLatex(0.22,0.75,"jet0pt>100 GeV, jet1pt>50 GeV"); }
-  //if (hname.Contains("5_")) latex.DrawLatex(0.22,.75,"M_{ll}#notin [76,106]");
+  if (hname.Contains("0_")) { latex.DrawLatex(0.22,0.8,"#geq 0 btags"); latex.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV"); }
+  else if (hname.Contains("1_")) { latex.DrawLatex(0.22,0.8,"#geq 1 btag"); latex.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV"); }
+  else if (hname.Contains("2_")) { latex.DrawLatex(0.22,0.8,"#geq 0 btags"); latex.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
+  else if (hname.Contains("3_")) { latex.DrawLatex(0.22,0.8,"#geq 1 btag"); latex.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
+  else if (hname.Contains("4_")) { latex.DrawLatex(0.22,0.8,"#geq 2 btags"); latex.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
 
   if (subplot=="ratio" || subplot=="diff" ) {
     bottom->cd();
