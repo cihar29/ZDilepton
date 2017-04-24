@@ -160,6 +160,13 @@ int main(int argc, char* argv[]){
 
   if (v_cuts[countMet].second != nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
 
+  v_cuts[countEvts].second *= weight0;
+  v_cuts[countDilep].second *= weight0;
+  v_cuts[countLeppt].second *= weight0;
+  v_cuts[countDilepmass].second *= weight0;
+  v_cuts[countJetpteta].second *= weight0;
+  v_cuts[countMet].second *= weight0;
+
   //Histograms//
 
   int nDirs = 5;
@@ -416,8 +423,8 @@ int main(int argc, char* argv[]){
                !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
         }
 
-        if (ISMC) weight *= muIdSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0] ) )
-                            * muIdSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[1]), muon_pt[1] ) );
+        if (ISMC) weight *= muIdSfHist->GetBinContent( muIdSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0] ) )
+                            * muIdSfHist->GetBinContent( muIdSfHist->FindBin( fabs(muon_eta[1]), muon_pt[1] ) );
 
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
