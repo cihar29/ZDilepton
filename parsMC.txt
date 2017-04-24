@@ -1,6 +1,10 @@
-ISMC       true
-inName     Wjet.root
-outName    Wjet_mm.root
-channel    mm
-eras       Summer16_23Sep2016V4_MC
-jet_type   AK4PFchs
+ISMC           true
+inName         gluonkk-M3000.root
+outName        gluonkk-M3000_mm.root
+channel        mm
+eras           Summer16_23Sep2016V4_MC
+jet_type       AK4PFchs
+muTrigSfName   Trigger_EfficienciesAndSF_Period4.root
+muIdSfName     ID_EfficienciesAndSF_GH.root
+muTrackSfName  Tracking_EfficienciesAndSF_GH.root
+

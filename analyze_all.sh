@@ -13,19 +13,29 @@ if [ $# -eq 1 ] ; then
   channel=${args[0]}
 
   mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
-            "zprime-M3000-W300" "gluon-M3000" )
-
-  line1="ISMC       true"
-  line4="channel    $channel"
-  line5="eras       Summer16_23Sep2016V4_MC"
-  line6="jet_type   AK4PFchs"
+            "zprime-M3000-W300" "gluonkk-M3000" )
 
   for i in "${mcfiles[@]}"
   do
 
-    line2="inName     "$i".root"
-    line3="outName    "$i"_"$channel".root"
-    echo -e "$line1\n$line2\n$line3\n$line4\n$line5\n$line6" > parsMC.txt
+    lines=( "ISMC           true"
+            "inName         ${i}.root"
+            "outName        ${i}_${channel}.root"
+            "channel        ${channel}"
+            "eras           Summer16_23Sep2016V4_MC"
+            "jet_type       AK4PFchs"
+            "muTrigSfName   Trigger_EfficienciesAndSF_Period4.root"
+            "muIdSfName     ID_EfficienciesAndSF_GH.root"
+            "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
+          )
+    line=""
+
+    for j in "${lines[@]}"
+    do
+      line="$line$j\n"
+    done
+
+    echo -e "$line" > parsMC.txt
 
     analyze parsMC.txt mc_weights.txt
 

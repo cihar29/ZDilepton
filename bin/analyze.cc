@@ -4,8 +4,10 @@
 #include "TFile.h"
 #include "TKey.h"
 #include "TH1.h"
+#include "TH2.h"
 #include "TTree.h"
 #include "TLorentzVector.h"
+#include "TGraphAsymmErrors.h"
 
 #include <cmath>
 #include <fstream>
@@ -39,10 +41,10 @@ map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
 bool ISMC;
-TString inName, outName;
+TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName;
 string channel, jet_type;
 vector<string> eras;
-double weight;
+double weight0, weight;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
@@ -57,10 +59,10 @@ int main(int argc, char* argv[]){
   string parFile = argv[1];
   setPars(parFile);
 
-  weight = -1;
+  weight0 = -1;
   if (argc == 3)    { string wFile = argv[2]; setWeight(wFile); }
-  if (weight == -1) { cout << "Weight set to 1" << endl; weight = 1.; }
-  else                cout << "Weight set to " << weight << endl;
+  if (weight0 == -1) { cout << "Weight set to 1" << endl; weight0 = 1.; }
+  else                cout << "Weight set to " << weight0 << endl;
 
   //Jet Corrections//
 
@@ -109,6 +111,21 @@ int main(int argc, char* argv[]){
   Long64_t nEntries = T->GetEntries();
   cout << endl << nEntries << " Events" << endl;
   cout << "Processing " + inName << endl;
+  cout << "Channel: " + channel << endl;
+
+  //SF Files//
+
+  TH2F* muTrigSfHist, *muIdSfHist;
+  TGraphAsymmErrors* muTrackSfGraph;
+  
+  TFile* muTrigSfFile = TFile::Open(muTrigSfName);
+  muTrigSfHist = (TH2F*) muTrigSfFile->Get("Mu50_OR_TkMu50_PtEtaBins/abseta_pt_ratio");
+
+  TFile* muIdSfFile = TFile::Open(muIdSfName);
+  muIdSfHist = (TH2F*) muIdSfFile->Get("MC_NUM_MediumID_DEN_genTracks_PAR_pt_eta/abseta_pt_ratio");
+
+  TFile* muTrackSfFile = TFile::Open(muTrackSfName);
+  muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
 
   //Skims//
 
@@ -116,16 +133,16 @@ int main(int argc, char* argv[]){
     countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
     channelCut, trigCut, lepkinCut, signCut, thirdLepCut, dilepmassCut, dilepVetoCut, jetCut, ptrelCut, onebtagCut1jet, jetCut2, onebtagCut2jets, twobtagsCut2jets, numCuts
   };
-  vector<pair<string, int> > v_cuts(numCuts);
+  vector<pair<string, double> > v_cuts(numCuts);
 
-  v_cuts[countEvts]=make_pair("Initial",0); v_cuts[countDilep]=make_pair("Passed Dilepton selection",0); v_cuts[countLeppt]=make_pair("Passed Lepton Pt Cut",0);
-  v_cuts[countDilepmass]=make_pair("Passed Dilepton Mass Cut",0); v_cuts[countJetpteta]=make_pair("Passed Leading Jet Pt/eta cut",0);
-  v_cuts[countMet]=make_pair("Passed MET Filters",0); v_cuts[channelCut]=make_pair("Passed Correct Channel",0); v_cuts[signCut]=make_pair("Passed Opposite Lepton Sign",0);
-  v_cuts[trigCut]=make_pair("Passed HLT Trigger",0); v_cuts[lepkinCut]=make_pair("Passed lepton kinematics cut",0); v_cuts[thirdLepCut]=make_pair("Passed third lepton cut",0);
-  v_cuts[dilepmassCut]=make_pair("Passed dilepton mass cut",0); v_cuts[jetCut]=make_pair("Passed jet cut",0); v_cuts[ptrelCut]=make_pair("Passed pTrel cut",0);
-  v_cuts[jetCut2]=make_pair("Passed second jet cut",0); v_cuts[dilepVetoCut]=make_pair("Passed Dilepmass window Cut",0);
-  v_cuts[onebtagCut1jet]=make_pair("Passed 1 btag, 1 jet cut",0); v_cuts[onebtagCut2jets]=make_pair("Passed 1 btag, 2 jets cut",0);
-  v_cuts[twobtagsCut2jets]=make_pair("Passed 2 btags, 2 jets cut",0);
+  v_cuts[countEvts]=make_pair("Initial",0.); v_cuts[countDilep]=make_pair("Passed Dilepton selection",0.); v_cuts[countLeppt]=make_pair("Passed Lepton Pt Cut",0.);
+  v_cuts[countDilepmass]=make_pair("Passed Dilepton Mass Cut",0.); v_cuts[countJetpteta]=make_pair("Passed Leading Jet Pt/eta cut",0.);
+  v_cuts[countMet]=make_pair("Passed MET Filters",0.); v_cuts[channelCut]=make_pair("Passed Correct Channel",0.); v_cuts[signCut]=make_pair("Passed Opposite Lepton Sign",0.);
+  v_cuts[trigCut]=make_pair("Passed HLT Trigger",0.); v_cuts[lepkinCut]=make_pair("Passed lepton kinematics cut",0.); v_cuts[thirdLepCut]=make_pair("Passed third lepton cut",0.);
+  v_cuts[dilepmassCut]=make_pair("Passed dilepton mass cut",0.); v_cuts[jetCut]=make_pair("Passed jet cut",0.); v_cuts[ptrelCut]=make_pair("Passed pTrel cut",0.);
+  v_cuts[jetCut2]=make_pair("Passed second jet cut",0.); v_cuts[dilepVetoCut]=make_pair("Passed Z-mass veto",0.);
+  v_cuts[onebtagCut1jet]=make_pair("Passed 1 btag, 1 jet cut",0.); v_cuts[onebtagCut2jets]=make_pair("Passed 1 btag, 2 jets cut",0.);
+  v_cuts[twobtagsCut2jets]=make_pair("Passed 2 btags, 2 jets cut",0.);
 
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
@@ -304,7 +321,7 @@ int main(int argc, char* argv[]){
   int nMuon=MAXLEP, muon_charge[nMuon];
   float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon], muon_D0[nMuon], muon_Dz[nMuon];
   float muon_chi2[nMuon], muon_tspm[nMuon], muon_kinkf[nMuon], muon_segcom[nMuon], muon_ftrackhits[nMuon];
-  bool muon_isGlob[nMuon], muon_IsMediumID[nMuon], muon_IsTightID[nMuon];
+  bool muon_isGlob[nMuon], muon_IsMediumID[nMuon];
 
   T->SetBranchAddress("nMuon", &nMuon);
   T->SetBranchAddress("muon_charge", muon_charge);
@@ -314,7 +331,6 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("muon_D0", muon_D0);
   T->SetBranchAddress("muon_Dz", muon_Dz);
   T->SetBranchAddress("muon_IsMediumID", muon_IsMediumID);
-  T->SetBranchAddress("muon_IsTightID", muon_IsTightID);
 
   T->SetBranchAddress("muon_isGlob", muon_isGlob);
   T->SetBranchAddress("muon_chi2", muon_chi2);
@@ -373,35 +389,46 @@ int main(int argc, char* argv[]){
     T->GetEntry(n);
 
     TLorentzVector lep0, lep1;
+    weight = weight0;
 
-   if (channel == "mm"){
+    if (channel == "mm") {
       if (lep0flavor == 'm' && lep1flavor == 'm'){
-        v_cuts[channelCut].second++;
+        v_cuts[channelCut].second += weight;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
-        v_cuts[trigCut].second++;
 
-        //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-        //  if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
-        //}
-        //else {
-        //  if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ||
-        //       !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
-        //}
+        if (ISMC) {
+          weight *= muTrackSfGraph->Eval(muon_eta[0]) * muTrackSfGraph->Eval(muon_eta[1]);
 
-        if ( !muon_IsTightID[0] || !muon_IsTightID[1] ) continue;
+          double trigSf0=0, trigSf1=0;
+          if (muon_pt[0] > 53) trigSf0 = muTrigSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0] ) );
+          if (muon_pt[1] > 53) trigSf1 = muTrigSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[1]), muon_pt[1] ) );
+          weight *= ( 1. - (1. - trigSf0)*(1. - trigSf1) );
+        }
+        v_cuts[trigCut].second += weight;
+
+        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+          if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
+        }
+        else {
+          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ||
+               !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
+        }
+
+        if (ISMC) weight *= muIdSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0] ) )
+                            * muIdSfHist->GetBinContent( muTrigSfHist->FindBin( fabs(muon_eta[1]), muon_pt[1] ) );
 
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
-        v_cuts[lepkinCut].second++;
+        v_cuts[lepkinCut].second += weight;
 
         if (muon_charge[0]*muon_charge[1] > 0) continue;
-        v_cuts[signCut].second++;
+        v_cuts[signCut].second += weight;
 
         //use these events for em channel
         if ( nEle>0 && ele_MediumID[0] && ele_pt[0] > 25 ) continue;
-        v_cuts[thirdLepCut].second++;
+        v_cuts[thirdLepCut].second += weight;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
         lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], MUONMASS);
@@ -412,13 +439,13 @@ int main(int argc, char* argv[]){
     }
     else if (channel == "ee"){
       if (lep0flavor == 'e' && lep1flavor == 'e'){
-        v_cuts[channelCut].second++;
+        v_cuts[channelCut].second += weight;
 
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
-        v_cuts[lepkinCut].second++;
+        v_cuts[lepkinCut].second += weight;
 
         if (ele_charge[0]*ele_charge[1] > 0) continue;
-        v_cuts[signCut].second++;
+        v_cuts[signCut].second += weight;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
         lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ELEMASS);
@@ -429,32 +456,29 @@ int main(int argc, char* argv[]){
     }
     else{
       if (lep0flavor != lep1flavor) {
-        v_cuts[channelCut].second++;
+        v_cuts[channelCut].second += weight;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
-        v_cuts[trigCut].second++;
+        v_cuts[trigCut].second += weight;
 
         if ( !ele_MediumID[0] ) continue;
 
-        //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-        //  if ( !muon_IsMediumID[0] ) continue;
-        //}
-        //else {
-        //  //cout<< "custom made medium muons"<<endl;
-        //  if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
-        //}
-
-        if ( !muon_IsTightID[0] ) continue;
+        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+          if ( !muon_IsMediumID[0] ) continue;
+        }
+        else {
+          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
+        }
 
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
-        v_cuts[lepkinCut].second++;
+        v_cuts[lepkinCut].second += weight;
 
         if (ele_charge[0]*muon_charge[0] > 0) continue;
-        v_cuts[signCut].second++;
+        v_cuts[signCut].second += weight;
 
-        v_cuts[thirdLepCut].second++;
+        v_cuts[thirdLepCut].second += weight;
 
         if (lep0flavor=='e') {
           lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
@@ -467,11 +491,11 @@ int main(int argc, char* argv[]){
       }
       else continue;
     }
-    v_cuts[dilepmassCut].second++;
+    v_cuts[dilepmassCut].second += weight;
     double dilepmass = (lep0+lep1).M();
 
     if ( lep0flavor==lep1flavor && (76<dilepmass && dilepmass<106) ) continue;
-    v_cuts[dilepVetoCut].second++;
+    v_cuts[dilepVetoCut].second += weight;
 
     string era = eras[0];
     for( map<string, pair<int, int> >::const_iterator it = m_IOV.begin(); it != m_IOV.end(); ++it ) {
@@ -551,14 +575,14 @@ int main(int argc, char* argv[]){
     //if ( fabs(jet_eta[jet0index]) > 2.5 || fabs(jet_eta[jet1index]) > 2.5 ) continue;
     if ( jet0pt < 100 ) continue;
     if ( fabs(jet_eta[jet0index]) > 2.5 ) continue;
-    v_cuts[jetCut].second++;
+    v_cuts[jetCut].second += weight;
 
     if (minjet0 == minjet1) sameRlepjet++;
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
     if ( (lep0perp<10 && rmin0<0.4) || (lep1perp<10 && rmin1<0.4) ) continue;
-    v_cuts[ptrelCut].second++;
+    v_cuts[ptrelCut].second += weight;
 
     double minjet0pt = minjet0.Pt();
     double minjet1pt = minjet1.Pt();
@@ -579,14 +603,12 @@ int main(int argc, char* argv[]){
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
-      if (muon_IsTightID[i]) nGoodMuon++;
-
-      //if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
-      //  if (muon_IsMediumID[i]) nGoodMuon++;
-      //}
-      //else {
-      //  if (isMediumMuonBCDEF(muon_isGlob[i], muon_chi2[i], muon_tspm[i], muon_kinkf[i], muon_segcom[i], muon_ftrackhits[i])) nGoodMuon++;
-      //}
+      if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+        if (muon_IsMediumID[i]) nGoodMuon++;
+      }
+      else {
+        if (isMediumMuonBCDEF(muon_isGlob[i], muon_chi2[i], muon_tspm[i], muon_kinkf[i], muon_segcom[i], muon_ftrackhits[i])) nGoodMuon++;
+      }
     }
 
     int nGoodEle=0;
@@ -642,12 +664,12 @@ int main(int argc, char* argv[]){
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-      v_cuts[onebtagCut1jet].second++;
+      v_cuts[onebtagCut1jet].second += weight;
     }
 
     if ( jet1pt < 50 ) continue;
     if ( fabs(jet_eta[jet1index]) > 2.5 ) continue;
-    v_cuts[jetCut2].second++;
+    v_cuts[jetCut2].second += weight;
 
     FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
               rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
@@ -659,14 +681,14 @@ int main(int argc, char* argv[]){
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-      v_cuts[onebtagCut2jets].second++;
+      v_cuts[onebtagCut2jets].second += weight;
     }
     if (jet0btag && jet1btag) {
       FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                 rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0pt, jet1pt, jet_eta[jet0index], jet_eta[jet1index],
                 jet_phi[jet0index], jet_phi[jet1index], jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                 hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm);
-      v_cuts[twobtagsCut2jets].second++;
+      v_cuts[twobtagsCut2jets].second += weight;
     }
   }
   cout << difftime(time(NULL), start) << " s" << endl;
@@ -677,15 +699,15 @@ int main(int argc, char* argv[]){
   //Cutflow Table//
 
   cout<<"=====================================================================================================================\n";
-  cout<<"                                     Cut Flow Table: " + inName + "\n" ;
+  cout<<"                                     Cut Flow Table: " + inName + "\n";
   cout<<"=====================================================================================================================\n";
 
   cout<<      "                               |||            Nevent           |||     Efficiency (Relative Efficiency)\n";
 
   for (int i=0; i<numCuts; i++) {
-    cout << Form("%-30s |||         %11i         |||         %1.6f (%1.4f)",
+    cout << Form("%-30s |||         %.1f         |||         %1.6f (%1.4f)",
                  v_cuts[i].first.data(), v_cuts[i].second,
-                 float(v_cuts[i].second)/v_cuts[0].second, float(v_cuts[i].second)/(i==0 ? v_cuts[0].second : v_cuts[i-1].second) ) << endl;
+                 v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/(i==0 ? v_cuts[0].second : v_cuts[i-1].second) ) << endl;
     cuts->SetBinContent(i+1, v_cuts[i].second);
     cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1));
   }
@@ -816,7 +838,7 @@ void setWeight(const string& wFile) {
       while (line.at(delim_pos) != ' ') delim_pos--;
 
       line.erase(0, delim_pos+1);
-      weight = stod(line);
+      weight0 = stod(line);
       break;
     }
   }
@@ -849,6 +871,9 @@ void setPars(const string& parFile) {
     }
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();
+    else if (var == "muTrigSfName") muTrigSfName = line.data();
+    else if (var == "muIdSfName") muIdSfName = line.data();
+    else if (var == "muTrackSfName") muTrackSfName = line.data();
     else if (var == "channel") channel = line;
     else if (var == "eras") {
       while ( (delim_pos = line.find(' ')) != -1) {
