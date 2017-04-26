@@ -36,32 +36,39 @@ int main(int argc, char* argv[]) {
     else if (dataset.Contains("gluon", TString::kIgnoreCase)) gluon = dataset;
   }
 
-  ofstream file( channel + "_finalLog.txt" );
+  ofstream file( channel + "_cutflow.txt" );
 
   file<<"====================================================================================================================="<< "\n" ;
   file<<"                                              Cut Flow Table: Summary\n" ;
   file<<"====================================================================================================================="<< "\n" ;
-  file<< Form("                               |||               Data                |||             Background            |||        %-20s       |||        %-20s", zprime.Data(), gluon.Data() ) << endl;
+  file<< Form("                          |||               Data                |||             Background            |||        %-20s       |||        %-20s", zprime.Data(), gluon.Data() ) << endl;
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut)
-    file<< Form("%-30s |||      %12.0f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)",
+  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
+    file<< Form("%-25s |||      %12.0f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)",
                 i_cut->first.data(), i_cut->second["data"].first, i_cut->second["data"].first/m_total["data"].first,
                 i_cut->second["background"].first, i_cut->second["background"].first/m_total["background"].first,
                 i_cut->second[zprime].first, i_cut->second[zprime].first/m_total[zprime].first,
                 i_cut->second[gluon].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
+    if (i_cut->first == "MET Filters")
+      file << "---------------------------------------------------------------------------------------------------------------------" << endl;
+  }
+
   file<<"\n====================================================================================================================="<< "\n" ;
   file<<"                                              Cut Flow Table: Background\n" ;
   file<<"====================================================================================================================="<< "\n" ;
-  file<<"                               |||              ttbar                |||             Drell-Yan             |||           Single-Top              |||           W+Jets" << endl;
+  file<<"                          |||              ttbar                |||             Drell-Yan             |||           Single-Top              |||           W+Jets" << endl;
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut)
-    file<< Form("%-30s |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)",
+  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
+    file<< Form("%-25s |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)      |||      %12.1f (%1.6f)",
                 i_cut->first.data(), i_cut->second["ttbar"].first, i_cut->second["ttbar"].first/m_total["ttbar"].first,
                 i_cut->second["Drell-Yan"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
                 i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].first/m_total["Single-Top"].first,
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
 
+    if (i_cut->first == "MET Filters")
+      file << "---------------------------------------------------------------------------------------------------------------------" << endl;
+  }
 
   file << "\n\\begin{center}\n";
   file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
@@ -69,12 +76,16 @@ int main(int argc, char* argv[]) {
   file << Form("  Cut & Data & ttbar & Drell-Yan & Single-Top & W+Jets & Background & %s & %s \\\\", zprime.Data(), gluon.Data() ) << endl;
   file << "  \\hline\\hline\n";
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut)
+  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
     file << Form("  %s & %.0f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f \\\\\n  \\hline",
                 i_cut->first.data(), i_cut->second["data"].first, i_cut->second["data"].second, i_cut->second["ttbar"].first, i_cut->second["ttbar"].second,
                 i_cut->second["Drell-Yan"].first, i_cut->second["Drell-Yan"].second, i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].second,
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].second, i_cut->second["background"].first, i_cut->second["background"].second,
                 i_cut->second[zprime].first, i_cut->second[zprime].second, i_cut->second[gluon].first, i_cut->second[gluon].second) << endl;
+
+    if (i_cut->first == "MET Filters")
+      file << "  \\hline\\hline\n";
+  }
 
   file << "  \\end{tabular}\n";
   file << "\\end{center}" << endl;
@@ -82,7 +93,7 @@ int main(int argc, char* argv[]) {
   file.close();
 
   ifstream mc_infile(mcFile);
-  ofstream mc_outfile("final_" + mcFile);
+  ofstream mc_outfile( channel + "_efficiencies.txt" );
 
   mc_outfile << mc_infile.rdbuf();
   mc_infile.close();
@@ -90,13 +101,17 @@ int main(int argc, char* argv[]) {
   mc_outfile << "\n====================================================================================================================="<< "\n" ;
   mc_outfile << "                                              Cut Flow Table: Summary\n" ;
   mc_outfile << "====================================================================================================================="<< "\n" ;
-  mc_outfile << Form("                               |||    ttbar   |||  Drell-Yan ||| Single-Top |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
+  mc_outfile << Form("                          |||    ttbar   |||  Drell-Yan ||| Single-Top |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut)
-    mc_outfile << Form("%-30s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
+  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
+    mc_outfile << Form("%-25s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
                 i_cut->first.data(), i_cut->second["ttbar"].first/m_total["ttbar"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
                 i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
                 i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
+
+    if (i_cut->first == "MET Filters")
+      mc_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
+  }
 
   mc_outfile << "\n\\begin{center}\n";
   mc_outfile << "  \\begin{tabular}{ |c|c| }\n";
@@ -163,11 +178,14 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       dataset = line.substr(0, line.find(".root")).data();
       cout << "Filling " << dataset << " using weight " << weight << endl;
     }
-    else if (str == "Initial" || str == "Passed") {
+    else {
       delim_pos = line.find("|||");
-      str = line.substr(0, delim_pos);
-      while (str.at(str.length()-1) == ' ') str.erase(str.length()-1, str.length());
+      if (delim_pos == -1) continue;
 
+      str = line.substr(0, delim_pos);
+      if (str == "") continue;
+
+      while (str.at(str.length()-1) == ' ') str.erase(str.length()-1, str.length());
       string cut_name = str;
 
       line.erase(0, delim_pos + 3);
@@ -176,13 +194,13 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       str = line.substr(0, line.find("|||"));
       while (str.at(str.length()-1) == ' ') str.erase(str.length()-1, str.length());
 
-      double unwght_N = stod(str);
+      double N = stod(str);
 
       //data
       if ( dataset.Contains("Muon", TString::kIgnoreCase) || dataset.Contains("Electron", TString::kIgnoreCase) ) {
         cuts.push_back( make_pair(cut_name, map<TString, pair<double, double> >()) );
         map<TString, pair<double, double> >& m = cuts.back().second;
-        m["data"] = make_pair( unwght_N, sqrt(unwght_N) );
+        m["data"] = make_pair( N, sqrt(N) );
       }
 
       //signal or background
@@ -197,19 +215,19 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
                || dataset.Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
         else                                                       key = dataset;
 
-        if ( m.find(key) == m.end() ) m[key] = make_pair( weight * unwght_N, weight * sqrt(unwght_N) );
+        if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );
         else {
-          m[key].first += weight * unwght_N;
-          m[key].second = sqrt( m[key].second*m[key].second + weight*weight*unwght_N );
+          m[key].first += N;
+          m[key].second = sqrt( m[key].second*m[key].second + weight*N );
         }
 
         //total background
         if ( !dataset.Contains("zprime", TString::kIgnoreCase) && !dataset.Contains("gluon", TString::kIgnoreCase) ) {
           key = "background";
-          if ( m.find(key) == m.end() ) m[key] = make_pair( weight * unwght_N, weight * sqrt(unwght_N) );
+          if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );
           else {
-            m[key].first += weight * unwght_N;
-            m[key].second = sqrt( m[key].second*m[key].second + weight*weight*unwght_N );
+            m[key].first += N;
+            m[key].second = sqrt( m[key].second*m[key].second + weight*N );
           }
         }
 
