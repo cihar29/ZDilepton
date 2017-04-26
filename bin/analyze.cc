@@ -136,10 +136,10 @@ int main(int argc, char* argv[]){
     TFile* eIdSfFile = TFile::Open(eIdSfName);
     eIdSfHist = (TH2F*) eIdSfFile->Get("EGamma_SF2D");
 
-    muTrig_pT = muTrigSfHist->GetYaxis()->GetBinLowEdge(muTrigSfHist->GetYaxis()->GetNbins()+1) - 1;
-    muId_pT = muIdSfHist->GetYaxis()->GetBinLowEdge(muIdSfHist->GetYaxis()->GetNbins()+1) - 1;
-    eReco_pT = eRecoSfHist->GetYaxis()->GetBinLowEdge(eRecoSfHist->GetYaxis()->GetNbins()+1) - 1;
-    eId_pT = eIdSfHist->GetYaxis()->GetBinLowEdge(eIdSfHist->GetYaxis()->GetNbins()+1) - 1;
+    muTrig_pT = muTrigSfHist->GetYaxis()->GetBinCenter(muTrigSfHist->GetYaxis()->GetNbins());
+    muId_pT = muIdSfHist->GetYaxis()->GetBinCenter(muIdSfHist->GetYaxis()->GetNbins());
+    eReco_pT = eRecoSfHist->GetYaxis()->GetBinCenter(eRecoSfHist->GetYaxis()->GetNbins());
+    eId_pT = eIdSfHist->GetYaxis()->GetBinCenter(eIdSfHist->GetYaxis()->GetNbins());
   }
 
   //Skims//
@@ -164,23 +164,16 @@ int main(int argc, char* argv[]){
   while ( (key = (TKey*)nextkey()) ) {
     TString keyname = key->GetName();
 
-    if (keyname.EqualTo("totalEvts"))          v_cuts[countEvts].second += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("dilep_cut"))     v_cuts[countDilep].second += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("leppt_cut"))     v_cuts[countLeppt].second += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("dilepmass_cut")) v_cuts[countDilepmass].second += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("jetpteta_cut"))  v_cuts[countJetpteta].second += (*(vector<int>*)key->ReadObj())[0];
-    else if (keyname.EqualTo("met_cut"))       v_cuts[countMet].second += (*(vector<int>*)key->ReadObj())[0];
+    if (keyname.EqualTo("totalEvts"))          v_cuts[countEvts].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilep_cut"))     v_cuts[countDilep].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("leppt_cut"))     v_cuts[countLeppt].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("dilepmass_cut")) v_cuts[countDilepmass].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("jetpteta_cut"))  v_cuts[countJetpteta].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("met_cut"))       v_cuts[countMet].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
     //else if (keyname.EqualTo("filter_failed"))
   }
 
-  if (v_cuts[countMet].second != nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
-
-  v_cuts[countEvts].second *= weight0;
-  v_cuts[countDilep].second *= weight0;
-  v_cuts[countLeppt].second *= weight0;
-  v_cuts[countDilepmass].second *= weight0;
-  v_cuts[countJetpteta].second *= weight0;
-  v_cuts[countMet].second *= weight0;
+  if (v_cuts[countMet].second != weight0 * nEntries) { cout << "hadd added incorrectly." << endl; return -1; }
 
   //Histograms//
 

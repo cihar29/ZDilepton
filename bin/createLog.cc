@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second[zprime].first, i_cut->second[zprime].second, i_cut->second[gluon].first, i_cut->second[gluon].second) << endl;
 
     if (i_cut->first == "MET Filters")
-      file << "  \\hline\\hline\n";
+      file << "  \\hline\n";
   }
 
   file << "  \\end{tabular}\n";
@@ -92,46 +92,50 @@ int main(int argc, char* argv[]) {
 
   file.close();
 
-  ifstream mc_infile(mcFile);
-  ofstream mc_outfile( channel + "_efficiencies.txt" );
+  ofstream e_outfile( channel + "_efficiencies.txt" );
 
-  mc_outfile << mc_infile.rdbuf();
+  ifstream data_infile(dataFile);
+  ifstream mc_infile(mcFile);
+
+  e_outfile << data_infile.rdbuf();
+  data_infile.close();
+  e_outfile << mc_infile.rdbuf();
   mc_infile.close();
 
-  mc_outfile << "\n====================================================================================================================="<< "\n" ;
-  mc_outfile << "                                              Cut Flow Table: Summary\n" ;
-  mc_outfile << "====================================================================================================================="<< "\n" ;
-  mc_outfile << Form("                          |||    ttbar   |||  Drell-Yan ||| Single-Top |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
+  e_outfile << "\n====================================================================================================================="<< "\n" ;
+  e_outfile << "                                              Cut Flow Table: Summary\n" ;
+  e_outfile << "====================================================================================================================="<< "\n" ;
+  e_outfile << Form("                          |||    ttbar   |||  Drell-Yan ||| Single-Top |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
 
   for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
-    mc_outfile << Form("%-25s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
+    e_outfile << Form("%-25s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
                 i_cut->first.data(), i_cut->second["ttbar"].first/m_total["ttbar"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
                 i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
                 i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
     if (i_cut->first == "MET Filters")
-      mc_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
+      e_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
-  mc_outfile << "\n\\begin{center}\n";
-  mc_outfile << "  \\begin{tabular}{ |c|c| }\n";
-  mc_outfile << "  \\hline\n";
-  mc_outfile << "  Process & Efficiency \\\\\n";
-  mc_outfile << "  \\hline\\hline\n";
+  e_outfile << "\n\\begin{center}\n";
+  e_outfile << "  \\begin{tabular}{ |c|c| }\n";
+  e_outfile << "  \\hline\n";
+  e_outfile << "  Process & Efficiency \\\\\n";
+  e_outfile << "  \\hline\\hline\n";
 
   map<TString, pair<double, double> >& m_last = cuts.back().second;
 
-  mc_outfile << Form("  ttbar & %1.6f \\\\\n  \\hline", m_last["ttbar"].first/m_total["ttbar"].first) << endl;
-  mc_outfile << Form("  Drell-Yan & %1.6f \\\\\n  \\hline", m_last["Drell-Yan"].first/m_total["Drell-Yan"].first) << endl;
-  mc_outfile << Form("  Single-Top & %1.6f \\\\\n  \\hline", m_last["Single-Top"].first/m_total["Single-Top"].first) << endl;
-  mc_outfile << Form("  W+Jets & %1.6f \\\\\n  \\hline", m_last["W+Jets"].first/m_total["W+Jets"].first) << endl;
-  mc_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", zprime.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
-  mc_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", gluon.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
+  e_outfile << Form("  ttbar & %1.6f \\\\\n  \\hline", m_last["ttbar"].first/m_total["ttbar"].first) << endl;
+  e_outfile << Form("  Drell-Yan & %1.6f \\\\\n  \\hline", m_last["Drell-Yan"].first/m_total["Drell-Yan"].first) << endl;
+  e_outfile << Form("  Single-Top & %1.6f \\\\\n  \\hline", m_last["Single-Top"].first/m_total["Single-Top"].first) << endl;
+  e_outfile << Form("  W+Jets & %1.6f \\\\\n  \\hline", m_last["W+Jets"].first/m_total["W+Jets"].first) << endl;
+  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", zprime.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
+  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", gluon.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
 
-  mc_outfile << "  \\end{tabular}\n";
-  mc_outfile << "\\end{center}" << endl;
+  e_outfile << "  \\end{tabular}\n";
+  e_outfile << "\\end{center}" << endl;
 
-  mc_outfile.close();
+  e_outfile.close();
 }
 
 //vector(cut_name, map(dataset, (N, error) ) )
