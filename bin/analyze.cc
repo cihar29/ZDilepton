@@ -115,28 +115,32 @@ int main(int argc, char* argv[]){
 
   //SF Files//
 
-  TH2F* muTrigSfHist, *muIdSfHist, *eRecoSfHist, *eIdSfHist;
-  TGraphAsymmErrors* muTrackSfGraph;
+  TH2F* muTrigSfHist=0, *muIdSfHist=0, *eRecoSfHist=0, *eIdSfHist=0;
+  TGraphAsymmErrors* muTrackSfGraph=0;
   
-  TFile* muTrigSfFile = TFile::Open(muTrigSfName);
-  muTrigSfHist = (TH2F*) muTrigSfFile->Get("Mu50_OR_TkMu50_PtEtaBins/abseta_pt_ratio");
+  int muTrig_pT=0, muId_pT=0, eReco_pT=0, eId_pT=0;
 
-  TFile* muIdSfFile = TFile::Open(muIdSfName);
-  muIdSfHist = (TH2F*) muIdSfFile->Get("MC_NUM_MediumID_DEN_genTracks_PAR_pt_eta/abseta_pt_ratio");
+  if (ISMC) {
+    TFile* muTrigSfFile = TFile::Open(muTrigSfName);
+    muTrigSfHist = (TH2F*) muTrigSfFile->Get("Mu50_OR_TkMu50_PtEtaBins/abseta_pt_ratio");
 
-  TFile* muTrackSfFile = TFile::Open(muTrackSfName);
-  muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
+    TFile* muIdSfFile = TFile::Open(muIdSfName);
+    muIdSfHist = (TH2F*) muIdSfFile->Get("MC_NUM_MediumID_DEN_genTracks_PAR_pt_eta/abseta_pt_ratio");
 
-  TFile* eRecoSfFile = TFile::Open(eRecoSfName);
-  eRecoSfHist = (TH2F*) eRecoSfFile->Get("EGamma_SF2D");
+    TFile* muTrackSfFile = TFile::Open(muTrackSfName);
+    muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
 
-  TFile* eIdSfFile = TFile::Open(eIdSfName);
-  eIdSfHist = (TH2F*) eIdSfFile->Get("EGamma_SF2D");
+    TFile* eRecoSfFile = TFile::Open(eRecoSfName);
+    eRecoSfHist = (TH2F*) eRecoSfFile->Get("EGamma_SF2D");
 
-  const int muTrig_pT = muTrigSfHist->GetYaxis()->GetBinLowEdge(muTrigSfHist->GetYaxis()->GetNbins()+1) - 1;
-  const int muId_pT = muIdSfHist->GetYaxis()->GetBinLowEdge(muIdSfHist->GetYaxis()->GetNbins()+1) - 1;
-  const int eReco_pT = eRecoSfHist->GetYaxis()->GetBinLowEdge(eRecoSfHist->GetYaxis()->GetNbins()+1) - 1;
-  const int eId_pT = eIdSfHist->GetYaxis()->GetBinLowEdge(eIdSfHist->GetYaxis()->GetNbins()+1) - 1;
+    TFile* eIdSfFile = TFile::Open(eIdSfName);
+    eIdSfHist = (TH2F*) eIdSfFile->Get("EGamma_SF2D");
+
+    muTrig_pT = muTrigSfHist->GetYaxis()->GetBinLowEdge(muTrigSfHist->GetYaxis()->GetNbins()+1) - 1;
+    muId_pT = muIdSfHist->GetYaxis()->GetBinLowEdge(muIdSfHist->GetYaxis()->GetNbins()+1) - 1;
+    eReco_pT = eRecoSfHist->GetYaxis()->GetBinLowEdge(eRecoSfHist->GetYaxis()->GetNbins()+1) - 1;
+    eId_pT = eIdSfHist->GetYaxis()->GetBinLowEdge(eIdSfHist->GetYaxis()->GetNbins()+1) - 1;
+  }
 
   //Skims//
 
