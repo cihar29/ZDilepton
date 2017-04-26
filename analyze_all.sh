@@ -27,6 +27,8 @@ if [ $# -eq 1 ] ; then
             "muTrigSfName   Trigger_EfficienciesAndSF_Period4.root"
             "muIdSfName     ID_EfficienciesAndSF_GH.root"
             "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
+            "eRecoSfName    e_Reco_efficiency.root"
+            "eIdSfName      e_MediumID_efficiency.root"
           )
     line=""
 
