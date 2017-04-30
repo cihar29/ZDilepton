@@ -23,7 +23,7 @@ void setStyle();
 
 //parameters- edit in plot_pars.txt
 vector<TString> mcFileNames, sigFileNames;
-vector<int> mcScales, sigScales;
+vector<double> mcScales, sigScales;
 string subplot, dataName;
 TString dataFileName;
 TString hname, outName, leftText, rightText;
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 
     TFile* sigFile = TFile::Open(sigFileNames[i]);
     TH1F* h_sig = (TH1F*) sigFile->FindObjectAny(hname);
-    //h_sig->Scale(sigScales[i]);
+    h_sig->Scale(sigScales[i]);
     //h_sig->Sumw2();
 
     string key="";
@@ -305,19 +305,19 @@ void setPars(const string& parFile) {
     }
     else if (var == "mcScales") {
       while ( (delim_pos = line.find(' ')) != -1) {
-        mcScales.push_back( stoi( line.substr(0, delim_pos) ) );
+        mcScales.push_back( stod( line.substr(0, delim_pos) ) );
         line.erase(0, delim_pos + 1);
         while (line.at(0) == ' ') line.erase(0, 1);
       }
-      mcScales.push_back( stoi(line) );
+      mcScales.push_back( stod(line) );
     }
     else if (var == "sigScales") {
       while ( (delim_pos = line.find(' ')) != -1) {
-        sigScales.push_back( stoi( line.substr(0, delim_pos) ) );
+        sigScales.push_back( stod( line.substr(0, delim_pos) ) );
         line.erase(0, delim_pos + 1);
         while (line.at(0) == ' ') line.erase(0, 1);
       }
-      sigScales.push_back( stoi(line) );
+      sigScales.push_back( stod(line) );
     }
     else if (var == "outName")   outName = line.data();
     else if (var == "hname")     hname = line.data();
