@@ -1,15 +1,16 @@
 dataFileName   MuonGH_mm.root
 dataName       Data
 mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STschannel_mm.root STtchannel_mm.root SaTtchannel_mm.root STtWchannel_mm.root SaTtWchannel_mm.root Wjet_mm.root
-sigFileNames   zprime-M3000-W300_mm.root gluon-M3000_mm.root
+sigFileNames   zprime-M3000-W300_mm.root gluonkk-M3000_mm.root
+sigScales      0.5 0.5
 leftText       CMS
 rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)
 logx           false
 subplot        ratio
-outName        MuonGH/masslljjm
-hname          4_masslljjm
-xmin           0
-xmax           5000
+outName        MuonGH/deta_lep
+hname          4_deta_lep
+xmin           -5
+xmax           5
 ymin           0
 subymin        0
 subymax        3

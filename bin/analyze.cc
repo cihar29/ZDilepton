@@ -8,6 +8,7 @@
 #include "TTree.h"
 #include "TLorentzVector.h"
 #include "TGraphAsymmErrors.h"
+#include "TRandom3.h"
 
 #include <cmath>
 #include <fstream>
@@ -29,6 +30,7 @@ void setPars(const string& parFile);
 void setWeight(const string& parFile); 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
+bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, const float& eff );
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
@@ -381,6 +383,7 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("ele_MediumID", ele_MediumID);
 
   int nJet=MAXJET;
+  int jet_flavor[nJet];
   float jet_eta[nJet], jet_phi[nJet], jet_pt[nJet], jet_mass[nJet], jet_area[nJet];
   float jet_btag[nJet], jet_nhf[nJet], jet_nef[nJet], jet_chf[nJet], jet_muf[nJet], jet_elef[nJet], jet_numneutral[nJet], jet_chmult[nJet];
   char jet_clean[nJet];
@@ -401,6 +404,8 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("jet_elef", jet_elef);
   T->SetBranchAddress("jet_numneutral", jet_numneutral);
   T->SetBranchAddress("jet_chmult", jet_chmult);
+
+  if (ISMC) T->SetBranchAddress("jet_flavor", jet_flavor);
 
   float met_pt, met_px, met_py, met_phi;
   T->SetBranchAddress("met_pt", &met_pt);
@@ -574,6 +579,7 @@ int main(int argc, char* argv[]){
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
     int nGoodJet=0;
+    double hT=0;
     for (int i=0; i<nJet; i++){
 
       //loose jet cut
@@ -600,6 +606,7 @@ int main(int argc, char* argv[]){
 
       if (corr_pt>30 && fabs(jet_eta[i])<2.5) {
         nGoodJet++;
+        hT+=corr_pt;
 
         if (lep0.DeltaR(jet) < rmin0) {
           rmin0 = lep0.DeltaR(jet);
@@ -680,18 +687,20 @@ int main(int argc, char* argv[]){
       if (ele_MediumID[i]) nGoodEle++;
     }
 
-    double hT=0;
-    for (int i=0; i<nGoodJet; i++) {
-      int index = jet_index_corrpt[i].first;
-      double corr_pt = jet_index_corrpt[i].second;
-
-      if ( corr_pt>30 && fabs(jet_eta[index])<2.5 ) hT+=corr_pt;
-    }
     double sT = hT+lep0.Pt()+lep1.Pt();
     double sT_met = sT + met_corrpt;
 
     bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
+
+    if (ISMC) {
+      TRandom3* rand = new TRandom3(0);
+
+      jet0btag = newBTag( *rand, jet0pt, jet_flavor[jet0index], jet0btag, 1. );
+      jet1btag = newBTag( *rand, jet1pt, jet_flavor[jet1index], jet1btag, 1. );
+
+      delete rand;
+    }
 
     double rl0l1 = lep0.DeltaR(lep1);
     double lepept=0, lepmpt=0;
@@ -984,4 +993,36 @@ void setPars(const string& parFile) {
     else if (var == "jet_type") jet_type = line;
   }
   file.close();
+}
+
+bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, const float& eff ) {
+  double sf=0;
+
+  //b or c jet
+  if ( abs(flavor) == 4 || abs(flavor) == 5 ) sf = 0.561694*((1.+(0.31439*pT))/(1.+(0.17756*pT)));
+  //udsg
+  else sf = 1.06175-0.000462017*pT+1.02721e-06*pT*pT-4.95019e-10*pT*pT*pT;
+
+  if (sf == 1) return oldBTag; //no correction needed
+
+  bool newBTag = oldBTag;
+  float coin = rand.Uniform(1.);
+
+  if (sf > 1) {
+
+    if( !oldBTag ) {
+
+      //fraction of jets that need to be upgraded
+      float mistagPercent = (1.0 - sf) / (1.0 - (1.0/eff) );
+
+      //upgrade to tagged
+      if( coin < mistagPercent ) newBTag = true;
+    }
+  }
+  else {
+    //downgrade tagged to untagged
+    if( oldBTag && coin > sf ) newBTag = false;
+  }
+
+  return newBTag;
 }

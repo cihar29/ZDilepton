@@ -42,6 +42,7 @@ if [ $# -eq 2 ] ; then
             "dataName       Data"
             "mcFileNames    TTbar_${channel}.root highDY_${channel}.root lowDY_${channel}.root STschannel_${channel}.root STtchannel_${channel}.root SaTtchannel_${channel}.root STtWchannel_${channel}.root SaTtWchannel_${channel}.root Wjet_${channel}.root"
             "sigFileNames   zprime-M3000-W300_${channel}.root gluonkk-M3000_${channel}.root"
+            "sigScales      0.5 0.5"
             "leftText       CMS"
             "rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)"
             "logx           false"
