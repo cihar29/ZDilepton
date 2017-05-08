@@ -299,6 +299,16 @@ int main(int argc, char* argv[]){
   hname = "eIdSf";
   m_Histos1D[hname] = new TH1F(hname,hname,100,0,2);
 
+  hname = "jetPt";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "bTagEff_b";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "bTagEff_c";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+  hname = "bTagEff_udsg";
+  m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+
+
   //Set Branches//
 
   //ULong64_t event;
@@ -649,8 +659,8 @@ int main(int argc, char* argv[]){
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
     double jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
 
-   //at least one jet 
-   if ( jet0pt < 100 || fabs(jet_eta[jet0index]) > 2.5 ) continue;
+    //at least one jet 
+    if ( jet0pt < 100 || fabs(jet_eta[jet0index]) > 2.5 ) continue;
 
     double minjet0pt = minjet0.Pt();
     double minjet1pt = minjet1.Pt();
@@ -694,6 +704,24 @@ int main(int argc, char* argv[]){
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
     if (ISMC) {
+
+      //btag eff for two jets
+      if ( jet1pt > 50 && fabs(jet_eta[jet1index]) < 2.5 ) {
+        FillHist1D("jetPt", jet0pt, 1.);
+        FillHist1D("jetPt", jet1pt, 1.);
+
+        if (jet0btag) {
+          if ( abs(jet_flavor[jet0index]) == 4 )      FillHist1D("bTagEff_c", jet0pt, 1.);
+          else if ( abs(jet_flavor[jet0index]) == 5 ) FillHist1D("bTagEff_b", jet0pt, 1.);
+          else                                        FillHist1D("bTagEff_udsg", jet0pt, 1.);
+        }
+        if (jet1btag) {
+          if ( abs(jet_flavor[jet1index]) == 4 )      FillHist1D("bTagEff_c", jet1pt, 1.);
+          else if ( abs(jet_flavor[jet1index]) == 5 ) FillHist1D("bTagEff_b", jet1pt, 1.);
+          else                                        FillHist1D("bTagEff_udsg", jet1pt, 1.);
+        }
+      }
+
       TRandom3* rand = new TRandom3(0);
 
       jet0btag = newBTag( *rand, jet0pt, jet_flavor[jet0index], jet0btag, 1. );
