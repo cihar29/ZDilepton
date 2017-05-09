@@ -52,6 +52,8 @@
 #include <TTree.h>
 #include <TVector.h>
 #include <TLorentzVector.h>
+#include <TH1.h>
+#include <TH2.h>
 
 using namespace std;
 using namespace edm;
@@ -125,7 +127,7 @@ class ZDilepton : public edm::EDAnalyzer {
     float ele_pt[MAXLEP], ele_eta[MAXLEP], ele_phi[MAXLEP], ele_D0[MAXLEP], ele_Dz[MAXLEP], ele_etaSupClust[MAXLEP];
     float ele_dPhiIn[MAXLEP], ele_sigmaIetaIeta[MAXLEP], ele_dEtaSeed[MAXLEP], ele_HE[MAXLEP], ele_rcpiwec[MAXLEP], ele_overEoverP[MAXLEP];
 
-    int nJet, jet_flavor[MAXJET];
+    int nJet, jet_hadflavor[MAXJET], jet_parflavor[MAXJET];
     float jet_pt[MAXJET], jet_eta[MAXJET], jet_phi[MAXJET], jet_mass[MAXJET], jet_area[MAXJET], jet_jec[MAXJET], jet_btag[MAXJET];
     float jet_nhf[MAXJET], jet_nef[MAXJET], jet_chf[MAXJET], jet_muf[MAXJET];
     float jet_elef[MAXJET], jet_numneutral[MAXJET], jet_chmult[MAXJET];
@@ -136,6 +138,9 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_pt, met_px, met_py, met_sumet, met_phi;
     int nMETUncert;
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
+
+    TH1F* fullMu = new TH1F("fullMu","fullMu",100,0,100);
+    TH2F* ttbar_pT = new TH2F("ttbar_pT","ttbar_pT",50,0,1000,50,0,1000);
 
     TString fileName_;
     string btag_;
@@ -304,7 +309,10 @@ void  ZDilepton::beginJob() {
   tree->Branch("jet_jec", jet_jec, "jet_jec[nJet]/F");
   tree->Branch("jet_btag", jet_btag, "jet_btag[nJet]/F");
   tree->Branch("jet_clean", jet_clean, "jet_clean[nJet]/B");
-  if (isMC_) tree->Branch("jet_flavor", jet_flavor, "jet_flavor[nJet]/I");
+  if (isMC_) {
+    tree->Branch("jet_hadflavor", jet_hadflavor, "jet_hadflavor[nJet]/I");
+    tree->Branch("jet_parflavor", jet_parflavor, "jet_parflavor[nJet]/I");
+  }
 
   tree->Branch("jet_nhf", jet_nhf, "jet_nhf[nJet]/F");
   tree->Branch("jet_nef", jet_nef, "jet_nef[nJet]/F");
@@ -329,6 +337,32 @@ void  ZDilepton::beginJob() {
 void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   totalEvts[0]++;
+
+  if (isMC_){
+    edm::Handle< edm::View<PileupSummaryInfo> > pileups;
+    iEvent.getByToken(muTag_, pileups);
+
+    mu = pileups->at(1).getTrueNumInteractions();
+
+    edm::Handle< edm::View<reco::GenParticle> > genParticles;
+    iEvent.getByToken(genParticleTag_, genParticles);
+
+    float t_pT=-1, tbar_pT=-1;
+    for (int i=0, n=genParticles->size(); i<n; i++) {
+      const reco::GenParticle& p = genParticles->at(i);
+
+      int id = p.pdgId();
+      int status = p.status();
+
+      if (id==6 && 20<=status && status<30) t_pT = p.pt();
+      else if (id==-6 && 20<=status && status<30) tbar_pT = p.pt();
+    }
+    ttbar_pT->Fill(t_pT, tbar_pT);
+  }
+  else{
+    mu = getAvgPU( run, lumi );
+  }
+  fullMu->Fill(mu);
 
   //------------ Lepton Pt Filter ------------//
 
@@ -447,7 +481,10 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     jet_chmult[i] = jet.chargedMultiplicity();
     jet_btag[i] = jet.bDiscriminator(btag_);
 
-    if (isMC_) jet_flavor[i] = jet.partonFlavour();
+    if (isMC_) {
+      jet_hadflavor[i] = jet.hadronFlavour();
+      jet_parflavor[i] = jet.partonFlavour();
+    }
 
     if ( jet_pt[i]>minLeadJetPt_ && fabs(jet_eta[i])<2.5 ) leadJetPt_flag = true;
   }
@@ -509,14 +546,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle<GenEventInfoProduct> genEventHandle;
     iEvent.getByToken(genEventTag_, genEventHandle);
     genweight = genEventHandle->weight();
-
-    edm::Handle< edm::View<PileupSummaryInfo> > pileups;
-    iEvent.getByToken(muTag_, pileups);
-
-    mu = pileups->at(1).getTrueNumInteractions();
-  }
-  else{
-    mu = getAvgPU( run, lumi );
   }
 
   //------------ Rho ------------//
@@ -822,6 +851,9 @@ void ZDilepton::endJob() {
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");
     root_file->WriteObject(&met_cut, "met_cut");
     root_file->WriteObject(&dilepmass_cut, "dilepmass_cut");
+
+    fullMu->Write();
+    if (isMC_) ttbar_pT->Write();
 
     root_file->Write();
     delete root_file;

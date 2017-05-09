@@ -35,7 +35,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const TLorentzVector& jet0, const TLorentzVector& jet1, const float& jet0btag, const float& jet1btag, const int& nbtag,
-               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met,
+               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet);
 
@@ -206,6 +206,8 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1F(hname,hname,5,0,5);
     hname = Form("%i_jethT",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
+    hname = Form("%i_jetflavor",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,50,-25,25);
 
     hname = Form("%i_minjet0pt",i);
     m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
@@ -703,29 +705,32 @@ int main(int argc, char* argv[]){
     bool jet0btag = jet_btag[jet0index] > 0.8484 && fabs(jet_eta[jet0index]) < 2.4;
     bool jet1btag = jet_btag[jet1index] > 0.8484 && fabs(jet_eta[jet1index]) < 2.4;
 
+    int jetflavor0=-25, jetflavor1=-25;
     if (ISMC) {
+      jetflavor0 = jet_flavor[jet0index];
+      jetflavor1 = jet_flavor[jet1index];
 
       //btag eff for two jets
-      if ( jet1pt > 50 && fabs(jet_eta[jet1index]) < 2.5 ) {
+      if ( fabs(jet_eta[jet0index]) < 2.4 && jet1pt > 50 && fabs(jet_eta[jet1index]) < 2.4 ) {
         FillHist1D("jetPt", jet0pt, 1.);
         FillHist1D("jetPt", jet1pt, 1.);
 
         if (jet0btag) {
-          if ( abs(jet_flavor[jet0index]) == 4 )      FillHist1D("bTagEff_c", jet0pt, 1.);
-          else if ( abs(jet_flavor[jet0index]) == 5 ) FillHist1D("bTagEff_b", jet0pt, 1.);
-          else                                        FillHist1D("bTagEff_udsg", jet0pt, 1.);
+          if ( abs(jetflavor0) == 4 )      FillHist1D("bTagEff_c", jet0pt, 1.);
+          else if ( abs(jetflavor0) == 5 ) FillHist1D("bTagEff_b", jet0pt, 1.);
+          else                             FillHist1D("bTagEff_udsg", jet0pt, 1.);
         }
         if (jet1btag) {
-          if ( abs(jet_flavor[jet1index]) == 4 )      FillHist1D("bTagEff_c", jet1pt, 1.);
-          else if ( abs(jet_flavor[jet1index]) == 5 ) FillHist1D("bTagEff_b", jet1pt, 1.);
-          else                                        FillHist1D("bTagEff_udsg", jet1pt, 1.);
+          if ( abs(jetflavor1) == 4 )      FillHist1D("bTagEff_c", jet1pt, 1.);
+          else if ( abs(jetflavor1) == 5 ) FillHist1D("bTagEff_b", jet1pt, 1.);
+          else                             FillHist1D("bTagEff_udsg", jet1pt, 1.);
         }
       }
 
       TRandom3* rand = new TRandom3(0);
 
-      jet0btag = newBTag( *rand, jet0pt, jet_flavor[jet0index], jet0btag, 1. );
-      jet1btag = newBTag( *rand, jet1pt, jet_flavor[jet1index], jet1btag, 1. );
+      jet0btag = newBTag( *rand, jet0pt, jetflavor0, jet0btag, 1. );
+      jet1btag = newBTag( *rand, jet1pt, jetflavor1, jet1btag, 1. );
 
       delete rand;
     }
@@ -764,7 +769,7 @@ int main(int argc, char* argv[]){
 
         FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
                   deta_lep, deta_lepJet);
       }
       //one btag
@@ -773,7 +778,7 @@ int main(int argc, char* argv[]){
 
         FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
                   deta_lep, deta_lepJet);
       }
     }
@@ -786,7 +791,7 @@ int main(int argc, char* argv[]){
 
         FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
                   deta_lep, deta_lepJet);
       }
       //exactly two btags
@@ -795,7 +800,7 @@ int main(int argc, char* argv[]){
 
         FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
                   deta_lep, deta_lepJet);
       }
       //exactly one btag
@@ -804,7 +809,7 @@ int main(int argc, char* argv[]){
 
         FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
                   deta_lep, deta_lepJet);
       }
     }
@@ -877,7 +882,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
                const TLorentzVector& jet0, const TLorentzVector& jet1, const float& jet0btag, const float& jet1btag, const int& nbtag,
-               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met,
+               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet) {
 
@@ -924,6 +929,8 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
     FillHist1D(prefix+"sT", sT, weight);
     FillHist1D(prefix+"sT_met", sT_met, weight);
+    FillHist1D(prefix+"jetflavor", jetflavor0, weight);
+    FillHist1D(prefix+"jetflavor", jetflavor1, weight);
 
     if (rbal != -1) FillHist1D(prefix+"rbl", rbal, weight);
     if (rabl != -1) FillHist1D(prefix+"rbl", rabl, weight);
