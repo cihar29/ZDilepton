@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second[zprime].first, i_cut->second[zprime].first/m_total[zprime].first,
                 i_cut->second[gluon].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
-    if (i_cut->first == "MET Filters")
+    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
       file << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].first/m_total["Single-Top"].first,
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
 
-    if (i_cut->first == "MET Filters")
+    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
       file << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].second, i_cut->second["background"].first, i_cut->second["background"].second,
                 i_cut->second[zprime].first, i_cut->second[zprime].second, i_cut->second[gluon].first, i_cut->second[gluon].second) << endl;
 
-    if (i_cut->first == "MET Filters")
+    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
       file << "  \\hline\n";
   }
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
                 i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
-    if (i_cut->first == "MET Filters")
+    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
       e_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
@@ -179,7 +179,7 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       while (line.at(delim_pos) != ' ') delim_pos--;
 
       line.erase(0, delim_pos+1);
-      dataset = line.substr(0, line.find(".root")).data();
+      dataset = line.data();
       cout << "Filling " << dataset << " using weight " << weight << endl;
     }
     else {

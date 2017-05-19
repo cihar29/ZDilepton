@@ -1,6 +1,6 @@
 ISMC           true
-inName         TTbar.root
-outName        TTbar_mm.root
+inName         gluonkk-M3000.root
+outName        gluonkk-M3000_mm.root
 channel        mm
 eras           Summer16_23Sep2016V4_MC
 jet_type       AK4PFchs
@@ -9,4 +9,5 @@ muIdSfName     ID_EfficienciesAndSF_GH.root
 muTrackSfName  Tracking_EfficienciesAndSF_GH.root
 eRecoSfName    e_Reco_efficiency.root
 eIdSfName      e_MediumID_efficiency.root
+pileupName     mu_weights.root
 

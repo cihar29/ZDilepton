@@ -29,6 +29,7 @@ if [ $# -eq 1 ] ; then
             "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
             "eRecoSfName    e_Reco_efficiency.root"
             "eIdSfName      e_MediumID_efficiency.root"
+            "pileupName     mu_weights.root"
           )
     line=""
 
