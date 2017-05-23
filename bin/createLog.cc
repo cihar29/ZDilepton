@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second[zprime].first, i_cut->second[zprime].first/m_total[zprime].first,
                 i_cut->second[gluon].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
-    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
+    if (i_cut->first == "MET Filters" || i_cut->first == ">= 1 jet")
       file << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].first/m_total["Single-Top"].first,
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
 
-    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
+    if (i_cut->first == "MET Filters" || i_cut->first == ">= 1 jet")
       file << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].second, i_cut->second["background"].first, i_cut->second["background"].second,
                 i_cut->second[zprime].first, i_cut->second[zprime].second, i_cut->second[gluon].first, i_cut->second[gluon].second) << endl;
 
-    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
+    if (i_cut->first == "MET Filters" || i_cut->first == ">= 1 jet")
       file << "  \\hline\n";
   }
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
                 i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
-    if (i_cut->first == "MET Filters" || i_cut->first == "pTrel cut")
+    if (i_cut->first == "MET Filters" || i_cut->first == ">= 1 jet")
       e_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 

@@ -40,11 +40,7 @@ int main(int argc, char* argv[]) {
   setStyle();
 
   TFile* dataFile = TFile::Open(dataFileName);
-
-  //TString className = dataFile->FindObjectAny(hname)->ClassName();
-
   TH1F* h_Data = (TH1F*) dataFile->FindObjectAny(hname);
-  //h_Data->Scale( 1 / h_Data->Integral() );  //make this bool, as well as exponents?
 
   h_Data->SetMarkerStyle(20);
   h_Data->SetLineColor(kBlack);
@@ -55,8 +51,8 @@ int main(int argc, char* argv[]) {
 
     TFile* mcFile = TFile::Open(mcFileNames[i]);
     TH1F* h_MC = (TH1F*) mcFile->FindObjectAny(hname);
+    //h_MC->Sumw2();
     //h_MC->Scale(mcScales[i]);
-    h_MC->Sumw2();
 
     string key;
     if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )     key = "t#bar{t}";
@@ -99,8 +95,8 @@ int main(int argc, char* argv[]) {
 
     TFile* sigFile = TFile::Open(sigFileNames[i]);
     TH1F* h_sig = (TH1F*) sigFile->FindObjectAny(hname);
-    h_sig->Scale(sigScales[i]);
     //h_sig->Sumw2();
+    h_sig->Scale(sigScales[i]);
 
     string key="";
     if ( sigFileNames[i].Contains("zprime", TString::kIgnoreCase) )     key = "Z' 3 TeV (x300)";
@@ -217,10 +213,10 @@ int main(int argc, char* argv[]) {
   else if (dataFileName.Contains("ee", TString::kIgnoreCase)) text.DrawLatex(0.22,0.85,"#bf{ee}");
   else text.DrawLatex(0.22,0.85,"#bf{e#mu}");
 
-  if (hname.Contains("0_")) { text.DrawLatex(0.22,0.8,"#geq 0 btags"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV"); }
+  if (hname.Contains("0_")) { text.DrawLatex(0.22,0.8,"= 0 btags"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV"); }
   else if (hname.Contains("1_")) { text.DrawLatex(0.22,0.8,"#geq 1 btag"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV"); }
-  else if (hname.Contains("2_")) { text.DrawLatex(0.22,0.8,"#geq 0 btags"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
-  else if (hname.Contains("3_")) { text.DrawLatex(0.22,0.8,"#geq 1 btag"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
+  else if (hname.Contains("2_")) { text.DrawLatex(0.22,0.8,"= 0 btags"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
+  else if (hname.Contains("3_")) { text.DrawLatex(0.22,0.8,"= 1 btag"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
   else if (hname.Contains("4_")) { text.DrawLatex(0.22,0.8,"#geq 2 btags"); text.DrawLatex(0.22,0.75,"p_{T}^{Leading Jet}>100 GeV, p_{T}^{Subleading Jet}>50 GeV"); }
 
   if (subplot=="ratio" || subplot=="diff" ) {

@@ -2,25 +2,25 @@
 
 void setStyle();
 
-void btag_efficiency(TString channel = "mm", TString flavor = "b") {
+void btag_efficiency(TString channel = "mm", TString flavor = "b", bool createFile = false) {
 
   if ( !channel.EqualTo("mm") && !channel.EqualTo("ee") ) channel = "em";
   if ( !flavor.EqualTo("b") && !flavor.EqualTo("c") ) flavor = "udsg";
 
   const int nBins = 15;
-  const double bins[nBins+1] = {0, 50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 1000, 1200, 2000};
+  const double bins[nBins+1] = {0, 50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 1000, 1400, 2000};
 
   map<TString, TString> files;
   files["t#bar{t}"]             = "TTbar";
-  //files["lowDY"]             = "lowDY";
-  //files["highDY"]            = "highDY";
-  //files["STtchannel"]        = "STtchannel";
-  //files["SaTtchannel"]       = "SaTtchannel";
-  //files["STschannel"]        = "STschannel";
-  //files["STtWchannel"]       = "STtWchannel";
-  //files["SaTtWchannel"]      = "STtWchannel";
-  //files["Wjet"]              = "Wjet";
-  //files["gluonkk-M3000"]     = "gluonkk-M3000";
+  files["lowDY"]                = "lowDY";
+  files["highDY"]               = "highDY";
+  files["STtchannel"]           = "STtchannel";
+  files["SaTtchannel"]          = "SaTtchannel";
+  files["STschannel"]           = "STschannel";
+  files["STtWchannel"]          = "STtWchannel";
+  files["SaTtWchannel"]         = "STtWchannel";
+  files["Wjet"]                 = "Wjet";
+  files["gluonkk-M3000"]        = "gluonkk-M3000";
   files["Z' 3 TeV (width=0.1)"] = "zprime-M3000-W300";
 
   setStyle();
@@ -29,28 +29,34 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b") {
   TH1F* h = new TH1F("h", "h", 200, 0, 2000);
 
   h->GetXaxis()->SetTitle("Jet p_{T} (GeV)");
-  h->GetXaxis()->SetRangeUser(0, 1200);
+  h->GetXaxis()->SetRangeUser(0, 1400);
   h->GetYaxis()->SetTitle("b-tagging #varepsilon");
   h->GetYaxis()->SetTitleOffset(1.2);
-  h->GetYaxis()->SetRangeUser(0, 1.5);
+  h->GetYaxis()->SetRangeUser(0, 1.4);
   h->Draw();
 
-  TLegend* leg = new TLegend(.5,.9-files.size()*2*0.04,.7,.9);
+  TLegend* leg = new TLegend(.5,.9-2*2*0.04,.7,.9);
   leg->SetBorderSize(0);
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
   leg->SetTextSize(0.035);
   leg->SetTextFont(42);
 
+  //hists for plots
   map<TString, TH1F*> hists;
-  for (map<TString, TString>::iterator it = files.begin(); it != files.end(); it++){
+  for (map<TString, TString>::iterator it = files.begin(); it != files.end(); it++) {
 
-    TFile* file = TFile::Open( it->second + "_" + channel + ".root" );
+    TString dataset = it->second;
+    int j=-1;
+
+    if (dataset.EqualTo("TTbar")) j = 1;
+    else if (dataset.EqualTo("zprime-M3000-W300")) j = 0;
+    else continue;
+
+    TFile* file = TFile::Open( dataset + "_" + channel + ".root" );
     TH1F* jetPt = (TH1F*) file->Get( "jetPt_" + flavor );
     jetPt->Sumw2();
     jetPt = (TH1F*) jetPt->Rebin(nBins, "jetPt", bins);
-
-    int j = distance( files.begin(), it );
 
     TString name = "CSVL, " + it->first;
     hists[name] = (TH1F*) file->Get( "jetPt_bTagL_" + flavor );
@@ -99,6 +105,69 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b") {
   text.DrawLatex(0.85, 0.96, "(13 TeV)");
 
   c->Print("btag_efficiency_" + flavor + "_" + channel + ".pdf");
+
+  if (!createFile) return;
+
+  //hists for root file
+  map<TString, TH1F*> effs;
+
+  const int nChannels = 2;
+  TString channels[nChannels] = {"mm", "em"};
+  for (int i=0; i<nChannels; i++) {
+
+    const int nFlavors = 3;
+    TString flavors[nFlavors] = {"b", "c", "udsg"};
+    for (int j=0; j<nFlavors; j++) {
+
+      TString LWP_num = flavors[j] + "_LWP_" + channels[i];
+      effs[LWP_num] = new TH1F("LWP_num", "LWP_num", nBins, bins);
+      TString MWP_num = flavors[j] + "_MWP_" + channels[i];
+      effs[MWP_num] = new TH1F("MWP_num", "MWP_num", nBins, bins);
+      TString denom = flavors[j] + "_denom_" + channels[i];
+      effs[denom] = new TH1F("denom", "denom", nBins, bins);
+
+      for (map<TString, TString>::iterator it = files.begin(); it != files.end(); it++) {
+
+        TFile* file = TFile::Open( it->second + "_" + channels[i] + ".root" );
+
+        TH1F* hist = (TH1F*) file->Get( "jetPt_" + flavors[j] );
+        hist->Sumw2();
+        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
+        effs[denom]->Add(hist);
+
+        hist = (TH1F*) file->Get( "jetPt_bTagL_" + flavors[j] );
+        hist->Sumw2();
+        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
+        effs[LWP_num]->Add(hist);
+
+        hist = (TH1F*) file->Get( "jetPt_bTagM_" + flavors[j] );
+        hist->Sumw2();
+        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
+        effs[MWP_num]->Add(hist);
+      }
+      effs[LWP_num]->Divide(effs[denom]);
+      effs[MWP_num]->Divide(effs[denom]);
+    }
+  }
+
+  TFile* outFile = new TFile("btag_eff.root","RECREATE");
+  outFile->cd();
+
+  for (int i=0; i<nChannels; i++) outFile->mkdir( channels[i] + "/" );
+
+  for (map<TString, TH1F*>::iterator it = effs.begin(); it != effs.end(); it++) {
+    outFile->cd();
+    TString name = it->first;
+    TString postfix = name(name.Last('_')+1, 2);
+
+    outFile->cd("btag_eff.root:/" + postfix);
+
+    if (!name.Contains("_denom_")) it->second->Write(name);
+  }
+
+  outFile->Write();
+  delete outFile;
+  outFile = 0;
 }
 
 void setStyle(){
