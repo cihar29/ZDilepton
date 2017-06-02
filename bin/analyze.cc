@@ -705,8 +705,8 @@ int main(int argc, char* argv[]){
         jetL1.SetPtEtaPhiM( jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
         jetL1 *= jetL1Correctors[era]->getCorrection();
 
-        ctype1_x += (jet.Px()-jetL1.Px());
-        ctype1_y += (jet.Py()-jetL1.Py());
+        ctype1_x += (jet.Px()/smearFactor-jetL1.Px());
+        ctype1_y += (jet.Py()/smearFactor-jetL1.Py());
       }
     }
     if (nGoodJet < 2) continue;
