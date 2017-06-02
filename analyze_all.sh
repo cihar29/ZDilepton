@@ -23,6 +23,7 @@ if [ $# -eq 1 ] ; then
             "outName        ${i}_${channel}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
+            "res_era        Spring16_25nsV10_MC"
             "jet_type       AK4PFchs"
             "muTrigSfName   Trigger_EfficienciesAndSF_Period4.root"
             "muIdSfName     ID_EfficienciesAndSF_GH.root"

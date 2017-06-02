@@ -15,7 +15,7 @@ if [ $# -eq 1 ] ; then
   dataset=( "ttbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
             "zprime" "gluon" )
   xs=( 831760 18610000 5765400 136020 80950 26380 35850 35850 61526700
-       415880 415880 )
+       100000 100000 )
   events=( 154991528 35291457 145407553 67240483 38810801 2989179 6952779 6952779 86731469
            189120 99740 )
 

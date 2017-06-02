@@ -38,13 +38,13 @@ if [ $# -eq 2 ] ; then
 
   for ((i=0;i<${#hists[@]};++i)); do
 
-    lines=( "dataFileName   MuonGH_${channel}.root"
+    lines=( "dataFileName   Muon_${channel}.root"
             "dataName       Data"
             "mcFileNames    TTbar_${channel}.root highDY_${channel}.root lowDY_${channel}.root STschannel_${channel}.root STtchannel_${channel}.root SaTtchannel_${channel}.root STtWchannel_${channel}.root SaTtWchannel_${channel}.root Wjet_${channel}.root"
             "sigFileNames   zprime-M3000-W300_${channel}.root gluonkk-M3000_${channel}.root"
             "sigScales      1 1"
             "leftText       CMS"
-            "rightText      Run 2016GH - 16.1 fb^{-1} (13 TeV)"
+            "rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)"
             "logx           false"
             "subplot        ratio"
             "outName        ${hists[i]}"

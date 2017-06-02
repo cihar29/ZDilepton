@@ -1,6 +1,6 @@
 ISMC       false
-inName     MuonGH.root
-outName    MuonGH_mm.root
+inName     Muon.root
+outName    Muon_mm.root
 channel    mm
-eras       Summer16_23Sep2016GV6_DATA  Summer16_23Sep2016HV6_DATA
+eras       Summer16_23Sep2016BCDV6_DATA Summer16_23Sep2016EFV6_DATA Summer16_23Sep2016GV6_DATA Summer16_23Sep2016HV6_DATA
 jet_type   AK4PFchs

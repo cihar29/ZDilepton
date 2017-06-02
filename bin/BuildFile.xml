@@ -1,6 +1,7 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
 <use name="CondFormats/JetMETObjects"/>
+<use name="JetMETCorrections/Modules"/>
 <use name="root"/>
 <bin name="analyze" file="analyze.cc"/>
 <bin name="plot" file="plot.cc"/>

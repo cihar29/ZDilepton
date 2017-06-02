@@ -22,6 +22,7 @@
 
 #include "CondFormats/JetMETObjects/interface/FactorizedJetCorrector.h"
 #include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
+#include "JetMETCorrections/Modules/interface/JetResolution.h"
 
 using namespace std;
 
@@ -44,7 +45,7 @@ map<TString, TH1*> m_Histos1D;
 //parameters- edit in pars.txt
 bool ISMC;
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
-string channel, jet_type;
+string channel, jet_type, res_era;
 vector<string> eras;
 double weight0, weight;
 
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]){
   if (weight0 == -1) { cout << "Weight set to 1" << endl; weight0 = 1.; }
   else                cout << "Weight set to " << weight0 << endl;
 
-  //Jet Corrections//
+  //Jet Corrections and Resolution//
 
   map<string, JetCorrectorParameters*> ResJetPars, L3JetPars, L2JetPars, L1JetPars;
   map<string, vector<JetCorrectorParameters> > jetPars, jetL1Pars;
@@ -107,6 +108,9 @@ int main(int argc, char* argv[]){
     }   
   }
 
+  JME::JetResolution res_obj = JME::JetResolution( res_era + "/" + res_era + "_PtResolution_" + jet_type + ".txt" );
+  JME::JetResolutionScaleFactor ressf_obj = JME::JetResolutionScaleFactor( res_era + "/" + res_era + "_SF_" + jet_type + ".txt" );
+
   //Open Files//
 
   TFile* inFile = TFile::Open(inName);
@@ -141,6 +145,7 @@ int main(int argc, char* argv[]){
     TFile* eIdSfFile = TFile::Open(eIdSfName);
     eIdSfHist = (TH2F*) eIdSfFile->Get("EGamma_SF2D");
 
+    //maximum pT values
     muTrig_pT = muTrigSfHist->GetYaxis()->GetBinCenter(muTrigSfHist->GetYaxis()->GetNbins());
     muId_pT = muIdSfHist->GetYaxis()->GetBinCenter(muIdSfHist->GetYaxis()->GetNbins());
     eReco_pT = eRecoSfHist->GetYaxis()->GetBinCenter(eRecoSfHist->GetYaxis()->GetNbins());
@@ -165,7 +170,7 @@ int main(int argc, char* argv[]){
     }
   }
 
-  //Skims//
+  //Skims and Cuts//
 
   enum Cuts{
     countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
@@ -470,7 +475,10 @@ int main(int argc, char* argv[]){
 
     TLorentzVector lep0, lep1;
     weight = weight0;
+    bool isGH = false;
+
     if (ISMC) weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+    else isGH = (278802<=run && run<=300000);
 
     if (channel == "mm") {
       if (lep0flavor == 'm' && lep1flavor == 'm'){
@@ -495,7 +503,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+        if ( ISMC || isGH ) {
           if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
         }
         else {
@@ -567,7 +575,7 @@ int main(int argc, char* argv[]){
 
         if ( !ele_MediumID[0] ) continue;
 
-        if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+        if ( ISMC || isGH ) {
           if ( !muon_IsMediumID[0] ) continue;
         }
         else {
@@ -624,6 +632,7 @@ int main(int argc, char* argv[]){
     double ctype1_x=0, ctype1_y=0;
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
+    TRandom3* rand = new TRandom3(0);
     int nGoodJet=0;
     double hT=0;
     for (int i=0; i<nJet; i++){
@@ -644,13 +653,29 @@ int main(int argc, char* argv[]){
       jetCorrectors[era]->setJetPt( jet_pt[i] );
       jetCorrectors[era]->setJetA( jet_area[i] );
       jetCorrectors[era]->setRho(rho);
-      double corr_pt = jetCorrectors[era]->getCorrection() * jet_pt[i];
+      double jec = jetCorrectors[era]->getCorrection();
 
+      JME::JetParameters res_pars;
+      res_pars.setJetEta( jet_eta[i] );
+      res_pars.setJetPt( jet_pt[i] );
+      res_pars.setRho(rho);
+
+      double jet_res = res_obj.getResolution( res_pars );
+      double jet_ressf = ressf_obj.getScaleFactor( res_pars );
+      double smearFactor = 1.;
+
+      if (jet_ressf > 1) {
+        double sigma = jet_res * sqrt(jet_ressf * jet_ressf - 1.);
+        smearFactor = 1. + rand->Gaus(0, sigma);
+      }
+
+      double corr_pt = jec * smearFactor * jet_pt[i];
       if (corr_pt < 15) continue;
       jet_index_corrpt.push_back( make_pair(i, corr_pt) );
 
       TLorentzVector jet;
-      jet.SetPtEtaPhiM(corr_pt, jet_eta[i], jet_phi[i], jet_mass[i]);
+      jet.SetPtEtaPhiM(jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i]);
+      jet *= jec * smearFactor;
 
       if (corr_pt>30 && fabs(jet_eta[i])<2.4) {
         nGoodJet++;
@@ -677,7 +702,8 @@ int main(int argc, char* argv[]){
         jetL1Correctors[era]->setRho(rho);
 
         TLorentzVector jetL1;
-        jetL1.SetPtEtaPhiM( jetL1Correctors[era]->getCorrection()*jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
+        jetL1.SetPtEtaPhiM( jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
+        jetL1 *= jetL1Correctors[era]->getCorrection();
 
         ctype1_x += (jet.Px()-jetL1.Px());
         ctype1_y += (jet.Py()-jetL1.Py());
@@ -710,8 +736,8 @@ int main(int argc, char* argv[]){
     TLorentzVector met;
     met.SetPtEtaPhiE(met_corrpt, 0, met_phi, met_corrpt);
     TLorentzVector jet0, jet1;
-    jet0.SetPtEtaPhiM(jet0pt, jet_eta[jet0index], jet_phi[jet0index], jet_mass[jet0index]);
-    jet1.SetPtEtaPhiM(jet1pt, jet_eta[jet1index], jet_phi[jet1index], jet_mass[jet1index]);
+    jet0.SetPtEtaPhiM(jet0pt, jet_eta[jet0index], jet_phi[jet0index], jet0pt / jet_pt[jet0index] * jet_mass[jet0index]);
+    jet1.SetPtEtaPhiM(jet1pt, jet_eta[jet1index], jet_phi[jet1index], jet1pt / jet_pt[jet1index] * jet_mass[jet1index]);
 
     double minjet0pt = minjet0.Pt();
     double minjet1pt = minjet1.Pt();
@@ -725,7 +751,7 @@ int main(int argc, char* argv[]){
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
-      if ( ISMC || inName.Contains("GH", TString::kIgnoreCase) ) {
+      if ( ISMC || isGH ) {
         if (muon_IsMediumID[i]) nGoodMuon++;
       }
       else {
@@ -805,13 +831,10 @@ int main(int argc, char* argv[]){
       else if ( abs(jetflavor1) == 5 ) eff1 = btag_eff_b;
       else eff1 = btag_eff_udsg;
 
-      TRandom3* rand = new TRandom3(0);
-
       jet0btag = newBTag( *rand, jet0pt, jetflavor0, jet0btag, *eff0 );
       jet1btag = newBTag( *rand, jet1pt, jetflavor1, jet1btag, *eff1 );
-
-      delete rand;
     }
+    delete rand;
 
     double rl0l1 = lep0.DeltaR(lep1);
     double lepept=0, lepmpt=0;
@@ -1097,6 +1120,7 @@ void setPars(const string& parFile) {
     else if (var == "btagName") btagName = line.data();
     else if (var == "pileupName") pileupName = line.data();
     else if (var == "channel") channel = line;
+    else if (var == "res_era") res_era = line;
     else if (var == "eras") {
       while ( (delim_pos = line.find(' ')) != -1) {
         eras.push_back( line.substr(0, delim_pos) );
