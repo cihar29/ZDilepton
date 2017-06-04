@@ -1,4 +1,4 @@
-ISMC           true
+isMC           true
 inName         gluonkk-M3000.root
 outName        gluonkk-M3000_mm.root
 channel        mm

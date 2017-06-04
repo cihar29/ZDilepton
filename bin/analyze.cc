@@ -43,7 +43,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
 map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
-bool ISMC;
+bool isMC;
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
     jetL1Pars[era].push_back( *L1JetPars[era] );
     jetL1Correctors[era] = new FactorizedJetCorrector( jetL1Pars[era] );
 
-    if (ISMC) cout << era << endl;
+    if (isMC) cout << era << endl;
     else {
       TString tera = era.data();
 
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
   
   int muTrig_pT=0, muId_pT=0, eReco_pT=0, eId_pT=0;
 
-  if (ISMC) {
+  if (isMC) {
     TFile* muTrigSfFile = TFile::Open(muTrigSfName);
     muTrigSfHist = (TH2F*) muTrigSfFile->Get("Mu50_OR_TkMu50_PtEtaBins/abseta_pt_ratio");
 
@@ -353,7 +353,7 @@ int main(int argc, char* argv[]){
   //ULong64_t event;
   int run; //, lumi, bx;
 
-  if (!ISMC) {
+  if (!isMC) {
     //T->SetBranchAddress("event", &event);
     T->SetBranchAddress("run", &run);
     //T->SetBranchAddress("lumi", &lumi);
@@ -454,7 +454,18 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("jet_numneutral", jet_numneutral);
   T->SetBranchAddress("jet_chmult", jet_chmult);
 
-  if (ISMC) T->SetBranchAddress("jet_hadflavor", jet_hadflavor);
+  int nGenJet=MAXJET;
+  float genJet_pt[nGenJet], genJet_eta[nGenJet], genJet_phi[nGenJet], genJet_mass[nGenJet];
+
+  if (isMC) {
+    T->SetBranchAddress("jet_hadflavor", jet_hadflavor);
+
+    T->SetBranchAddress("nGenJet", &nGenJet);
+    T->SetBranchAddress("genJet_pt", genJet_pt);
+    T->SetBranchAddress("genJet_eta", genJet_eta);
+    T->SetBranchAddress("genJet_phi", genJet_phi);
+    T->SetBranchAddress("genJet_mass", genJet_mass);
+  }
 
   float met_pt, met_px, met_py, met_phi;
   T->SetBranchAddress("met_pt", &met_pt);
@@ -464,7 +475,7 @@ int main(int argc, char* argv[]){
 
   float rho, mu;
   T->SetBranchAddress("rho", &rho);
-  if (ISMC) T->SetBranchAddress("mu", &mu);
+  if (isMC) T->SetBranchAddress("mu", &mu);
 
   //Loop Over Entries//
   int sameRlepjet=0;
@@ -477,7 +488,7 @@ int main(int argc, char* argv[]){
     weight = weight0;
     bool isGH = false;
 
-    if (ISMC) weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+    if (isMC) weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
     else isGH = (278802<=run && run<=300000);
 
     if (channel == "mm") {
@@ -487,7 +498,7 @@ int main(int argc, char* argv[]){
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
 
-        if (ISMC) {
+        if (isMC) {
           double muTrackSf = muTrackSfGraph->Eval(muon_eta[0]) * muTrackSfGraph->Eval(muon_eta[1]);
           weight *= muTrackSf;
 
@@ -503,7 +514,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( ISMC || isGH ) {
+        if ( isMC || isGH ) {
           if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
         }
         else {
@@ -513,7 +524,7 @@ int main(int argc, char* argv[]){
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
 
-        if (ISMC) {
+        if (isMC) {
           double muIdSf = muIdSfHist->GetBinContent( muIdSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0]>muId_pT?muId_pT:muon_pt[0] ) )
                         * muIdSfHist->GetBinContent( muIdSfHist->FindBin( fabs(muon_eta[1]), muon_pt[1]>muId_pT?muId_pT:muon_pt[1] ) );
 
@@ -560,7 +571,7 @@ int main(int argc, char* argv[]){
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
 
-        if (ISMC) {
+        if (isMC) {
           double muTrackSf = muTrackSfGraph->Eval(muon_eta[0]);
           weight *= muTrackSf;
 
@@ -575,7 +586,7 @@ int main(int argc, char* argv[]){
 
         if ( !ele_MediumID[0] ) continue;
 
-        if ( ISMC || isGH ) {
+        if ( isMC || isGH ) {
           if ( !muon_IsMediumID[0] ) continue;
         }
         else {
@@ -584,7 +595,7 @@ int main(int argc, char* argv[]){
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
 
-        if (ISMC) {
+        if (isMC) {
           double muIdSf = muIdSfHist->GetBinContent( muIdSfHist->FindBin( fabs(muon_eta[0]), muon_pt[0]>muId_pT?muId_pT:muon_pt[0] ) );
           double eRecoSf = eRecoSfHist->GetBinContent( eRecoSfHist->FindBin( ele_etaSupClust[0], ele_pt[0]>eReco_pT?eReco_pT:ele_pt[0] ) );
           double eIdSf = eIdSfHist->GetBinContent( eIdSfHist->FindBin( ele_etaSupClust[0], ele_pt[0]>eId_pT?eId_pT:ele_pt[0] ) );
@@ -635,7 +646,7 @@ int main(int argc, char* argv[]){
     TRandom3* rand = new TRandom3(0);
     int nGoodJet=0;
     double hT=0;
-    for (int i=0; i<nJet; i++){
+    for (int i=0; i<nJet; i++) {
 
       //loose jet cut
       if (fabs(jet_eta[i]) <= 2.7) {
@@ -655,31 +666,49 @@ int main(int argc, char* argv[]){
       jetCorrectors[era]->setRho(rho);
       double jec = jetCorrectors[era]->getCorrection();
 
-      JME::JetParameters res_pars;
-      res_pars.setJetEta( jet_eta[i] );
-      res_pars.setJetPt( jet_pt[i] );
-      res_pars.setRho(rho);
-
-      double jet_res = res_obj.getResolution( res_pars );
-      double jet_ressf = ressf_obj.getScaleFactor( res_pars );
-      double smearFactor = 1.;
-
-      if (jet_ressf > 1) {
-        double sigma = jet_res * sqrt(jet_ressf * jet_ressf - 1.);
-        smearFactor = 1. + rand->Gaus(0, sigma);
-      }
-
-      double corr_pt = jec * smearFactor * jet_pt[i];
-      if (corr_pt < 15) continue;
-      jet_index_corrpt.push_back( make_pair(i, corr_pt) );
-
       TLorentzVector jet;
       jet.SetPtEtaPhiM(jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i]);
-      jet *= jec * smearFactor;
+      jet *= jec;
 
-      if (corr_pt>30 && fabs(jet_eta[i])<2.4) {
+      if (isMC) {
+        JME::JetParameters res_pars;
+        res_pars.setJetEta( jet.Eta() );
+        res_pars.setJetPt( jet.Pt() ); //corrected pt
+        res_pars.setRho(rho);
+
+        double jet_res = res_obj.getResolution( res_pars );
+        double jet_ressf = ressf_obj.getScaleFactor( res_pars );
+
+        TLorentzVector matched_genJet;
+        double rmin_genJet = 99.;
+        for (int i_gen=0; i_gen<nGenJet; i_gen++) {
+
+          TLorentzVector genJet;
+          genJet.SetPtEtaPhiM(genJet_pt[i_gen], genJet_eta[i_gen], genJet_phi[i_gen], genJet_mass[i_gen]);
+
+          double dR = jet.DeltaR(genJet);
+          if ( dR<rmin_genJet && dR<0.2 && fabs(jet.Pt()-genJet.Pt()) <= 3*jet_res*jet.Pt() ) {
+
+            rmin_genJet = dR;
+            matched_genJet = genJet;
+          }
+        }
+
+        double smearFactor = 1.;
+        if (matched_genJet.E() != 0) smearFactor = 1. + (jet_ressf - 1.) * (jet.Pt() - matched_genJet.Pt()) / jet.Pt();
+        else if (jet_ressf > 1) {
+          double sigma = jet_res * sqrt(jet_ressf * jet_ressf - 1.);
+          smearFactor = 1. + rand->Gaus(0, sigma);
+        }
+        jet *= smearFactor;
+      }
+
+      if (jet.Pt() < 15) continue;
+      jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
+
+      if (jet.Pt()>30 && fabs(jet_eta[i])<2.4) {
         nGoodJet++;
-        hT+=corr_pt;
+        hT+=jet.Pt();
 
         if (lep0.DeltaR(jet) < rmin0) {
           rmin0 = lep0.DeltaR(jet);
@@ -691,13 +720,13 @@ int main(int argc, char* argv[]){
         }
       }
 
-      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = corr_pt; }
-      if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = corr_pt; }
+      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = jet.Pt(); }
+      if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = jet.Pt(); }
 
       //corrected MET
-      if ( corr_pt>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
+      if ( jet.Pt()>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
         jetL1Correctors[era]->setJetEta( jet_eta[i] );
-        jetL1Correctors[era]->setJetPt( jet_pt[i] );
+        jetL1Correctors[era]->setJetPt( jet_pt[i] ); //uncorrected pt
         jetL1Correctors[era]->setJetA( jet_area[i] );
         jetL1Correctors[era]->setRho(rho);
 
@@ -705,8 +734,8 @@ int main(int argc, char* argv[]){
         jetL1.SetPtEtaPhiM( jet_pt[i], jet_eta[i], jet_phi[i], jet_mass[i] );
         jetL1 *= jetL1Correctors[era]->getCorrection();
 
-        ctype1_x += (jet.Px()/smearFactor-jetL1.Px());
-        ctype1_y += (jet.Py()/smearFactor-jetL1.Py());
+        ctype1_x += (jet.Px()-jetL1.Px());
+        ctype1_y += (jet.Py()-jetL1.Py());
       }
     }
     if (nGoodJet < 2) continue;
@@ -751,7 +780,7 @@ int main(int argc, char* argv[]){
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
-      if ( ISMC || isGH ) {
+      if ( isMC || isGH ) {
         if (muon_IsMediumID[i]) nGoodMuon++;
       }
       else {
@@ -771,7 +800,7 @@ int main(int argc, char* argv[]){
     bool jet1btag = jet_btag[jet1index] > btagWP_L && fabs(jet_eta[jet1index]) < 2.4;
 
     int jetflavor0=-25, jetflavor1=-25;
-    if (ISMC) {
+    if (isMC) {
       jetflavor0 = jet_hadflavor[jet0index];
       jetflavor1 = jet_hadflavor[jet1index];
 
@@ -1106,9 +1135,9 @@ void setPars(const string& parFile) {
     while (line.at(0) == ' ') line.erase(0, 1);
     while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
-    if (var == "ISMC"){
-      if (line == "true") ISMC = true;
-      else ISMC = false;
+    if (var == "isMC"){
+      if (line == "true") isMC = true;
+      else isMC = false;
     }
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();

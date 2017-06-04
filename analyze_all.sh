@@ -18,7 +18,7 @@ if [ $# -eq 1 ] ; then
   for i in "${mcfiles[@]}"
   do
 
-    lines=( "ISMC           true"
+    lines=( "isMC           true"
             "inName         ${i}.root"
             "outName        ${i}_${channel}.root"
             "channel        ${channel}"
