@@ -703,26 +703,6 @@ int main(int argc, char* argv[]){
         jet *= smearFactor;
       }
 
-      if (jet.Pt() < 15) continue;
-      jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
-
-      if (jet.Pt()>30 && fabs(jet_eta[i])<2.4) {
-        nGoodJet++;
-        hT+=jet.Pt();
-
-        if (lep0.DeltaR(jet) < rmin0) {
-          rmin0 = lep0.DeltaR(jet);
-          minjet0 = jet;
-        }
-        if (lep1.DeltaR(jet) < rmin1) {
-          rmin1 = lep1.DeltaR(jet);
-          minjet1 = jet;
-        }
-      }
-
-      if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = jet.Pt(); }
-      if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = jet.Pt(); }
-
       //corrected MET
       if ( jet.Pt()>15 && (jet_elef[i]+jet_nef[i])<0.9 ) {
         jetL1Correctors[era]->setJetEta( jet_eta[i] );
@@ -736,6 +716,23 @@ int main(int argc, char* argv[]){
 
         ctype1_x += (jet.Px()-jetL1.Px());
         ctype1_y += (jet.Py()-jetL1.Py());
+      }
+
+      if (jet.Pt()>30 && fabs(jet_eta[i])<2.4) {
+        jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
+        nGoodJet++;
+        hT+=jet.Pt();
+
+        if (lep0.DeltaR(jet) < rmin0) {
+          rmin0 = lep0.DeltaR(jet);
+          minjet0 = jet;
+        }
+        if (lep1.DeltaR(jet) < rmin1) {
+          rmin1 = lep1.DeltaR(jet);
+          minjet1 = jet;
+        }
+        if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = jet.Pt(); }
+        if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = jet.Pt(); }
       }
     }
     if (nGoodJet < 2) continue;
