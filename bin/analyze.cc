@@ -379,11 +379,12 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  int nGen=MAXGEN, gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
+  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
 
   if (inName.Contains("ttbar", TString::kIgnoreCase)) {
     T->SetBranchAddress("nGen", &nGen);
+    T->SetBranchAddress("gen_status", gen_status);
     T->SetBranchAddress("gen_PID", gen_PID);
     T->SetBranchAddress("gen_pt", gen_pt);
     T->SetBranchAddress("gen_mass", gen_mass);
@@ -488,7 +489,31 @@ int main(int argc, char* argv[]){
     weight = weight0;
     bool isGH = false;
 
-    if (isMC) weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+    if (isMC) {
+      weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+
+      //ttbar reweighting
+      if (inName.Contains("ttbar", TString::kIgnoreCase)) {
+        double t_pt=0, tbar_pt=0;
+
+        //use first t's
+        for (int i=0; i<nGen; i++) {
+          if (gen_PID[i]==6 && 20<=gen_status[i] && gen_status[i]<30) t_pt = gen_pt[i];
+          else if (gen_PID[i]==-6 && 20<=gen_status[i] && gen_status[i]<30) tbar_pt = gen_pt[i];
+        }
+        if (t_pt==0) {
+          for (int i=0; i<nGen; i++) {
+            if (gen_PID[i]==6) { t_pt = gen_pt[i]; break; }
+          }
+        }
+        if (tbar_pt==0) {
+          for (int i=0; i<nGen; i++) {
+            if (gen_PID[i]==-6) { tbar_pt = gen_pt[i]; break; }
+          }
+        }
+        weight *= sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
+      }
+    }
     else isGH = (278802<=run && run<=300000);
 
     if (channel == "mm") {
