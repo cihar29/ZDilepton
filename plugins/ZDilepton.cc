@@ -88,6 +88,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_globalTightHalo2016Filter"
     };
     vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
+    vector<double> nTopPtWeight;
 
     string triggers[nTriggers] = {
       "HLT_Mu45_eta2p1_v",
@@ -140,10 +141,10 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
 
     TH1F* fullMu = new TH1F("fullMu","fullMu",100,0,100);
-    TH1F* deltaT_pT = new TH1F("deltaT_pT","deltaT_pT",100,-500,500);
-    TH1F* deltaTbar_pT = new TH1F("deltaTbar_pT","deltaTbar_pT",100,-500,500);
-    TH2F* ttbar_pT = new TH2F("ttbar_pT","ttbar_pT",50,0,1000,50,0,1000);
-    TH2F* ttbar_pT2 = new TH2F("ttbar_pT2","ttbar_pT2",50,0,1000,50,0,1000);
+    TH1F* deltat_pt = new TH1F("deltat_pt","deltat_pt",100,-500,500);
+    TH1F* deltaTbar_pt = new TH1F("deltaTbar_pt","deltaTbar_pt",100,-500,500);
+    TH2F* ttbar_pt = new TH2F("ttbar_pt","ttbar_pt",50,0,1000,50,0,1000);
+    TH2F* ttbar_pt2 = new TH2F("ttbar_pt2","ttbar_pt2",50,0,1000,50,0,1000);
 
     TString fileName_;
     string btag_;
@@ -216,6 +217,7 @@ void  ZDilepton::beginJob() {
 
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
+  nTopPtWeight.assign(1, 0.);
 
   tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
   tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
@@ -350,7 +352,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
-    float t_pT=-1, tbar_pT=-1, t_pT2=-1, tbar_pT2=-1;
+    float t_pt=-1, tbar_pt=-1, t_pt2=-1, tbar_pt2=-1;
     for (int i=0, n=genParticles->size(); i<n; i++) {
       const reco::GenParticle& p = genParticles->at(i);
 
@@ -358,20 +360,30 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       int status = p.status();
       int nDaught = p.numberOfDaughters();
 
-      if (id==6 && 20<=status && status<30) t_pT = p.pt();
-      else if (id==-6 && 20<=status && status<30) tbar_pT = p.pt();
+      if (id==6 && 20<=status && status<30) t_pt = p.pt();
+      else if (id==-6 && 20<=status && status<30) tbar_pt = p.pt();
 
-      else if (id==6 && nDaught==2) t_pT2 = p.pt();
-      else if (id==-6 && nDaught==2) tbar_pT2 = p.pt();
+      else if (id==6 && nDaught==2) t_pt2 = p.pt();
+      else if (id==-6 && nDaught==2) tbar_pt2 = p.pt();
     }
+    if (t_pt==-1) {
+      for (int i=0, n=genParticles->size(); i<n; i++) {
+        if (genParticles->at(i).pdgId()==6) { t_pt = genParticles->at(i).pt(); break; }
+      }
+    }
+    if (tbar_pt==-1) {
+      for (int i=0, n=genParticles->size(); i<n; i++) {
+        if (genParticles->at(i).pdgId()==-6) { tbar_pt = genParticles->at(i).pt(); break; }
+      }
+    }
+    nTopPtWeight[0] += sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
 
-    ttbar_pT->Fill(t_pT, tbar_pT);
+    ttbar_pt->Fill(t_pt, tbar_pt);
 
-    if ( t_pT2 != -1 && tbar_pT2 != -1 ) {
-
-      ttbar_pT2->Fill(t_pT2, tbar_pT2);
-      deltaT_pT->Fill(t_pT-t_pT2);
-      deltaTbar_pT->Fill(tbar_pT-tbar_pT2);
+    if ( t_pt2 != -1 && tbar_pt2 != -1 ) {
+      ttbar_pt2->Fill(t_pt2, tbar_pt2);
+      deltat_pt->Fill(t_pt-t_pt2);
+      deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
     }
   }
   else{
@@ -863,10 +875,10 @@ void ZDilepton::endJob() {
 
     fullMu->Write();
     if (isMC_) {
-      ttbar_pT->Write();
-      ttbar_pT2->Write();
-      deltaT_pT->Write();
-      deltaTbar_pT->Write();
+      ttbar_pt->Write();
+      ttbar_pt2->Write();
+      deltat_pt->Write();
+      deltaTbar_pt->Write();
     }
 
     root_file->WriteObject(&totalEvts, "totalEvts");
@@ -876,6 +888,7 @@ void ZDilepton::endJob() {
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");
     root_file->WriteObject(&met_cut, "met_cut");
     root_file->WriteObject(&dilepmass_cut, "dilepmass_cut");
+    root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
 
     root_file->Write();
     delete root_file;
