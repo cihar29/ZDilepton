@@ -21,7 +21,7 @@ if [ $# -eq 1 ] ; then
     lines=( "isMC           true"
             "TopPT_weight   true"    
             "inName         /uscms_data/d3/broozbah/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/Chads_root/${i}.root"
-            "outName        ./rootFiles_SM/ntopweighted/${i}_${channel}.root"
+            "outName        ./rootFiles_SM/ntopweighted/ON/${i}_${channel}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
             "res_era        Spring16_25nsV10_MC"
