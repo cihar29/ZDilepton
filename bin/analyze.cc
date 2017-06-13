@@ -43,7 +43,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
 map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
-bool isMC;
+bool isMC; bool TopPT_weight;
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -108,8 +108,11 @@ int main(int argc, char* argv[]){
     }   
   }
 
-  JME::JetResolution res_obj = JME::JetResolution( res_era + "/" + res_era + "_PtResolution_" + jet_type + ".txt" );
-  JME::JetResolutionScaleFactor ressf_obj = JME::JetResolutionScaleFactor( res_era + "/" + res_era + "_SF_" + jet_type + ".txt" );
+  JME::JetResolution res_obj; JME::JetResolutionScaleFactor ressf_obj;
+  if (isMC){
+    res_obj = JME::JetResolution( res_era + "/" + res_era + "_PtResolution_" + jet_type + ".txt" );
+    ressf_obj = JME::JetResolutionScaleFactor( res_era + "/" + res_era + "_SF_" + jet_type + ".txt" );
+  }
 
   //Open Files//
 
@@ -175,11 +178,11 @@ int main(int argc, char* argv[]){
   enum Cuts{
     countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
     channelCut, trigCut, lepkinCut, signCut, thirdLepCut, dilepmassCut, dilepVetoCut, ptrelCut, metCut, jetCut,
-    zerobtagCut1jet, onebtagCut1jet, zerobtagCut2jets, onebtagCut2jets, twobtagsCut2jets, numCuts
+    zerobtagCut1jet, onebtagCut1jet, zerobtagCut2jets, onebtagCut2jets, twobtagsCut2jets, counttopweighted, numCuts
   };
   vector<pair<string, double> > v_cuts(numCuts);
 
-  v_cuts[countEvts]=make_pair("Initial",0.); v_cuts[countDilep]=make_pair("Dilepton selection",0.); v_cuts[countLeppt]=make_pair("Lepton Pt Cut",0.);
+  v_cuts[countEvts]=make_pair("Initial",0.); v_cuts[counttopweighted]=make_pair("Weighted top",0.); v_cuts[countDilep]=make_pair("Dilepton selection",0.); v_cuts[countLeppt]=make_pair("Lepton Pt Cut",0.);
   v_cuts[countDilepmass]=make_pair("Dilepton Mass Cut",0.); v_cuts[countJetpteta]=make_pair("Leading Jet Pt/eta cut",0.);
   v_cuts[countMet]=make_pair("MET Filters",0.); v_cuts[channelCut]=make_pair("Correct Channel",0.); v_cuts[signCut]=make_pair("Opposite Lepton Sign",0.);
   v_cuts[trigCut]=make_pair("HLT Trigger",0.); v_cuts[lepkinCut]=make_pair("Lepton kinematics cut",0.); v_cuts[thirdLepCut]=make_pair("Third lepton cut",0.);
@@ -194,6 +197,7 @@ int main(int argc, char* argv[]){
     TString keyname = key->GetName();
 
     if (keyname.EqualTo("totalEvts"))          v_cuts[countEvts].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
+    else if (keyname.EqualTo("nTopPtWeight"))  v_cuts[counttopweighted].second += weight0 * (*(vector<double>*)key->ReadObj())[0];
     else if (keyname.EqualTo("dilep_cut"))     v_cuts[countDilep].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
     else if (keyname.EqualTo("leppt_cut"))     v_cuts[countLeppt].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
     else if (keyname.EqualTo("dilepmass_cut")) v_cuts[countDilepmass].second += weight0 * (*(vector<int>*)key->ReadObj())[0];
@@ -379,11 +383,12 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  int nGen=MAXGEN, gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
+  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
 
   if (inName.Contains("ttbar", TString::kIgnoreCase)) {
     T->SetBranchAddress("nGen", &nGen);
+    T->SetBranchAddress("gen_status", gen_status);
     T->SetBranchAddress("gen_PID", gen_PID);
     T->SetBranchAddress("gen_pt", gen_pt);
     T->SetBranchAddress("gen_mass", gen_mass);
@@ -488,7 +493,31 @@ int main(int argc, char* argv[]){
     weight = weight0;
     bool isGH = false;
 
-    if (isMC) weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+    if (isMC) {
+      weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
+
+      //ttbar reweighting
+      if (inName.Contains("ttbar", TString::kIgnoreCase) && TopPT_weight) {
+        double t_pt=0, tbar_pt=0;
+
+        //use first t's
+        for (int i=0; i<nGen; i++) {
+          if (gen_PID[i]==6 && 20<=gen_status[i] && gen_status[i]<30) t_pt = gen_pt[i];
+          else if (gen_PID[i]==-6 && 20<=gen_status[i] && gen_status[i]<30) tbar_pt = gen_pt[i];
+        }
+        if (t_pt==0) {
+          for (int i=0; i<nGen; i++) {
+            if (gen_PID[i]==6) { t_pt = gen_pt[i]; break; }
+          }
+        }
+        if (tbar_pt==0) {
+          for (int i=0; i<nGen; i++) {
+            if (gen_PID[i]==-6) { tbar_pt = gen_pt[i]; break; }
+          }
+        }
+        weight *= sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) ) * (v_cuts[countEvts].second/v_cuts[counttopweighted].second);
+      }
+    }
     else isGH = (278802<=run && run<=300000);
 
     if (channel == "mm") {
@@ -944,6 +973,11 @@ int main(int argc, char* argv[]){
   cout << difftime(time(NULL), start) << " s" << endl;
   cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
 
+  // scaling event counts in skimming level (to make sure the event integral is preserved)
+  // for ttbar when applying pt reweighting
+  if (inName.Contains("ttbar", TString::kIgnoreCase) && TopPT_weight) {
+    for(int i=0; i<channelCut; i++) v_cuts[i].second  *= (v_cuts[countEvts].second/v_cuts[counttopweighted].second);
+  }   
   TH1D* cuts = new TH1D("cuts","cuts",numCuts,-0.5,float(numCuts)-0.5);
 
   //Cutflow Table//
@@ -953,7 +987,7 @@ int main(int argc, char* argv[]){
 
   cout<<      "                          |||          Nevent          |||     Efficiency (Relative Efficiency)\n";
 
-  for (int i=0; i<numCuts; i++) {
+  for (int i=0; i<numCuts-1; i++) {
     if (i == 0)
       cout << Form("%-25s |||       %12.1f       |||       %1.6f (%1.4f)",
                    v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[0].second) << endl;
@@ -1136,6 +1170,10 @@ void setPars(const string& parFile) {
       if (line == "true") isMC = true;
       else isMC = false;
     }
+    else if (var == "TopPT_weight"){
+      if (line == "true") TopPT_weight = true; 
+      else TopPT_weight = false;
+    } 
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();
     else if (var == "muTrigSfName") muTrigSfName = line.data();
@@ -1194,3 +1232,4 @@ bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& ol
   }
   return newBTag;
 }
+
