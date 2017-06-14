@@ -1,6 +1,7 @@
 isMC           true
-inName         gluonkk-M3000.root
-outName        gluonkk-M3000_mm.root
+topPt_weight   true
+inName         /uscms_data/d3/broozbah/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/Chads_root/TTbar.root
+outName        ./rootFiles_SM/ntopweighted/ON/TTbar_mm.root
 channel        mm
 eras           Summer16_23Sep2016V4_MC
 res_era        Spring16_25nsV10_MC
@@ -10,6 +11,6 @@ muIdSfName     ID_EfficienciesAndSF_GH.root
 muTrackSfName  Tracking_EfficienciesAndSF_GH.root
 eRecoSfName    e_Reco_efficiency.root
 eIdSfName      e_MediumID_efficiency.root
-btagName       btag_eff.root
-pileupName     mu_weights.root
+btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/btag_eff.root
+pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/mu_weights.root
 

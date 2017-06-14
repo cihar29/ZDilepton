@@ -43,7 +43,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
 map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
-bool isMC;
+bool isMC, topPt_weight;
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -108,8 +108,13 @@ int main(int argc, char* argv[]){
     }   
   }
 
-  JME::JetResolution res_obj = JME::JetResolution( res_era + "/" + res_era + "_PtResolution_" + jet_type + ".txt" );
-  JME::JetResolutionScaleFactor ressf_obj = JME::JetResolutionScaleFactor( res_era + "/" + res_era + "_SF_" + jet_type + ".txt" );
+  JME::JetResolution res_obj;
+  JME::JetResolutionScaleFactor ressf_obj;
+
+  if (isMC) {
+    res_obj = JME::JetResolution( res_era + "/" + res_era + "_PtResolution_" + jet_type + ".txt" );
+    ressf_obj = JME::JetResolutionScaleFactor( res_era + "/" + res_era + "_SF_" + jet_type + ".txt" );
+  }
 
   //Open Files//
 
@@ -187,6 +192,21 @@ int main(int argc, char* argv[]){
   v_cuts[zerobtagCut2jets]=make_pair(">= 2 Jets, = 0 btags",0.); v_cuts[dilepVetoCut]=make_pair("Z-mass veto",0.);
   v_cuts[onebtagCut1jet]=make_pair("= 1 Jet, >= 1 btag",0.); v_cuts[onebtagCut2jets]=make_pair(">= 2 Jets, = 1 btag",0.);
   v_cuts[twobtagsCut2jets]=make_pair(">= 2 Jets, >= 2 btags",0.); v_cuts[metCut]=make_pair("MET cut",0.); v_cuts[jetCut]=make_pair(">= 1 jet",0.);
+
+  //ttbar reweighting
+  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight ) {
+    int countTopWeight=0, countTotal=0;
+
+    TIter nextkey(inFile->GetListOfKeys());
+    TKey* key;
+    while ( (key = (TKey*)nextkey()) ) {
+      TString keyname = key->GetName();
+
+      if (keyname.EqualTo("totalEvts")) countTotal += (*(vector<int>*)key->ReadObj())[0];
+      else if (keyname.EqualTo("nTopPtWeight")) countTopWeight += (*(vector<int>*)key->ReadObj())[0];
+    }
+    weight0 *= double(countTotal) / countTopWeight;
+  }
 
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
@@ -379,7 +399,7 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
+  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
 
   if (inName.Contains("ttbar", TString::kIgnoreCase)) {
@@ -391,8 +411,6 @@ int main(int argc, char* argv[]){
     T->SetBranchAddress("gen_eta", gen_eta);
     T->SetBranchAddress("gen_phi", gen_phi);
     T->SetBranchAddress("gen_index",  gen_index);
-    T->SetBranchAddress("gen_mother0", gen_mother0);
-    T->SetBranchAddress("gen_mother1", gen_mother1);
   }
 
   char lep0flavor, lep1flavor;
@@ -493,7 +511,7 @@ int main(int argc, char* argv[]){
       weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
 
       //ttbar reweighting
-      if (inName.Contains("ttbar", TString::kIgnoreCase)) {
+      if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight ) {
         double t_pt=0, tbar_pt=0;
 
         //use first t's
@@ -1160,6 +1178,10 @@ void setPars(const string& parFile) {
     if (var == "isMC"){
       if (line == "true") isMC = true;
       else isMC = false;
+    }
+    if (var == "topPt_weight"){
+      if (line == "true") topPt_weight = true;
+      else topPt_weight = false;
     }
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();
