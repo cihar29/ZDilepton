@@ -195,7 +195,7 @@ int main(int argc, char* argv[]){
 
   //ttbar reweighting
   if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight ) {
-    int countTopWeight=0, countTotal=0;
+    double countTopWeight=0, countTotal=0;
 
     TIter nextkey(inFile->GetListOfKeys());
     TKey* key;
@@ -203,9 +203,9 @@ int main(int argc, char* argv[]){
       TString keyname = key->GetName();
 
       if (keyname.EqualTo("totalEvts")) countTotal += (*(vector<int>*)key->ReadObj())[0];
-      else if (keyname.EqualTo("nTopPtWeight")) countTopWeight += (*(vector<int>*)key->ReadObj())[0];
+      else if (keyname.EqualTo("nTopPtWeight")) countTopWeight += (*(vector<double>*)key->ReadObj())[0];
     }
-    weight0 *= double(countTotal) / countTopWeight;
+    weight0 *= countTotal / countTopWeight;
   }
 
   TIter nextkey(inFile->GetListOfKeys());
