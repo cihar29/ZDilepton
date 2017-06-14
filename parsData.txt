@@ -1,4 +1,5 @@
 ISMC       false
+setDRCut   something
 inName     Muon.root
 outName    Muon_mm.root
 channel    mm

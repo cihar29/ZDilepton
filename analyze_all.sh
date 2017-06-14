@@ -19,7 +19,8 @@ if [ $# -eq 1 ] ; then
   do
 
     lines=( "isMC           true"
-            "topPt_weight   true"    
+            "topPt_weight   NOMINAL" 
+            "setDRCut       OFF"   
             "inName         /uscms_data/d3/broozbah/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/Chads_root/${i}.root"
             "outName        ./rootFiles_SM/ntopweighted/ON/${i}_${channel}.root"
             "channel        ${channel}"
