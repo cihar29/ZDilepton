@@ -594,7 +594,11 @@ int main(int argc, char* argv[]){
         v_cuts[signCut].second += weight;
 
         //use these events for em channel
+<<<<<<< HEAD
         if ( nEle>0 && ele_MediumID[0] && ele_pt[0]>25 && fabs(ele_eta[0])<2.5 ) continue;
+=======
+        if ( nEle>0 && ele_MediumID[0] && ele_pt[0]>25 && ele_eta[0]<2.5 ) continue;
+>>>>>>> 8003e9fc715e738e30f611dd597da6ab78d5d9cf
         v_cuts[thirdLepCut].second += weight;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
@@ -637,7 +641,11 @@ int main(int argc, char* argv[]){
         v_cuts[signCut].second += weight;
 
         //use these events for em channel
+<<<<<<< HEAD
         if ( nMuon>0 && muon_pt[0]>53 && fabs(muon_eta[0])<2.4 ) {
+=======
+        if ( nMuon>0 && muon_pt[0]>53 && muon_eta[0]<2.4 ) {
+>>>>>>> 8003e9fc715e738e30f611dd597da6ab78d5d9cf
           if ( isMC || isGH ) {
             if ( !muon_IsMediumID[0] ) continue;
           }
@@ -874,7 +882,10 @@ int main(int argc, char* argv[]){
     double dphi_jet1met = fabs( deltaPhi( jet1.Phi(), met.Phi() ) );
 
     double masslljjm = (lep0+lep1+jet0+jet1+met).M();
+<<<<<<< HEAD
     if (masslljjm>=5000) masslljjm = 4999.9;11
+=======
+>>>>>>> 8003e9fc715e738e30f611dd597da6ab78d5d9cf
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {

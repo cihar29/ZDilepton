@@ -32,10 +32,11 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b", bool createFi
   h->GetXaxis()->SetRangeUser(0, 1400);
   h->GetYaxis()->SetTitle("b-tagging #varepsilon");
   h->GetYaxis()->SetTitleOffset(1.2);
-  h->GetYaxis()->SetRangeUser(0, 1.4);
+  h->GetYaxis()->SetRangeUser(0, 0.5);
   h->Draw();
 
-  TLegend* leg = new TLegend(.5,.9-2*2*0.04,.7,.9);
+  //TLegend* leg = new TLegend(.5,.9-2*2*0.04,.7,.9);
+  TLegend* leg = new TLegend(.5,.9-2*0.04,.7,.9);
   leg->SetBorderSize(0);
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
@@ -43,7 +44,7 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b", bool createFi
   leg->SetTextFont(42);
 
   //hists for plots
-  map<TString, TH1F*> hists;
+  /*map<TString, TH1F*> hists;
   for (map<TString, TString>::iterator it = files.begin(); it != files.end(); it++) {
 
     TString dataset = it->second;
@@ -84,6 +85,24 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b", bool createFi
 
     leg->AddEntry(hists[name], name, "PL");
   }
+  leg->Draw();*/
+
+  TFile* file = TFile::Open( "btag_eff.root" );
+  TH1F* h1 = (TH1F*) file->Get( channel + "/" + flavor + "_LWP_" + channel );
+  TH1F* h2 = (TH1F*) file->Get( channel + "/" + flavor + "_MWP_" + channel );
+
+  h1->SetMarkerStyle(20);
+  h1->SetMarkerColor(1);
+  h1->SetLineColor(1);
+  h1->Draw("pesame");
+
+  h2->SetMarkerStyle(24);
+  h2->SetMarkerColor(1);
+  h2->SetLineColor(1);
+  h2->Draw("pesame");
+
+  leg->AddEntry(h1, "CSVL", "PL");
+  leg->AddEntry(h2, "CSVM", "PL");
   leg->Draw();
 
   TLatex text;
@@ -95,7 +114,15 @@ void btag_efficiency(TString channel = "mm", TString flavor = "b", bool createFi
 
   text.SetTextSize(0.04);
   text.DrawLatex(0.2, 0.87, flavor + "-Jets");
-  text.DrawLatex(0.2, 0.83, channel + " channel");
+
+  //TString channel_text = "e#mu";
+  //if (channel.EqualTo("mm")) channel_text = "#mu#mu";
+  //else if (channel.EqualTo("ee")) channel_text = "ee";
+  //text.DrawLatex(0.2, 0.83, channel_text + " channel");
+  TLatex text2;
+  text2.SetNDC();
+  text2.SetTextSize(0.04);
+  text2.DrawLatex(0.2, 0.83, "e#mu channel");
 
   text.SetTextFont(52);
   text.DrawLatex(0.29, 0.96, "Simulation");
