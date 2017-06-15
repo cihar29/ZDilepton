@@ -12,6 +12,14 @@ if [ $# -eq 1 ] ; then
 
   channel=${args[0]}
 
+  pileupName="/uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/mu_weights_SingleMuon.root"
+  btagName="/uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/btag_eff_SingleMuon.root"
+
+  if [ "$channel" = "ee" ] ; then
+    pileupName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/mu_weights_DoubleEle.root"
+    btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff_DE_ee.root"
+  fi
+
   mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
             "zprime-M3000-W300" "gluonkk-M3000" )
 
@@ -32,8 +40,8 @@ if [ $# -eq 1 ] ; then
             "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
             "eRecoSfName    e_Reco_efficiency.root"
             "eIdSfName      e_MediumID_efficiency.root"
-            "btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/btag_eff.root"
-            "pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/mu_weights.root"
+            "btagName       ${btagName}"
+            "pileupName     ${pileupName}"
           )
     line=""
 

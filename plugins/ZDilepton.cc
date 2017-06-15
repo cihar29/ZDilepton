@@ -88,7 +88,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_globalTightHalo2016Filter"
     };
     vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
-    vector<double> nTopPtWeight;
+    vector<double> nTopPtWeight, nTopPtWeight2;
 
     string triggers[nTriggers] = {
       "HLT_Mu45_eta2p1_v",
@@ -98,7 +98,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "HLT_Mu30_Ele30_CaloIdL_GsfTrkIdVL_v",
       "HLT_Ele105_CaloIdVT_GsfTrkIdT_v",
       "HLT_Ele115_CaloIdVT_GsfTrkIdT_v",
-      "HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v"
+      "HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_"
     };
     vector<int> trig_prescale; vector<bool> trig_passed; vector<string> trig_name;
 
@@ -217,7 +217,7 @@ void  ZDilepton::beginJob() {
 
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
-  nTopPtWeight.assign(1, 0.);
+  nTopPtWeight.assign(1, 0.); nTopPtWeight2.assign(1, 0.);
 
   tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
   tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
@@ -377,6 +377,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
     }
     nTopPtWeight[0] += sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
+    nTopPtWeight2[0] += exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
 
     ttbar_pt->Fill(t_pt, tbar_pt);
 
@@ -889,6 +890,7 @@ void ZDilepton::endJob() {
     root_file->WriteObject(&met_cut, "met_cut");
     root_file->WriteObject(&dilepmass_cut, "dilepmass_cut");
     root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
+    root_file->WriteObject(&nTopPtWeight2, "nTopPtWeight2");
 
     root_file->Write();
     delete root_file;
