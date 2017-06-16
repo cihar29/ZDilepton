@@ -810,7 +810,6 @@ int main(int argc, char* argv[]){
       }
 
       if (jet.Pt()>15 && fabs(jet_eta[i])<3.) {
-        jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
 
         if (lep0.DeltaR(jet) < rmin0) {
           rmin0 = lep0.DeltaR(jet);
@@ -826,6 +825,7 @@ int main(int argc, char* argv[]){
         if (jet.Pt()>30 && fabs(jet_eta[i])<2.4) {
           nGoodJet++;
           hT+=jet.Pt();
+          jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
         }
       }
     }
@@ -835,7 +835,8 @@ int main(int argc, char* argv[]){
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
-    if ( (lep0perp<10 && rmin0<0.4) || (lep1perp<10 && rmin1<0.4) ) continue;
+    if (channel=="ee") {if ( (lep0perp<30 && rmin0<0.4) || (lep1perp<30 && rmin1<0.4) ) continue;}
+    else {if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue;}
     v_cuts[ptrelCut].second += weight;
 
     if (setDRCut=="SIGNAL") { if (rmin0>1.4 || rmin1>1.4) continue; }
