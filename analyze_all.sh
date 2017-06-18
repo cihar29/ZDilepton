@@ -28,6 +28,8 @@ if [ $# -eq 1 ] ; then
 
     lines=( "isMC           true"
             "topPt_weight   NOMINAL" 
+            "jec            NOMINAL"
+            "jer            NOMINAL"
             "btagSF         NOMINAL"
             "mistagSF       NOMINAL"
             "setDRCut       OFF"   
