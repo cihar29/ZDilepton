@@ -32,7 +32,7 @@ void setPars(const string& parFile);
 void setWeight(const string& parFile); 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
-bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation);
+bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
@@ -47,7 +47,7 @@ map<TString, TH1*> m_Histos1D;
 //parameters- edit in pars.txt
 bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
-TString btagSF="NOMINAL"; TString mistagSF="NOMINAL"; //NOMINAL, UP, DOWN
+TString btagSF="NOMINAL", mistagSF="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
@@ -595,9 +595,7 @@ int main(int argc, char* argv[]){
         v_cuts[signCut].second += weight;
 
         //use these events for em channel
-
         if ( nEle>0 && ele_MediumID[0] && ele_pt[0]>25 && fabs(ele_eta[0])<2.5 ) continue;
-
         v_cuts[thirdLepCut].second += weight;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
@@ -737,7 +735,6 @@ int main(int argc, char* argv[]){
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
     TRandom3* rand = new TRandom3(0);
-    int nGoodJet=0;
     double hT=0;
     for (int i=0; i<nJet; i++) {
 
@@ -824,20 +821,20 @@ int main(int argc, char* argv[]){
         if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = jet.Pt(); }
 
         if (jet.Pt()>30 && fabs(jet_eta[i])<2.4) {
-          nGoodJet++;
-          hT+=jet.Pt();
           jet_index_corrpt.push_back( make_pair(i, jet.Pt()) );
+          hT+=jet.Pt();
         }
       }
     }
+    int nGoodJet = jet_index_corrpt.size();
     if (nGoodJet < 2) continue;
 
     if (minjet0 == minjet1) sameRlepjet++;
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
-    if (channel=="ee") {if ( (lep0perp<30 && rmin0<0.4) || (lep1perp<30 && rmin1<0.4) ) continue;}
-    else {if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue;}
+    if (channel=="ee") { if ( (lep0perp<30 && rmin0<0.4) || (lep1perp<30 && rmin1<0.4) ) continue; }
+    else { if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue; }
     v_cuts[ptrelCut].second += weight;
 
     if (setDRCut=="SIGNAL") { if (rmin0>1.4 || rmin1>1.4) continue; }
@@ -878,9 +875,7 @@ int main(int argc, char* argv[]){
     double dphi_jet1met = fabs( deltaPhi( jet1.Phi(), met.Phi() ) );
 
     double masslljjm = (lep0+lep1+jet0+jet1+met).M();
-
     if (masslljjm>=5000) masslljjm = 4999.9;
-
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
@@ -955,17 +950,17 @@ int main(int argc, char* argv[]){
           if (jet1btagM) FillHist1D("jetPt_bTagM_udsg", jet1pt, 1.);
         }
       }
-        
-      TString variation0 = btagSF, variation1 = btagSF ; 
+
+      TString variation0 = btagSF, variation1 = btagSF;
       TH1F* eff0, *eff1;
       if ( abs(jetflavor0) == 4 ) eff0 = btag_eff_c;
-      else if ( abs(jetflavor0) == 5 ) eff0 = btag_eff_b; 
+      else if ( abs(jetflavor0) == 5 ) eff0 = btag_eff_b;
       else { eff0 = btag_eff_udsg; variation0 = mistagSF; }
 
       if ( abs(jetflavor1) == 4 ) eff1 = btag_eff_c;
       else if ( abs(jetflavor1) == 5 ) eff1 = btag_eff_b;
       else { eff1 = btag_eff_udsg; variation1 = mistagSF; }
-       
+
       jet0btag = newBTag( *rand, jet0pt, jetflavor0, jet0btag, *eff0, variation0 );
       jet1btag = newBTag( *rand, jet1pt, jetflavor1, jet1btag, *eff1, variation1 );
     }
@@ -1289,7 +1284,7 @@ void setPars(const string& parFile) {
   file.close();
 }
 
-bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation) {
+bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation ) {
   double sf=0;
 
   //b or c jet
@@ -1297,38 +1292,40 @@ bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& ol
   if ( abs(flavor) == 4 || abs(flavor) == 5 ) sf = 0.887973*((1.+(0.0523821*pT))/(1.+(0.0460876*pT))); //loose SFs, Run2016 BCDEFGH 
  
   //udsg
-  //else sf = 1.06175-0.000462017*pT+1.02721e-06*pT*pT-4.95019e-10*pT*pT*pT; //medium SFs
- // else sf = 1.15507+-0.00116691*pT+3.13873e-06*pT*pT+-2.14387e-09*pT*pT*pT;  //loose SFs, Run2016 GH
-  else sf = 1.12626+-0.000198068*pT+1.29872e-06*pT*pT+-1.00905e-09*pT*pT*pT; //loose SFs, Run2016 BCDEF
+  //else sf = 1.06175-0.000462017*pT+1.02721e-06*pT*pT-4.95019e-10*pT*pT*pT;  //medium SFs
+  //else sf = 1.15507+-0.00116691*pT+3.13873e-06*pT*pT+-2.14387e-09*pT*pT*pT; //loose SFs, Run2016 GH
+  else sf = 1.12626+-0.000198068*pT+1.29872e-06*pT*pT+-1.00905e-09*pT*pT*pT;  //loose SFs, Run2016 BCDEF
 
-  if(variation=="UP" || variation=="DOWN"){
+  if (variation=="UP" || variation=="DOWN") {
     double sign = (variation=="UP") ? +1.: -1.;
-    if ( abs(flavor) == 4 ){ 
-       if(pT<30.)        sf = sf + sign*0.063454590737819672 ;
-       else if(pT<50.)   sf = sf + sign*0.031410016119480133 ;
-       else if(pT<70.)   sf = sf + sign*0.02891194075345993  ;
-       else if(pT<100.)  sf = sf + sign*0.028121808543801308 ;
-       else if(pT<140.)  sf = sf + sign*0.027028990909457207 ;
-       else if(pT<200.)  sf = sf + sign*0.027206243947148323 ;
-       else if(pT<300.)  sf = sf + sign*0.033642303198575974 ;
-       else if(pT<600.)  sf = sf + sign*0.04273652657866478  ;
-       else if(pT<1000.) sf = sf + sign*0.054665762931108475 ;
-       else              sf = sf + sign*0.054665762931108475 * 2. ; // double syst. above 1 TeV 
-    } else if ( abs(flavor) == 5){
-       if(pT<30.)        sf = sf + sign*0.025381835177540779 ; 
-       else if(pT<50.)   sf = sf + sign*0.012564006261527538 ;
-       else if(pT<70.)   sf = sf + sign*0.011564776301383972 ;
-       else if(pT<100.)  sf = sf + sign*0.011248723603785038 ;
-       else if(pT<140.)  sf = sf + sign*0.010811596177518368 ;
-       else if(pT<200.)  sf = sf + sign*0.010882497765123844 ;
-       else if(pT<300.)  sf = sf + sign*0.013456921093165874 ;
-       else if(pT<600.)  sf = sf + sign*0.017094610258936882 ;
-       else if(pT<1000.) sf = sf + sign*0.02186630479991436  ;
-       else              sf = sf + sign*0.02186630479991436 * 2. ; // double syst. above 1 TeV
 
-    } else {
-       if(pT<1000.) sf = sf * (1+sign*(0.100062-8.50875e-05*pT+4.8825e-08*pT*pT));  
-       else         sf = sf * (1+sign*(0.100062-8.50875e-05*pT+4.8825e-08*pT*pT) * 2.) ; // double syst. above 1 TeV
+    if (abs(flavor) == 4) {
+       if (pT<30.)        sf += sign*0.063454590737819672 ;
+       else if (pT<50.)   sf += sign*0.031410016119480133 ;
+       else if (pT<70.)   sf += sign*0.02891194075345993  ;
+       else if (pT<100.)  sf += sign*0.028121808543801308 ;
+       else if (pT<140.)  sf += sign*0.027028990909457207 ;
+       else if (pT<200.)  sf += sign*0.027206243947148323 ;
+       else if (pT<300.)  sf += sign*0.033642303198575974 ;
+       else if (pT<600.)  sf += sign*0.04273652657866478  ;
+       else if (pT<1000.) sf += sign*0.054665762931108475 ;
+       else               sf += sign*0.054665762931108475 * 2. ; // double syst. above 1 TeV
+    }
+    else if (abs(flavor) == 5) {
+       if (pT<30.)        sf += sign*0.025381835177540779 ;
+       else if (pT<50.)   sf += sign*0.012564006261527538 ;
+       else if (pT<70.)   sf += sign*0.011564776301383972 ;
+       else if (pT<100.)  sf += sign*0.011248723603785038 ;
+       else if (pT<140.)  sf += sign*0.010811596177518368 ;
+       else if (pT<200.)  sf += sign*0.010882497765123844 ;
+       else if (pT<300.)  sf += sign*0.013456921093165874 ;
+       else if (pT<600.)  sf += sign*0.017094610258936882 ;
+       else if (pT<1000.) sf += sign*0.02186630479991436  ;
+       else               sf += sign*0.02186630479991436 * 2. ; // double syst. above 1 TeV
+    }
+    else {
+       if (pT<1000.) sf *= (1+sign*(0.100062-8.50875e-05*pT+4.8825e-08*pT*pT));
+       else          sf *= (1+sign*(0.100062-8.50875e-05*pT+4.8825e-08*pT*pT) * 2.) ; // double syst. above 1 TeV
     }
   }
 
@@ -1356,4 +1353,3 @@ bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& ol
   }
   return newBTag;
 }
-

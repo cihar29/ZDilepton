@@ -13,11 +13,9 @@ if [ $# -eq 1 ] ; then
   channel=${args[0]}
 
   pileupName="/uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/mu_weights_SingleMuon.root"
-  btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff.root"
 
   if [ "$channel" = "ee" ] ; then
     pileupName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/weights_DoubleElectron.root"
-    btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff.root"
   fi
 
   mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
@@ -42,7 +40,7 @@ if [ $# -eq 1 ] ; then
             "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
             "eRecoSfName    e_Reco_efficiency.root"
             "eIdSfName      e_MediumID_efficiency.root"
-            "btagName       ${btagName}"
+            "btagName       /uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff.root"
             "pileupName     ${pileupName}"
           )
     line=""
@@ -59,5 +57,3 @@ if [ $# -eq 1 ] ; then
   done
 
 fi
-
-
