@@ -13,11 +13,11 @@ if [ $# -eq 1 ] ; then
   channel=${args[0]}
 
   pileupName="/uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/mu_weights_SingleMuon.root"
-  btagName="/uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_20/src/analysis/ZDilepton/btag_eff_SingleMuon.root"
+  btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff.root"
 
   if [ "$channel" = "ee" ] ; then
-    pileupName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/mu_weights_DoubleEle.root"
-    btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff_DE_ee.root"
+    pileupName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/weights_DoubleElectron.root"
+    btagName="/uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff.root"
   fi
 
   mcfiles=( "TTbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
@@ -28,9 +28,11 @@ if [ $# -eq 1 ] ; then
 
     lines=( "isMC           true"
             "topPt_weight   NOMINAL" 
+            "btagSF         NOMINAL"
+            "mistagSF       NOMINAL"
             "setDRCut       OFF"   
             "inName         /uscms_data/d3/broozbah/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/Chads_root/${i}.root"
-            "outName        ./rootFiles_SM/Jun15/${i}_${channel}.root"
+            "outName        ./June17/DE/${i}_${channel}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
             "res_era        Spring16_25nsV10_MC"
@@ -57,4 +59,5 @@ if [ $# -eq 1 ] ; then
   done
 
 fi
+
 
