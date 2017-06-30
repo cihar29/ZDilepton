@@ -48,7 +48,7 @@ map<TString, TH1*> m_Histos1D;
 //parameters- edit in pars.txt
 bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
-TString jec="NOMIANL", jer="NOMINAL";
+TString jec="NOMINAL", jer="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
@@ -388,15 +388,13 @@ int main(int argc, char* argv[]){
 
   //Set Branches//
 
-  //ULong64_t event;
+  ULong64_t event;
   int run; //, lumi, bx;
 
-  if (!isMC) {
-    //T->SetBranchAddress("event", &event);
-    T->SetBranchAddress("run", &run);
-    //T->SetBranchAddress("lumi", &lumi);
-    //T->SetBranchAddress("bx", &bx);
-  }
+  T->SetBranchAddress("event", &event);
+  T->SetBranchAddress("run", &run);
+  //T->SetBranchAddress("lumi", &lumi);
+  //T->SetBranchAddress("bx", &bx);
 
  /* string triggers[nTriggers] = {
     "HLT_Mu45_eta2p1_v",
@@ -738,7 +736,7 @@ int main(int argc, char* argv[]){
     double ctype1_x=0, ctype1_y=0;
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
-    TRandom3* rand = new TRandom3(0);
+    TRandom3* rand = new TRandom3(event);
     double hT=0;
     for (int i=0; i<nJet; i++) {
 
