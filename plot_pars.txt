@@ -1,17 +1,23 @@
-dataFileName   Muon_mm.root
+dataFileName   ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/Muon_mm.root
 dataName       Data
-mcFileNames    TTbar_mm.root highDY_mm.root lowDY_mm.root STschannel_mm.root STtchannel_mm.root SaTtchannel_mm.root STtWchannel_mm.root SaTtWchannel_mm.root Wjet_mm.root
-sigFileNames   zprime-M3000-W300_mm.root gluonkk-M3000_mm.root
+plotData       true
+mcFileNames    ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/TTbar_weighted_V2_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/highDY_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/lowDY_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STschannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STtchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/SaTtchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STtWchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/SaTtWchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/Wjet_mm.root
+sigFileNames   ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/zprime-M3000-W300_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/gluonkk-M3000_mm.root
 sigScales      1 1
 leftText       CMS
 rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)
 logx           false
+logy           false
 subplot        ratio
-outName        masslljjm
-hname          3_masslljjm
-xmin           0
-xmax           3000
+outName        5/dphi_jet1met
+hname          5_dphi_jet1met
+xmin           -6
+xmax           6
 ymin           0
 subymin        0
-subymax        3
+subymax        2
+systematics    topPt_weight jec jer btagSF mistagSF
+sys_norm       lumi:0.025 sig_tt:0.15 sig_dy:0.30 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01 pdf:0.05 q2_tt:0.025 q2_dy:0.025 q2_st:0.025
+rebin          2
+plotImpact     false
 

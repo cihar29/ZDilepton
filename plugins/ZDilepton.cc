@@ -39,9 +39,12 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/LHERunInfoProduct.h"
 #include <SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h>
 //#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "DataFormats/PatCandidates/interface/VIDCutFlowResult.h"
+
 #include "parsePileUpJSON2.h"
 #include <vector>
 #include <algorithm>
@@ -75,6 +78,7 @@ class ZDilepton : public edm::EDAnalyzer {
     virtual void beginJob() override;
     virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
     virtual void endJob() override;
+    virtual void endRun(edm::Run const & iRun, edm::EventSetup const& iSetup) override;
 
     TFile* root_file;
     TTree* tree;
@@ -101,12 +105,13 @@ class ZDilepton : public edm::EDAnalyzer {
       "HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_"
     };
     vector<int> trig_prescale; vector<bool> trig_passed; vector<string> trig_name;
+    vector<float> wgt_env, wgt_rep;
 
     ULong64_t event;
     int run, lumi, bx;
 
-    float rho, mu, genweight;
-    int nPV;
+    float rho, mu;
+    int nPV, nPVall;
 
     int nGen;
     int gen_status[MAXGEN], gen_PID[MAXGEN], gen_mother0[MAXGEN], gen_mother1[MAXGEN], gen_index[MAXGEN]; //gen_nMothers[MAXGEN], gen_nDaughters[MAXGEN];
@@ -171,6 +176,8 @@ class ZDilepton : public edm::EDAnalyzer {
     edm::EDGetTokenT<edm::TriggerResults> triggerResultsTag_;
     edm::EDGetTokenT<pat::PackedTriggerPrescales> prescalesTag_;
     edm::EDGetTokenT<GenEventInfoProduct> genEventTag_;
+    edm::EDGetTokenT<LHEEventProduct> extLHETag_;
+    edm::EDGetTokenT<LHERunInfoProduct> runInfoTag_;
     edm::EDGetTokenT< edm::View<PileupSummaryInfo> > muTag_;
     //edm::EDGetTokenT< vector<reco::Conversion> > convTag_;
     //edm::EDGetTokenT<reco::BeamSpot> bsTag_;
@@ -204,9 +211,28 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   triggerResultsTag_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("triggerResultsTag") );
   prescalesTag_ = consumes<pat::PackedTriggerPrescales>( iConfig.getParameter<edm::InputTag>("prescalesTag") );
   genEventTag_ = consumes<GenEventInfoProduct>( iConfig.getParameter<edm::InputTag>("genEventTag") );
+  extLHETag_ = consumes<LHEEventProduct>( iConfig.getParameter<edm::InputTag>("extLHETag") );
+  runInfoTag_ = consumes<LHERunInfoProduct,edm::InRun>(edm::InputTag("externalLHEProducer",""));
   muTag_ = consumes< edm::View<PileupSummaryInfo> >( iConfig.getParameter<edm::InputTag>("muTag") );
   //convTag_ = consumes< vector<reco::Conversion> >( iConfig.getParameter<edm::InputTag>("convTag") );
   //bsTag_ = consumes<reco::BeamSpot>( iConfig.getParameter<edm::InputTag>("bsTag") );
+}
+
+void ZDilepton::endRun(edm::Run const & iRun, edm::EventSetup const& iSetup) {
+/*
+  edm::Handle<LHERunInfoProduct> runInfo; 
+  typedef std::vector<LHERunInfoProduct::Header>::const_iterator headers_const_iterator;
+
+  if ( iRun.getByToken( runInfoTag_, runInfo ) ) {
+    LHERunInfoProduct myLHERunInfoProduct = *(runInfo.product());
+ 
+    for (headers_const_iterator iter=myLHERunInfoProduct.headers_begin(); iter!=myLHERunInfoProduct.headers_end(); iter++){
+      std::cout << iter->tag() << std::endl;
+      std::vector<std::string> lines = iter->lines();
+      for (unsigned int iLine = 0; iLine<lines.size(); iLine++) std::cout << lines.at(iLine);
+    }
+  }
+*/
 }
 
 // ------------ method called once each job just before starting event loop  ------------
@@ -229,6 +255,9 @@ void  ZDilepton::beginJob() {
   tree->Branch("event", &event, "event/l");
 
   if(isMC_){
+    tree->Branch("wgt_env", "std::vector<float>", &wgt_env);
+    tree->Branch("wgt_rep", "std::vector<float>", &wgt_rep);
+
     tree->Branch("nGen", &nGen, "nGen/I");
     tree->Branch("gen_status",  gen_status, "gen_status[nGen]/I");
     tree->Branch("gen_PID",  gen_PID, "gen_PID[nGen]/I");
@@ -255,8 +284,6 @@ void  ZDilepton::beginJob() {
     tree->Branch("genmet_py", &genmet_py, "genmet_py/F");
     tree->Branch("genmet_sumet", &genmet_sumet, "genmet_sumet/F");
     tree->Branch("genmet_phi", &genmet_phi, "genmet_phi/F");
-
-    tree->Branch("genweight", &genweight, "genweight/F");
   }
   else{
     parsePileUpJSON2();
@@ -265,6 +292,7 @@ void  ZDilepton::beginJob() {
   tree->Branch("rho", &rho, "rho/F");
   tree->Branch("mu", &mu, "mu/F");
   tree->Branch("nPV", &nPV, "nPV/I");
+  tree->Branch("nPVall", &nPVall, "nPVall/I");
 
   tree->Branch("lep0flavor", &lep0flavor, "lep0flavor/B");
   tree->Branch("lep1flavor", &lep1flavor, "lep1flavor/B");
@@ -343,12 +371,16 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   totalEvts[0]++;
 
-  if (isMC_){
-    edm::Handle< edm::View<PileupSummaryInfo> > pileups;
-    iEvent.getByToken(muTag_, pileups);
+  //------------ Event Info ------------//
 
-    mu = pileups->at(1).getTrueNumInteractions();
+  run = int(iEvent.id().run());
+  lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
+  bx = iEvent.bunchCrossing();
+  event = iEvent.id().event();
 
+  //------------ Mu and topPt ------------//
+
+  if (isMC_) {
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
@@ -386,6 +418,10 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       deltat_pt->Fill(t_pt-t_pt2);
       deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
     }
+
+    edm::Handle< edm::View<PileupSummaryInfo> > pileups;
+    iEvent.getByToken(muTag_, pileups);
+    mu = pileups->at(1).getTrueNumInteractions();
   }
   else{
     mu = getAvgPU( run, lumi );
@@ -563,19 +599,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
   met_cut[0]++;
 
-  //------------ Event Info ------------//
-
-  run = int(iEvent.id().run());
-  lumi = int(iEvent.getLuminosityBlock().luminosityBlock());
-  bx = iEvent.bunchCrossing();
-  event = iEvent.id().event();
-
-  if (isMC_){
-    edm::Handle<GenEventInfoProduct> genEventHandle;
-    iEvent.getByToken(genEventTag_, genEventHandle);
-    genweight = genEventHandle->weight();
-  }
-
   //------------ Rho ------------//
 
   edm::Handle<double> rhoHandle;
@@ -587,12 +610,21 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< edm::View<reco::Vertex> > primaryVertices;
   iEvent.getByToken(pvTag_, primaryVertices);
 
-  nPV = primaryVertices->size();
   reco::Vertex pvtx = primaryVertices->at(0);
 
-  //--------------Generated Particles-------------//
+  nPVall = primaryVertices->size();
+  nPV = 0;
 
-  if(isMC_){
+  for (int i=0; i<nPVall; i++) {
+    const reco::Vertex& pv = primaryVertices->at(i);
+
+    if( !pv.isFake() && pv.ndof() > 4 && pv.z() <= 24 && pv.position().rho() <= 2 )
+      nPV++;
+  }
+
+  //--------------Generated Particles and weights-------------//
+
+  if(isMC_) {
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
@@ -690,6 +722,25 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       genJet_nDaught[nGenJet] = jet.numberOfDaughters();
 
       nGenJet++;
+    }
+
+    wgt_env.clear();
+    wgt_rep.clear();
+
+    edm::Handle<GenEventInfoProduct> genEventHandle;
+    iEvent.getByToken(genEventTag_, genEventHandle);
+    wgt_rep.push_back( genEventHandle->weight() ); //nominal weight = 1, twiki says this must be activated
+
+    edm::Handle<LHEEventProduct> lheEvtProduct;
+    if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
+
+      for (int i=1; i<=8; i++) { // push back the six envelope weights
+        if (i == 5 || i == 7) continue;
+        wgt_env.push_back( lheEvtProduct->weights()[i].wgt/lheEvtProduct->originalXWGTUP() );
+      }
+
+      // push back 100 weight replicas (101 total including nominal)
+      for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/lheEvtProduct->originalXWGTUP() );
     }
   }
 

@@ -28,6 +28,8 @@ if [ $# -eq 1 ] ; then
             "topPt_weight   NOMINAL" 
             "jec            NOMINAL"
             "jer            NOMINAL"
+            "pdf            NOMINAL"
+            "q2             NOMINAL"
             "btagSF         NOMINAL"
             "mistagSF       NOMINAL"
             "setDRCut       OFF"   

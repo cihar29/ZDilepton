@@ -1,3 +1,5 @@
+//createLog logData_mm.txt logMC_mm.txt topPt_weight btagSF jec jer mistagSF sig_tt sig_dy sig_st lumi pdf q2_tt q2_dy q2_st q2_zg mutrig muid muiso eltrig elid eliso
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -76,10 +78,38 @@ int main(int argc, char* argv[]) {
 
   //SYSTEMATICS//
 
+  // Normalization-only systematics
+  map<string, double> sys_norm ;
+  sys_norm["lumi"]   = 0.025;  // Luminosity uncertainty in CMS
+
+  sys_norm["sig_tt"] = 0.15;   // sigma(ttbar)      uncertainty
+  sys_norm["sig_dy"] = 0.30;   // sigma(Drell-Yan)  uncertainty
+  sys_norm["sig_st"] = 0.16;   // sigma(Single-Top) uncertainty
+  sys_norm["sig_db"] = 0.15;   // sigma(Diboson)    uncertainty
+
+  sys_norm["mutrig"] = 0.005; // muon trigger uncertainty. Only applicable in mumu and emu channels.
+  sys_norm["muid"]   = 0.01;  // muon ID uncertainty per muon.
+  sys_norm["muiso"]  = 0.01;  // muon ptrel efficiency uncertainty per muon.
+  sys_norm["eltrig"] = 0.05;  // electron trigger uncertainty. Only applicable in ee.
+  sys_norm["elid"]   = 0.01;  // electron ID uncertainty per electron.
+  sys_norm["eliso"]  = 0.01;  // electron ptrel efficiency uncertainty per muon.
+
+  // ... Uncertainties below are not really normalization-only systematics. They affect
+  // ... both shape and normalization, but treated as normalization-only systematics for now.
+  sys_norm["pdf"]      = 0.05;   // PDF uncertainty
+  sys_norm["q2_tt"]    = 0.025;  // Q2 scale uncertainty for ttbar
+  sys_norm["q2_dy"]    = 0.025;  // Q2 scale uncertainty for Drell-Yan
+  sys_norm["q2_st"]    = 0.025;  // Q2 scale uncertainty for Single-Top
+  sys_norm["q2_zg"]    = 0.025;  // Q2 scale uncertainty for signals
+
   //which systematics sources to consider: read from command line
   vector<string> systematics ;
   for (int i=3; i < argc; i++){
     string sys = argv[i] ;
+    // channel specific systematics
+    if(  channel == "mm" && (sys == "eltrig" || sys == "elid" || sys == "eliso") ) continue ;
+    if(  channel == "ee" && (sys == "mutrig" || sys == "muid" || sys == "muiso") ) continue ;
+    if( (channel == "em" || channel == "me")  && sys == "eltrig" )                 continue ;
     systematics.push_back(sys);
   }
 
@@ -136,51 +166,9 @@ int main(int argc, char* argv[]) {
     for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
       string cutname = cuts[i_cut].first;
 
-      map<TString, pair<double, double> > &NM = cuts[i_cut].second ;      // nominal settings
-      map<TString, pair<double, double> > &UP = cutsUP[i_cut].second ;    // UP variation for a given sys source
-      map<TString, pair<double, double> > &DN = cutsDOWN[i_cut].second ;  // DOWN variation for a given sys source
-
-      if (sys != "topPt_weight") {
-        file<< Form("%-25s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f ",
-        cutname.data(),
-        UP["ttbar"].first     -NM["ttbar"].first     ,             DN["ttbar"].first     -NM["ttbar"].first,
-        UP["Drell-Yan"].first -NM["Drell-Yan"].first ,             DN["Drell-Yan"].first -NM["Drell-Yan"].first,
-        UP["Single-Top"].first-NM["Single-Top"].first,             DN["Single-Top"].first-NM["Single-Top"].first,
-        UP["W+Jets"].first    -NM["W+Jets"].first    ,             DN["W+Jets"].first    -NM["W+Jets"].first,
-        UP["background"].first-NM["background"].first,             DN["background"].first-NM["background"].first,
-        UP[zprime].first      -NM[zprime].first      ,             DN[zprime].first      -NM[zprime].first,
-        UP[gluon].first       -NM[gluon].first       ,             DN[gluon].first       -NM[gluon].first
-        ) << endl;
-
-        file<< Form("                         || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-        100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
-        100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
-        100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
-        100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
-        100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
-        100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
-        100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
-        ) << endl;
-      }
-      else { // top pT reweighting systematic only affects ttbar
-        file<< Form("%-25s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f ",
-        cutname.data(),
-        UP["ttbar"].first-NM["ttbar"].first,               DN["ttbar"].first-NM["ttbar"].first,
-        0., 0., 0., 0., 0., 0.,
-        UP["ttbar"].first-NM["ttbar"].first,               DN["ttbar"].first-NM["ttbar"].first, // total bkgd
-        0., 0., 0., 0.
-        ) << endl;
-
-        file<< Form("                         || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-        100.*(UP["ttbar"].first/NM["ttbar"].first - 1.),                      100.*(DN["ttbar"].first/NM["ttbar"].first - 1.),
-        0., 0., 0., 0., 0., 0.,
-        100.*((UP["ttbar"].first-NM["ttbar"].first)/NM["background"].first),  100.*((DN["ttbar"].first-NM["ttbar"].first)/NM["background"].first),
-        0., 0., 0., 0.
-        ) << endl;
-      }
-
-      if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << "-----------------------------------------------------------------------------------------------------------------------------------------" << endl;
+      map<TString, pair<double, double> > NM = cuts[i_cut].second ;      // nominal settings
+      map<TString, pair<double, double> > UP = cutsUP[i_cut].second ;    // UP variation for a given sys source
+      map<TString, pair<double, double> > DN = cutsDOWN[i_cut].second ;  // DOWN variation for a given sys source
 
       // ... Now add up deltas in quadrature for total systematics
       // ... delta function correctly returns + and - variations
@@ -188,16 +176,54 @@ int main(int argc, char* argv[]) {
       for (map<TString, pair<double, double> >::iterator i_set = m.begin(); i_set != m.end(); ++i_set) {
 
         TString dataset = i_set->first;
-        double deltaUP, deltaDN;
 
-        if (dataset == "ttbar" || sys != "topPt_weight") {
-          deltaUP = UP[dataset].first - NM[dataset].first ;
-          deltaDN = DN[dataset].first - NM[dataset].first ;
+        if (sys_norm.find(sys) != sys_norm.end()) {  // normalization-only systematics
+          double perEvent_sys = sys_norm[sys] ; // per event systematics
+
+          if (sys == "muid" || sys == "muiso") {
+            if (channel == "mm") perEvent_sys *= 2.;
+            perEvent_sys *= NM[dataset].first ;
+          }
+          else if (sys == "eltrig" || sys == "elid" || sys == "eliso") {
+            if (channel == "ee") perEvent_sys *= 2.;
+            perEvent_sys *= NM[dataset].first ;
+          }
+          else if (sys == "lumi" || sys == "pdf" || sys == "mutrig")
+            perEvent_sys *= NM[dataset].first ;
+
+          else if ( (sys=="sig_tt" || sys=="q2_tt") && (dataset == "ttbar" || dataset == "background") )
+            perEvent_sys *= NM["ttbar"].first ;
+
+          else if ( (sys=="sig_dy" || sys=="q2_dy") && (dataset == "Drell-Yan" || dataset == "background") )
+            perEvent_sys *= NM["Drell-Yan"].first ;
+
+          else if ( (sys=="sig_st" || sys=="q2_st") && (dataset == "Single-Top" || dataset == "background") )
+            perEvent_sys *= NM["Single-Top"].first ;
+
+          else if ( sys=="sig_db" && (dataset == "Diboson" || dataset == "background") )
+            perEvent_sys *= NM["Diboson"].first ;
+
+          else if ( sys=="q2_zg" && (dataset == zprime || dataset == gluon) )
+            perEvent_sys *= NM[dataset].first ;
+
+          else perEvent_sys = 0.;
+
+          UP[dataset].first = perEvent_sys + NM[dataset].first;
+          DN[dataset].first = NM[dataset].first - perEvent_sys;
         }
         else {
-          deltaUP = (dataset == "background") ? (UP["ttbar"].first - NM["ttbar"].first) : 0.;
-          deltaDN = (dataset == "background") ? (DN["ttbar"].first - NM["ttbar"].first) : 0.;
+          if (sys == "topPt_weight" && dataset == "background") { // topPt_weight should only affect ttbar
+            UP[dataset].first = UP["ttbar"].first - NM["ttbar"].first + NM[dataset].first;
+            DN[dataset].first = DN["ttbar"].first - NM["ttbar"].first + NM[dataset].first;
+          }
+          else if (sys == "topPt_weight" && dataset != "background" && dataset != "ttbar") {
+            UP[dataset].first = NM[dataset].first ;
+            DN[dataset].first = NM[dataset].first ;
+          }
         }
+
+        double deltaUP = UP[dataset].first - NM[dataset].first ;
+        double deltaDN = DN[dataset].first - NM[dataset].first ;
 
         double d1 = delta(deltaUP, deltaDN, "+") ;
         double d2 = delta(deltaUP, deltaDN, "-") ;
@@ -206,6 +232,31 @@ int main(int argc, char* argv[]) {
         m[dataset].second += d2*d2 ;
 
       } //end dataset loop
+
+      file<< Form("%-25s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f ",
+      cutname.data(),
+      UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
+      UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
+      UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
+      UP["W+Jets"].first    -NM["W+Jets"].first    ,           DN["W+Jets"].first    -NM["W+Jets"].first,
+      UP["background"].first-NM["background"].first,           DN["background"].first-NM["background"].first,
+      UP[zprime].first      -NM[zprime].first      ,           DN[zprime].first      -NM[zprime].first,
+      UP[gluon].first       -NM[gluon].first       ,           DN[gluon].first       -NM[gluon].first
+      ) << endl;
+
+      file<< Form("                         || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
+      100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
+      100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
+      100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
+      100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
+      100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
+      100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
+      100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
+      ) << endl;
+
+      if (cutname == "MET Filters" || cutname == ">= 1 jet")
+      file << "-----------------------------------------------------------------------------------------------------------------------------------------" << endl;
+
     } //end cut loop
   } //end systematics loop
 
@@ -416,7 +467,6 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
             m[key].second = sqrt( m[key].second*m[key].second + weight*N );
           }
         }
-
         ++i_cut;
       }
     }

@@ -33,7 +33,7 @@ void setPars(const string& parFile);
 void setWeight(const string& parFile); 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
-bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
+bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
@@ -41,14 +41,14 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet,
-               const float& dphi_jet0met, const float& dphi_jet1met);
+               const float& dphi_jet0met, const float& dphi_jet1met, const int& nPV);
 
 map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
 bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
-TString jec="NOMINAL", jer="NOMINAL";
+TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
@@ -281,7 +281,7 @@ int main(int argc, char* argv[]){
     hname = Form("%i_masslmin1",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,1000);
     hname = Form("%i_masslljjm",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,250,0,5000);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,5000);
 
     hname = Form("%i_nEle",i);
     m_Histos1D[hname] = new TH1F(hname,hname,MAXLEP,0,MAXLEP);
@@ -308,11 +308,11 @@ int main(int argc, char* argv[]){
     hname = Form("%i_lep1phi",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-4,4);
     hname = Form("%i_dilepmass",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,500,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
     hname = Form("%i_lepept",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,500,0,1000);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1000);
     hname = Form("%i_lepmpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,500,0,1000);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,1000);
     hname = Form("%i_deta_lep",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,-5,5);
     hname = Form("%i_deta_lepJet",i);
@@ -341,18 +341,20 @@ int main(int argc, char* argv[]){
     hname = Form("%i_rl1cleanj",i);
     m_Histos1D[hname] = new TH1F(hname,hname,100,0,5);
     hname = Form("%i_lep0perp",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
     hname = Form("%i_lep1perp",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
 
     hname = Form("%i_metpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
     hname = Form("%i_metcorrpt",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,400,0,2000);
+    m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
     hname = Form("%i_sT",i);
-    m_Histos1D[hname] = new TH1F(hname,hname,300,0,3000);
+    m_Histos1D[hname] = new TH1F(hname,hname,500,0,5000);
     hname = Form("%i_sT_met",i);
     m_Histos1D[hname] = new TH1F(hname,hname,500,0,5000);
+    hname = Form("%i_nPV",i);
+    m_Histos1D[hname] = new TH1F(hname,hname,100,0,100);
   }
 
   TString hname = "muTrigSf";
@@ -385,16 +387,17 @@ int main(int argc, char* argv[]){
   hname = "jetPt_bTagM_udsg";
   m_Histos1D[hname] = new TH1F(hname,hname,200,0,2000);
 
-
   //Set Branches//
 
   ULong64_t event;
-  int run; //, lumi, bx;
+  int run, nPV;
+  float rho, mu;
 
   T->SetBranchAddress("event", &event);
   T->SetBranchAddress("run", &run);
-  //T->SetBranchAddress("lumi", &lumi);
-  //T->SetBranchAddress("bx", &bx);
+  T->SetBranchAddress("nPV", &nPV);
+  T->SetBranchAddress("rho", &rho);
+  if (isMC) T->SetBranchAddress("mu", &mu);
 
  /* string triggers[nTriggers] = {
     "HLT_Mu45_eta2p1_v",
@@ -414,6 +417,11 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("trig_passed", &trig_passed);
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
+
+  vector<float> *wgt_env = 0, *wgt_rep = 0; //save min and max in ZDilepton.cc
+
+  T->SetBranchAddress("wgt_env", &wgt_env);
+  T->SetBranchAddress("wgt_rep", &wgt_rep);
 
   int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
@@ -508,10 +516,6 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("met_py", &met_py);
   T->SetBranchAddress("met_phi", &met_phi);
 
-  float rho, mu;
-  T->SetBranchAddress("rho", &rho);
-  if (isMC) T->SetBranchAddress("mu", &mu);
-
   //Loop Over Entries//
   int sameRlepjet=0;
   time_t start = time(NULL);
@@ -548,6 +552,12 @@ int main(int argc, char* argv[]){
         if (topPt_weight=="NOMINAL") weight *= sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
         else if (topPt_weight=="UP") weight *= exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
       }
+      //pdf reweighting
+      if      (pdf == "UP")   weight *= 1. + TMath::RMS(wgt_rep->begin(), wgt_rep->end());
+      else if (pdf == "DOWN") weight *= 1. - TMath::RMS(wgt_rep->begin(), wgt_rep->end());
+      //q2 scale reweighting
+      if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
+      else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
     }
     else isGH = (278802<=run && run<=300000);
 
@@ -737,6 +747,7 @@ int main(int argc, char* argv[]){
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
     TRandom3* rand = new TRandom3(event);
+    vector<float> rands (nJet, 0.);
     double hT=0;
     for (int i=0; i<nJet; i++) {
 
@@ -762,6 +773,7 @@ int main(int argc, char* argv[]){
       jet *= jetCorrectors[era]->getCorrection();
 
       if (isMC) {
+        rands[i] = rand->Uniform(1.);
 
         if (jec=="UP" || jec=="DOWN") {
           double sign = jec=="UP" ? +1. : -1 ;
@@ -804,7 +816,7 @@ int main(int argc, char* argv[]){
           double sigma = jet_res * sqrt(jet_ressf * jet_ressf - 1.);
           smearFactor = 1. + rand->Gaus(0, sigma);
         }
-        jet *= smearFactor;
+        if (smearFactor > 0) jet *= smearFactor;
       }
 
       //corrected MET
@@ -976,8 +988,8 @@ int main(int argc, char* argv[]){
       else if ( abs(jetflavor1) == 5 ) eff1 = btag_eff_b;
       else { eff1 = btag_eff_udsg; variation1 = mistagSF; }
 
-      jet0btag = newBTag( *rand, jet0pt, jetflavor0, jet0btag, *eff0, variation0 );
-      jet1btag = newBTag( *rand, jet1pt, jetflavor1, jet1btag, *eff1, variation1 );
+      jet0btag = newBTag( rands[jet0index], jet0pt, jetflavor0, jet0btag, *eff0, variation0 );
+      jet1btag = newBTag( rands[jet1index], jet1pt, jetflavor1, jet1btag, *eff1, variation1 );
     }
     delete rand;
 
@@ -1016,7 +1028,7 @@ int main(int argc, char* argv[]){
         FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
       }
       //at least one btag
       else {
@@ -1025,7 +1037,7 @@ int main(int argc, char* argv[]){
         FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
       }
     }
     //at least two jets
@@ -1038,7 +1050,7 @@ int main(int argc, char* argv[]){
         FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
       }
       //at least two btags
       else if ( jet0btag && jet1btag ) {
@@ -1048,12 +1060,12 @@ int main(int argc, char* argv[]){
         FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
 
         FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
       }
       //exactly one btag
       else {
@@ -1063,12 +1075,12 @@ int main(int argc, char* argv[]){
         FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
 
         FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
                   rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
                   hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met);
+                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
       }
     }
   }
@@ -1143,7 +1155,7 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
                const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
                const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
                const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet,
-               const float& dphi_jet0met, const float& dphi_jet1met) {
+               const float& dphi_jet0met, const float& dphi_jet1met, const int& nPV) {
 
     FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
     FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
@@ -1207,6 +1219,8 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"deta_lepJet", deta_lepJet, weight);
     FillHist1D(prefix+"dphi_jet0met", dphi_jet0met, weight);
     FillHist1D(prefix+"dphi_jet1met", dphi_jet1met, weight);
+
+    FillHist1D(prefix+"nPV", nPV, weight);
 }
 
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits) {
@@ -1274,6 +1288,8 @@ void setPars(const string& parFile) {
     else if (var == "topPt_weight") topPt_weight = line.data();
     else if (var == "jec") jec = line.data();
     else if (var == "jer") jer = line.data();
+    else if (var == "pdf") pdf = line.data();
+    else if (var == "q2") q2 = line.data();
     else if (var == "btagSF") btagSF = line.data();
     else if (var == "mistagSF") mistagSF = line.data();
     else if (var == "setDRCut") setDRCut = line.data();
@@ -1301,7 +1317,7 @@ void setPars(const string& parFile) {
   file.close();
 }
 
-bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation ) {
+bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation ) {
   double sf=0;
 
   //b or c jet
@@ -1349,7 +1365,6 @@ bool newBTag( TRandom3& rand, const float& pT, const int& flavor, const bool& ol
   if (sf == 1) return oldBTag; //no correction needed
 
   bool newBTag = oldBTag;
-  float coin = rand.Uniform(1.);
 
   if (sf > 1) {
 
