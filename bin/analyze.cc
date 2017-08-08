@@ -55,7 +55,6 @@ TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, e
 string channel, jet_type, res_era;
 vector<string> eras;
 double weight0, weight;
-double weightTTbar;
 
 const int MAXJET = 50;
 const int MAXLEP = 20;
@@ -73,7 +72,6 @@ int main(int argc, char* argv[]){
   setPars(parFile);
 
   weight0 = -1;
-  weightTTbar = 1;
   if (argc == 3)    { string wFile = argv[2]; setWeight(wFile); }
   if (weight0 == -1) { cout << "Weight set to 1" << endl; weight0 = 1.; }
   else                cout << "Weight set to " << weight0 << endl;
@@ -205,23 +203,6 @@ int main(int argc, char* argv[]){
   v_cuts[twobtagsCut2jets]=make_pair(">= 2 Jets, >= 2 btags",0.); v_cuts[metCut]=make_pair("MET cut",0.); v_cuts[jetCut]=make_pair(">= 1 jet",0.);
   v_cuts[dRCut]=make_pair("DeltaR cut",0.); v_cuts[morethan0btagCut2jets]=make_pair(">= 2 Jets, >=1 btags",0.);
 
-  //ttbar reweighting
-  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight!="DOWN" ) {
-    double countTopWeight=0, countTopWeight2=0, countTotal=0;
-
-    TIter nextkey(inFile->GetListOfKeys());
-    TKey* key;
-    while ( (key = (TKey*)nextkey()) ) {
-      TString keyname = key->GetName();
-
-      if (keyname=="totalEvts") countTotal += (*(vector<int>*)key->ReadObj())[0];
-      else if (keyname=="nTopPtWeight") countTopWeight += (*(vector<double>*)key->ReadObj())[0];
-      else if (keyname=="nTopPtWeight2") countTopWeight2 += (*(vector<double>*)key->ReadObj())[0];
-    }
-    if (topPt_weight=="NOMINAL") weightTTbar *= countTotal / countTopWeight;
-    else if (topPt_weight=="UP") weightTTbar *= countTotal / countTopWeight2;
-  }
-
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
   while ( (key = (TKey*)nextkey()) ) {
@@ -236,7 +217,22 @@ int main(int argc, char* argv[]){
     //else if (keyname=="filter_failed")
   }
   if ( (int) (v_cuts[countMet].second + 0.5) != (int) (weight0 * nEntries + 0.5) ) { cout << "hadd added incorrectly." << endl; return -1; }
-  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight!="DOWN" ) weight0 *= weightTTbar;
+
+  //ttbar reweighting
+  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight!="DOWN" ) {
+    double countTopWeight=0, countTopWeight2=0, countTotal=0;
+
+    nextkey = inFile->GetListOfKeys();
+    while ( (key = (TKey*)nextkey()) ) {
+      TString keyname = key->GetName();
+
+      if (keyname=="totalEvts") countTotal += (*(vector<int>*)key->ReadObj())[0];
+      else if (keyname=="nTopPtWeight") countTopWeight += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="nTopPtWeight2") countTopWeight2 += (*(vector<double>*)key->ReadObj())[0];
+    }
+    if (topPt_weight=="NOMINAL") weight0 *= countTotal / countTopWeight;
+    else if (topPt_weight=="UP") weight0 *= countTotal / countTopWeight2;
+  }
 
   //Histograms//
 

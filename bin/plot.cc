@@ -214,15 +214,15 @@ int main(int argc, char* argv[]) {
           if (channel == "ee") perEvent_sys *= 2.;
           perEvent_sys *= nom;
         }
-        else if (sys == "lumi" || sys == "pdf" || sys == "mutrig") perEvent_sys *= nom;
+        else if (sys == "lumi" || sys == "mutrig") perEvent_sys *= nom;
 
-        else if (sys=="sig_tt" || sys=="q2_tt") perEvent_sys *= m_MCs[ttbar]->GetBinContent(bin);
+        else if (sys=="sig_tt") perEvent_sys *= m_MCs[ttbar]->GetBinContent(bin);
 
-        else if (sys=="sig_dy" || sys=="q2_dy") perEvent_sys *= m_MCs[dy]->GetBinContent(bin);
+        else if (sys=="sig_dy") perEvent_sys *= m_MCs[dy]->GetBinContent(bin);
 
-        else if (sys=="sig_st" || sys=="q2_st") perEvent_sys *= m_MCs[st]->GetBinContent(bin);
+        else if (sys=="sig_st") perEvent_sys *= m_MCs[st]->GetBinContent(bin);
 
-        //else if (sys=="sig_db" || sys=="q2_db") perEvent_sys *= m_MCs[db]->GetBinContent(bin);  //REMEMBER to uncomment this
+        //else if (sys=="sig_db") perEvent_sys *= m_MCs[db]->GetBinContent(bin);
 
         else perEvent_sys = 0.;
 

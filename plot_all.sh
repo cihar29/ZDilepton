@@ -65,8 +65,8 @@ if [ $# -eq 2 ] ; then
             "ymin           0"
             "subymin        ${subymin}"
             "subymax        2"
-            "systematics    topPt_weight jec jer btagSF mistagSF"
-            "sys_norm       lumi:0.025 sig_tt:0.15 sig_dy:0.30 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01 pdf:0.05 q2_tt:0.025 q2_dy:0.025 q2_st:0.025"
+            "systematics    topPt_weight jec jer btagSF mistagSF pdf q2"
+            "sys_norm       lumi:0.025 sig_tt:0.15 sig_dy:0.30 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01"
             "rebin          ${rebin}"
             "plotImpact     false"
           )
