@@ -618,7 +618,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   for (int i=0; i<nPVall; i++) {
     const reco::Vertex& pv = primaryVertices->at(i);
 
-    if( !pv.isFake() && pv.ndof() > 4 && pv.z() <= 24 && pv.position().rho() <= 2 )
+    if( !pv.isFake() && pv.ndof() > 4 && abs(pv.z()) <= 24 && pv.position().rho() <= 2 )
       nPV++;
   }
 
@@ -734,7 +734,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle<LHEEventProduct> lheEvtProduct;
     if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
 
-      for (int i=1; i<=8; i++) { // push back the six envelope weights
+      for (int i=0; i<9; i++) { // push back the seven envelope weights
         if (i == 5 || i == 7) continue;
         wgt_env.push_back( lheEvtProduct->weights()[i].wgt/lheEvtProduct->originalXWGTUP() );
       }
