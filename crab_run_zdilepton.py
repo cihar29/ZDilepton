@@ -1,8 +1,26 @@
 from WMCore.Configuration import Configuration
 config = Configuration()
 
+isMC = False
+
+if isMC:
+  inputFiles = []
+  outputFiles = ["analysis_MC.root"]
+  splitting = 'FileBased'
+  lumiMask = ''
+  unitsPerJob = 5
+
+else:
+  inputFiles = ["pileup_12_6_16.txt"]
+  outputFiles = ["analysis_Data.root"]
+  splitting = 'LumiBased'
+  lumiMask = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
+            #'/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/Final/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt'
+            #'/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
+  unitsPerJob = 50
+
 config.section_("General")
-config.General.requestName = 'TTbarMay'
+config.General.requestName = 'SingleMuonBv2Aug2017'
 config.General.workArea = 'crab_projects'
 config.General.transferLogs = True
 
@@ -10,11 +28,11 @@ config.section_("JobType")
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'run_zdilepton.py'
 config.JobType.allowUndistributedCMSSW = True
-#config.JobType.inputFiles = ["pileup_12_6_16.txt"]
-config.JobType.outputFiles = ["analysis_MC.root"]
+config.JobType.inputFiles = inputFiles
+config.JobType.outputFiles = outputFiles
 
 config.section_("Data")
-config.Data.inputDataset = '/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
+config.Data.inputDataset = '/SingleMuon/Run2016B-03Feb2017_ver2-v2/MINIAOD'
   #'/SingleMuon/Run2016B-03Feb2017_ver2-v2/MINIAOD'
   #'/SingleMuon/Run2016G-03Feb2017-v1/MINIAOD'
   #'/SingleMuon/Run2016H-03Feb2017_ver2-v1/MINIAOD'
@@ -24,13 +42,11 @@ config.Data.inputDataset = '/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer1
   #'/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_backup_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
   #'/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
 
-config.Data.splitting = 'FileBased'
-#config.Data.lumiMask = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
-#'/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/Final/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt'
-#'/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'
+config.Data.splitting = splitting
+config.Data.lumiMask = lumiMask
 
-config.Data.unitsPerJob = 3
-config.Data.outLFNDirBase = '/store/user/charring/analysis3'
+config.Data.unitsPerJob = unitsPerJob
+config.Data.outLFNDirBase = '/store/user/charring/AnalysisAug2017'
 config.Data.publication = False
 #config.Data.ignoreLocality = True
 #config.Data.publishDataName = 'analysis_tree'

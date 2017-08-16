@@ -10,7 +10,7 @@
 using namespace std;
 
 map<int, map<int, float> > m_PU;
-const float MINBIAS_XS = 69000;
+const float MINBIAS_XS = 69200;
 
 float getAvgPU(int run, int ls) {
 

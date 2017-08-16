@@ -32,13 +32,15 @@ readFiles.extend( [
   #'/store/mc/RunIISummer16MiniAODv2/ZprimeToTT_M-3000_W-300_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/DA381FBB-75BE-E611-BC99-0CC47A1E0DC8.root',
   #'/store/mc/RunIISummer16MiniAODv2/ZprimeToTT_M-3000_W-300_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/E6F9045C-77BE-E611-B2B5-0CC47A1E046E.root'
 
+  '/store/data/Run2016B/SingleMuon/MINIAOD/03Feb2017_ver2-v2/100000/000C6E52-8BEC-E611-B3FF-0025905C42FE.root'
+
   #'/store/data/Run2016G/SingleMuon/MINIAOD/03Feb2017-v1/100000/00E6DF50-70EA-E611-ACC4-0CC47A1E089C.root'
 
   #'/store/mc/RunIISummer16MiniAODv2/WJetsToLNu_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6_ext2-v1/100000/00933E2A-A0D5-E611-B2CD-00266CF89130.root'
 
   #'/store/mc/RunIISummer16MiniAODv2/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6_ext1-v2/120000/02A210D6-F5C3-E611-B570-008CFA197BD4.root'
 
-  '/store/mc/RunIISummer16MiniAODv2/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/50000/0693E0E7-97BE-E611-B32F-0CC47A78A3D8.root'
+  #'/store/mc/RunIISummer16MiniAODv2/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/50000/0693E0E7-97BE-E611-B32F-0CC47A78A3D8.root'
 
   #'/store/mc/RunIISummer16MiniAODv2/ST_t-channel_top_4f_inclusiveDecays_13TeV-powhegV2-madspin-pythia8_TuneCUETP8M1/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/60000/001C9040-67B9-E611-AD6E-0CC47A7EEE32.root'
 
@@ -46,7 +48,8 @@ readFiles.extend( [
 
 ] );
 
-isMC = cms.bool(True)
+isMC = cms.bool(False)
+gts = {'BCDEFG':'80X_dataRun2_2016SeptRepro_v7', 'H':'80X_dataRun2_Prompt_v16'}
 
 if isMC:
   OutputName = "_MC"  
@@ -56,8 +59,7 @@ if isMC:
 else:
   OutputName = "_Data"
   metLabel = "RECO"
-  gt = '80X_dataRun2_2016SeptRepro_v7'
-      #'80X_dataRun2_Prompt_v16'
+  gt = gts['BCDEFG']
 
 process.load( "Configuration.Geometry.GeometryIdeal_cff" )
 process.load( "Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff" )
