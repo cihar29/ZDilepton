@@ -12,12 +12,34 @@ if [ $# -eq 1 ] ; then
 
   lumi=${args[0]}
 
-  dataset=( "ttbar" "lowDY" "highDY" "STtchannel" "SaTtchannel" "STschannel" "STtWchannel" "SaTtWchannel" "Wjet"
-            "zprime" "gluon" )
-  xs=( 831760 18610000 5765400 136020 80950 26380 35850 35850 61526700
-       100000 100000 )
-  events=( 154526950 35291457 145407553 67240483 38810801 2989179 6952779 6952779 86731469
-           189120 99740 )
+  dataset=(
+    "DYhigh"
+    "DYlow"
+    "STschannel"
+    "STtWchannel"
+    "STtchannel"
+    "SaTtWchannel"
+    "SaTtchannel"
+    "TTbar"
+    "WJets"
+    "WW"
+    "WZ"
+    "ZZ"
+    "gluon_M-3000"
+    "zprime_M-1000_W-10"
+    "zprime_M-1000_W-100"
+    "zprime_M-1000_W-300"
+    "zprime_M-1250_W-125"
+    "zprime_M-1250_W-12p5"
+    "zprime_M-1500_W-15"
+    "zprime_M-1500_W-150"
+    "zprime_M-3000_W-300"
+  )
+
+  xs=( 5765400 18610000 26380 35850 136020 35850 80950 831760 61526700 118700 47100 16500
+       100000 100000 100000 100000 100000 100000 100000 100000 100000 )
+  events=( 145407553 35291457 136667419 76538892 80546338 154053125 147945461 166747651 2989179 6952779 67240483 6933037 38810801 154857762 86731469 7981093 3995807 1988085
+           99740 103781 101055 79474 96841 102827 99684 111101 189120 )
 
   file="dataset lumi xs lumi*xs events weight"
 

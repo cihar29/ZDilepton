@@ -5,19 +5,34 @@ void drawText();
 
 void pileup_weights() {
 
-  map<TString, TString> files;
-  files["Data"]              = "mu_Data.root";
-  files["ttbar"]             = "TTbar.root";
-  files["lowDY"]             = "lowDY.root";
-  files["highDY"]            = "highDY.root";
-  files["STtchannel"]        = "STtchannel.root";
-  files["SaTtchannel"]       = "SaTtchannel.root";
-  files["STschannel"]        = "STschannel.root";
-  files["STtWchannel"]       = "STtWchannel.root";
-  files["SaTtWchannel"]      = "STtWchannel.root";
-  files["Wjet"]              = "Wjet.root";
-  files["gluonkk-M3000"]     = "gluonkk-M3000.root";
-  files["zprime-M3000-W300"] = "zprime-M3000-W300.root";
+  TString dir = "root_trees/";
+  TString files[] = {
+    "mu_DataUP",
+    "mu_DataNOMINAL",
+    "mu_DataDOWN",
+    "DYhigh",
+    "DYlow",
+    "STschannel",
+    "STtWchannel",
+    "STtchannel",
+    "SaTtWchannel",
+    "SaTtchannel",
+    "TTbar",
+    "WJets",
+    "WW",
+    "WZ",
+    "ZZ",
+    "gluon_M-3000",
+    "zprime_M-1000_W-10",
+    "zprime_M-1000_W-100",
+    "zprime_M-1000_W-300",
+    "zprime_M-1250_W-125",
+    "zprime_M-1250_W-12p5",
+    "zprime_M-1500_W-15",
+    "zprime_M-1500_W-150",
+    "zprime_M-3000_W-300"
+  };
+  int file_size = sizeof(files)/sizeof(files[0]);
 
   setStyle();
   TCanvas* c = new TCanvas("c", "c", 600, 600);
@@ -27,7 +42,7 @@ void pileup_weights() {
   h->GetYaxis()->SetRangeUser(0, 0.07);
   h->Draw();
 
-  TLegend* leg = new TLegend(.5,.9-files.size()*0.03,.7,.9);
+  TLegend* leg = new TLegend(.5,.9-file_size*0.03,.7,.9);
   leg->SetBorderSize(0);
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
@@ -35,22 +50,16 @@ void pileup_weights() {
   leg->SetTextFont(42);
 
   map<TString, TH1F*> hists;
-  for (map<TString, TString>::iterator it = files.begin(); it != files.end(); it++){
+  for (int i=0; i<file_size; i++) {
 
-    TString name = it->first;
-    TFile* file = TFile::Open( it->second );
+    TString name = files[i];
+    TFile* file = TFile::Open( dir + name + ".root" );
 
-    TString histname = "fullMu";
-    if ( name.EqualTo("Data") ) histname = "pileup";
-
-    hists[name] = (TH1F*) file->Get(histname);
+    hists[name] = (TH1F*) file->Get( "fullMu" );
     hists[name]->Scale( 1 / hists[name]->Integral() );
 
-    int j = distance( files.begin(), it );
-    if (j==9) j=41;
-
-    if ( name.EqualTo("Data") ) hists[name]->SetLineStyle(2);
-    hists[name]->SetLineColor(j+1);
+    if ( name.Contains("Data") ) hists[name]->SetLineStyle(2);
+    hists[name]->SetLineColor(i+1);
     hists[name]->Draw("histsame");
 
     leg->AddEntry(hists[name],  Form( "%-15s (Mean %4.1f, RMS %4.1f)" , name.Data(), hists[name]->GetMean(), hists[name]->GetRMS() ), "L");
@@ -66,36 +75,43 @@ void pileup_weights() {
   h->GetYaxis()->SetRangeUser(0, 2.5);
   h->Draw();
 
+  TString wgt_type[] = { "UP", "NOMINAL", "DOWN" };
+
   TFile* outFile = new TFile("mu_weights.root","RECREATE");
   outFile->cd();
 
+  for (int i=0, n=sizeof(wgt_type)/sizeof(wgt_type[0]); i<n; i++) outFile->mkdir( wgt_type[i] + "/" );
+
   map<TString, TH1F*> weights;
-  for (map<TString, TH1F*>::iterator it = hists.begin(); it != hists.end(); it++){
+  for (int i=0, n=sizeof(wgt_type)/sizeof(wgt_type[0]); i<n; i++) {
+    outFile->cd( "mu_weights.root:/" + wgt_type[i] );
 
-    TString name = it->first;
-    if ( name.EqualTo("Data") ) continue;
+    for (map<TString, TH1F*>::iterator it = hists.begin(); it != hists.end(); it++) {
 
-    TH1F* mcHist = it->second;
+      TString name = it->first + "_" + wgt_type[i];
+      if ( name.Contains("Data") ) continue;
 
-    weights[name] = (TH1F*) hists["Data"]->Clone(name);
-    weights[name]->Divide( mcHist );
+      TH1F* mcHist = it->second;
 
-    int j = distance( hists.begin(), it );
-    if (j==9) j=41;
+      weights[name] = (TH1F*) hists[ "mu_Data" + wgt_type[i] ]->Clone(name);
+      weights[name]->Divide( mcHist );
 
-    weights[name]->SetLineColor(j+1);
-    weights[name]->SetLineStyle(1);
-    weights[name]->Draw("histsame");
+      weights[name]->SetLineColor(i+1);
+      weights[name]->SetLineStyle(1);
+      weights[name]->Draw("histsame");
 
-    leg->AddEntry(weights[name], name, "L");
+      leg->AddEntry(weights[name], name, "L");
+      weights[name]->Write(name);
+    }
+    //outFile->Write();
   }
+
   leg->SetX1NDC(0.6);
   leg->SetX2NDC(0.8);
   leg->Draw();
   drawText();
   c->Print("mu_weights.pdf");
 
-  outFile->Write();
   delete outFile;
   outFile = 0;
 }

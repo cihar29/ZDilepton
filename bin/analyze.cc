@@ -49,7 +49,7 @@ map<TString, TH1*> m_Histos1D;
 bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL";
-TString btagSF="NOMINAL", mistagSF="NOMINAL"; //NOMINAL, UP, DOWN
+TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
@@ -172,12 +172,12 @@ int main(int argc, char* argv[]){
 
     TFile* pileupFile = TFile::Open(pileupName);
 
-    TIter nextHist(pileupFile->GetListOfKeys());
+    TIter nextHist(pileupFile->GetDirectory(pileup)->GetListOfKeys());
     TKey* histKey;
     while ( (histKey = (TKey*)nextHist()) ) {
       TString keyname = histKey->GetName();
 
-      if ( inName.Contains(keyname, TString::kIgnoreCase) ) {
+      if ( inName.Contains( keyname(0, keyname.Last('_')), TString::kIgnoreCase ) ) {
         pileup_weights = (TH1F*) histKey->ReadObj();
         break;
       }
