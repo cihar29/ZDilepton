@@ -80,6 +80,8 @@ class ZDilepton : public edm::EDAnalyzer {
     virtual void endJob() override;
     virtual void endRun(edm::Run const & iRun, edm::EventSetup const& iSetup) override;
 
+    double rms_pm(const vector<float>& vec, const float& total_mean) const;
+
     TFile* root_file;
     TTree* tree;
 
@@ -92,7 +94,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_globalTightHalo2016Filter"
     };
     vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
-    vector<double> nTopPtWeight, nTopPtWeight2;
+    vector<double> nTopPtWeight, nTopPtWeight2, pdfUP, pdfDN, q2UP, q2DN;
 
     string triggers[nTriggers] = {
       "HLT_Mu45_eta2p1_v",
@@ -243,7 +245,7 @@ void  ZDilepton::beginJob() {
 
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
-  nTopPtWeight.assign(1, 0.); nTopPtWeight2.assign(1, 0.);
+  nTopPtWeight.assign(1, 0.); nTopPtWeight2.assign(1, 0.); pdfUP.assign(1, 0.); pdfDN.assign(1, 0.); q2UP.assign(1, 0.); q2DN.assign(1, 0.);
 
   tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
   tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
@@ -254,7 +256,7 @@ void  ZDilepton::beginJob() {
   tree->Branch("bx", &bx, "bx/I");
   tree->Branch("event", &event, "event/l");
 
-  if(isMC_){
+  if(isMC_) {
     tree->Branch("wgt_env", "std::vector<float>", &wgt_env);
     tree->Branch("wgt_rep", "std::vector<float>", &wgt_rep);
 
@@ -378,7 +380,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   bx = iEvent.bunchCrossing();
   event = iEvent.id().event();
 
-  //------------ Mu and topPt ------------//
+  //------------ Mu, topPt, pdf, and q2 ------------//
 
   if (isMC_) {
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
@@ -419,11 +421,45 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
     }
 
+    wgt_env.clear(); wgt_rep.clear();
+
+    edm::Handle<GenEventInfoProduct> genEventHandle;
+    iEvent.getByToken(genEventTag_, genEventHandle);
+    wgt_rep.push_back( genEventHandle->weight() ); //nominal weight = 1, twiki says this must be activated
+
+    edm::Handle<LHEEventProduct> lheEvtProduct;
+    if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
+
+      float wgt_denom = lheEvtProduct->weights()[0].wgt;
+
+      for (int i=0; i<9; i++) { // push back the seven envelope weights
+        if (i == 5 || i == 7) continue;
+        wgt_env.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
+      }
+
+      q2UP[0] += TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
+      q2DN[0] += TMath::MinElement(wgt_env.size(), &wgt_env[0]);
+
+      // push back 100 weight replicas (101 total including nominal)
+      for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
+
+      float pdf_mean = TMath::Mean(wgt_rep.begin(), wgt_rep.end());
+      vector<float> pdf_plus, pdf_minus;
+
+      for (unsigned int i=0, n=wgt_rep.size(); i<n; i++) {
+        if (wgt_rep[i] >= pdf_mean) pdf_plus.push_back(wgt_rep[i]);
+        else                        pdf_minus.push_back(wgt_rep[i]);
+      }
+
+      pdfUP[0] += (pdf_mean + rms_pm(pdf_plus, pdf_mean));
+      pdfDN[0] += (pdf_mean - rms_pm(pdf_minus, pdf_mean));
+    }
+
     edm::Handle< edm::View<PileupSummaryInfo> > pileups;
     iEvent.getByToken(muTag_, pileups);
     mu = pileups->at(1).getTrueNumInteractions();
   }
-  else{
+  else {
     mu = getAvgPU( run, lumi );
   }
   fullMu->Fill(mu);
@@ -723,25 +759,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
       nGenJet++;
     }
-
-    wgt_env.clear();
-    wgt_rep.clear();
-
-    edm::Handle<GenEventInfoProduct> genEventHandle;
-    iEvent.getByToken(genEventTag_, genEventHandle);
-    wgt_rep.push_back( genEventHandle->weight() ); //nominal weight = 1, twiki says this must be activated
-
-    edm::Handle<LHEEventProduct> lheEvtProduct;
-    if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
-
-      for (int i=0; i<9; i++) { // push back the seven envelope weights
-        if (i == 5 || i == 7) continue;
-        wgt_env.push_back( lheEvtProduct->weights()[i].wgt/lheEvtProduct->originalXWGTUP() );
-      }
-
-      // push back 100 weight replicas (101 total including nominal)
-      for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/lheEvtProduct->originalXWGTUP() );
-    }
   }
 
   //--------------Muons-------------//
@@ -931,6 +948,14 @@ void ZDilepton::endJob() {
       ttbar_pt2->Write();
       deltat_pt->Write();
       deltaTbar_pt->Write();
+
+      root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
+      root_file->WriteObject(&nTopPtWeight2, "nTopPtWeight2");
+
+      root_file->WriteObject(&pdfUP, "pdfUP");
+      root_file->WriteObject(&pdfDN, "pdfDN");
+      root_file->WriteObject(&q2UP, "q2UP");
+      root_file->WriteObject(&q2DN, "q2DN");
     }
 
     root_file->WriteObject(&totalEvts, "totalEvts");
@@ -940,14 +965,22 @@ void ZDilepton::endJob() {
     root_file->WriteObject(&jetpteta_cut, "jetpteta_cut");
     root_file->WriteObject(&met_cut, "met_cut");
     root_file->WriteObject(&dilepmass_cut, "dilepmass_cut");
-    root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
-    root_file->WriteObject(&nTopPtWeight2, "nTopPtWeight2");
 
     root_file->Write();
     delete root_file;
     root_file = 0;
   }
 
+}
+
+double ZDilepton::rms_pm(const vector<float>& vec, const float& total_mean) const {
+
+  int size = vec.size();
+  double sum = 0;
+
+  for (int i=0; i<size; i++) sum += ( vec[i]-total_mean )*( vec[i]-total_mean );
+
+  return sqrt(sum / size);
 }
 
 //define this as a plug-in

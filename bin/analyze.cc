@@ -34,6 +34,7 @@ void setWeight(const string& parFile);
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
+double rms_pm(const vector<float>& vec, const float& total_mean);
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
@@ -174,10 +175,11 @@ int main(int argc, char* argv[]){
 
     TIter nextHist(pileupFile->GetDirectory(pileup)->GetListOfKeys());
     TKey* histKey;
+    TString name = inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 );
     while ( (histKey = (TKey*)nextHist()) ) {
       TString keyname = histKey->GetName();
 
-      if ( inName.Contains( keyname(0, keyname.Last('_')), TString::kIgnoreCase ) ) {
+      if ( name.EqualTo( keyname(0, keyname.Last('_')), TString::kIgnoreCase ) ) {
         pileup_weights = (TH1F*) histKey->ReadObj();
         break;
       }
@@ -233,7 +235,27 @@ int main(int argc, char* argv[]){
     if (topPt_weight=="NOMINAL") weight0 *= countTotal / countTopWeight;
     else if (topPt_weight=="UP") weight0 *= countTotal / countTopWeight2;
   }
+/*
+  //pdf and q2 reweighting
+  if ( inName.Contains("zprime", TString::kIgnoreCase) && (q2!="NOMINAL" || pdf!="NOMINAL") ) {
+    double pdfUP=0, pdfDN=0, q2UP=0, q2DN=0, countTotal=0;
 
+    nextkey = inFile->GetListOfKeys();
+    while ( (key = (TKey*)nextkey()) ) {
+      TString keyname = key->GetName();
+
+      if (keyname=="totalEvts")  countTotal += (*(vector<int>*)key->ReadObj())[0];
+      else if (keyname=="pdfUP") pdfUP += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="pdfDN") pdfDN += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="q2UP")  q2UP += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="q2DN")  q2DN += (*(vector<double>*)key->ReadObj())[0];
+    }
+    if      (pdf=="UP")   weight0 *= countTotal / pdfUP;
+    else if (pdf=="DOWN") weight0 *= countTotal / pdfDN;
+    if      (q2=="UP")    weight0 *= countTotal / q2UP;
+    else if (q2=="DOWN")  weight0 *= countTotal / q2DN;
+  }
+*/
   //Histograms//
 
   int nDirs = 6;
@@ -417,7 +439,7 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  vector<float> *wgt_env = 0, *wgt_rep = 0; //save min and max in ZDilepton.cc
+  vector<float> *wgt_env = 0, *wgt_rep = 0;
 
   T->SetBranchAddress("wgt_env", &wgt_env);
   T->SetBranchAddress("wgt_rep", &wgt_rep);
@@ -552,8 +574,18 @@ int main(int argc, char* argv[]){
         else if (topPt_weight=="UP") weight *= exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
       }
       //pdf reweighting
-      if      (pdf == "UP")   weight *= 1. + TMath::RMS(wgt_rep->begin(), wgt_rep->end());
-      else if (pdf == "DOWN") weight *= 1. - TMath::RMS(wgt_rep->begin(), wgt_rep->end());
+      if (pdf != "NOMINAL") {
+        float pdf_mean = TMath::Mean(wgt_rep->begin(), wgt_rep->end());
+        vector<float> pdf_plus, pdf_minus;
+
+        for (unsigned int i=0, n=wgt_rep->size(); i<n; i++) {
+          if (wgt_rep->at(i) >= pdf_mean) pdf_plus.push_back(wgt_rep->at(i));
+          else                            pdf_minus.push_back(wgt_rep->at(i));
+        }
+
+        if      (pdf == "UP")   weight *= (pdf_mean + rms_pm(pdf_plus, pdf_mean));
+        else if (pdf == "DOWN") weight *= (pdf_mean - rms_pm(pdf_minus, pdf_mean));
+      }
       //q2 scale reweighting
       if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
       else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
@@ -1234,6 +1266,7 @@ void setWeight(const string& wFile) {
   ifstream file(wFile);
   string line;
 
+  TString name = inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 );
   while (getline(file, line)){
 
     if (line.length() > 0) {
@@ -1244,7 +1277,7 @@ void setWeight(const string& wFile) {
     if (delim_pos == -1) continue;
 
     TString dataset = line.substr(0, delim_pos).data();
-    if ( inName.Contains(dataset, TString::kIgnoreCase) ) {
+    if ( name.EqualTo(dataset, TString::kIgnoreCase) ) {
 
       while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
@@ -1314,6 +1347,16 @@ void setPars(const string& parFile) {
     else if (var == "jet_type") jet_type = line;
   }
   file.close();
+}
+
+double rms_pm(const vector<float>& vec, const float& total_mean) {
+
+  int size = vec.size();
+  double sum = 0;
+
+  for (int i=0; i<size; i++) sum += ( vec[i]-total_mean )*( vec[i]-total_mean );
+
+  return sqrt(sum / size);
 }
 
 bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation ) {

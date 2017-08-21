@@ -94,14 +94,6 @@ int main(int argc, char* argv[]) {
   sys_norm["elid"]   = 0.01;  // electron ID uncertainty per electron.
   sys_norm["eliso"]  = 0.01;  // electron ptrel efficiency uncertainty per muon.
 
-  // ... Uncertainties below are not really normalization-only systematics. They affect
-  // ... both shape and normalization, but treated as normalization-only systematics for now.
-  sys_norm["pdf"]      = 0.05;   // PDF uncertainty
-  sys_norm["q2_tt"]    = 0.025;  // Q2 scale uncertainty for ttbar
-  sys_norm["q2_dy"]    = 0.025;  // Q2 scale uncertainty for Drell-Yan
-  sys_norm["q2_st"]    = 0.025;  // Q2 scale uncertainty for Single-Top
-  sys_norm["q2_zg"]    = 0.025;  // Q2 scale uncertainty for signals
-
   //which systematics sources to consider: read from command line
   vector<string> systematics ;
   for (int i=3; i < argc; i++){
@@ -450,6 +442,9 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
         else if ( dataset.Contains("wjet", TString::kIgnoreCase) ) key = "W+Jets";
         else if ( dataset.Contains("st", TString::kIgnoreCase)
                || dataset.Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
+        else if ( dataset.Contains("ww", TString::kIgnoreCase)
+               || dataset.Contains("wz", TString::kIgnoreCase)
+               || dataset.Contains("zz", TString::kIgnoreCase) )   dataset = "Diboson";
         else                                                       key = dataset;
 
         if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );

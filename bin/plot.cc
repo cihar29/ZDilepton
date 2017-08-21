@@ -43,8 +43,8 @@ int main(int argc, char* argv[]) {
 
   setStyle();
 
-  enum SetEnum { wjet=0, st, dy, ttbar, gluon, zprime, bkg, undefined };
-  TString labels[] = { "W+Jets", "Single-Top", "Z/#gamma*#rightarrowl^{+}l^{-}", "t#bar{t}", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
+  enum SetEnum { wjet=0, vv, st, dy, ttbar, gluon, zprime, bkg, undefined };
+  TString labels[] = { "W+Jets", "VV", "Single-Top", "Z/#gamma*#rightarrowl^{+}l^{-}", "t#bar{t}", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
 
   TFile* dataFile = TFile::Open(dataFileName);
   TH1F* h_Data = (TH1F*) dataFile->FindObjectAny(hname);
@@ -74,6 +74,9 @@ int main(int argc, char* argv[]) {
     else if ( mcFileNames[i].Contains("wjet", TString::kIgnoreCase) ) dataset = wjet;
     else if ( mcFileNames[i].Contains("st", TString::kIgnoreCase)
            || mcFileNames[i].Contains("sat", TString::kIgnoreCase) )  dataset = st;
+    else if ( mcFileNames[i].Contains("ww", TString::kIgnoreCase)
+           || mcFileNames[i].Contains("wz", TString::kIgnoreCase)
+           || mcFileNames[i].Contains("zz", TString::kIgnoreCase) )   dataset = vv;
 
     if ( m_MCs.find(dataset) == m_MCs.end() ) m_MCs[dataset] = h_MC;
     else m_MCs[dataset]->Add(h_MC);
@@ -126,6 +129,9 @@ int main(int argc, char* argv[]) {
 
     m_MCs[wjet]->SetLineColor(4);
     m_MCs[wjet]->SetFillColor(4);
+
+    m_MCs[vv]->SetLineColor(6);
+    m_MCs[vv]->SetFillColor(6);
 
     m_MCs[st]->SetLineColor(28);
     m_MCs[st]->SetFillColor(28);
@@ -222,7 +228,7 @@ int main(int argc, char* argv[]) {
 
         else if (sys=="sig_st") perEvent_sys *= m_MCs[st]->GetBinContent(bin);
 
-        //else if (sys=="sig_db") perEvent_sys *= m_MCs[db]->GetBinContent(bin);
+        else if (sys=="sig_db") perEvent_sys *= m_MCs[vv]->GetBinContent(bin);
 
         else perEvent_sys = 0.;
 
@@ -435,7 +441,7 @@ int main(int argc, char* argv[]) {
 
   if (plotImpact) {
 
-    TString outNames[]  = { "wjet", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
+    TString outNames[]  = { "wjet", "vv", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
 
     delete leg;
     TLegend* leg = new TLegend(.65,.9-.06*4,.85,.9);
