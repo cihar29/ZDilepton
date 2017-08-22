@@ -80,7 +80,7 @@ class ZDilepton : public edm::EDAnalyzer {
     virtual void endJob() override;
     virtual void endRun(edm::Run const & iRun, edm::EventSetup const& iSetup) override;
 
-    double rms_pm(const vector<float>& vec, const float& total_mean) const;
+    double rms_pm(const vector<float>& vec) const;
 
     TFile* root_file;
     TTree* tree;
@@ -425,7 +425,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     edm::Handle<GenEventInfoProduct> genEventHandle;
     iEvent.getByToken(genEventTag_, genEventHandle);
-    wgt_rep.push_back( genEventHandle->weight() ); //nominal weight = 1, twiki says this must be activated
+    genEventHandle->weight(); //nominal weight = 1, twiki says this must be activated
 
     edm::Handle<LHEEventProduct> lheEvtProduct;
     if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
@@ -440,19 +440,18 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       q2UP[0] += TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
       q2DN[0] += TMath::MinElement(wgt_env.size(), &wgt_env[0]);
 
-      // push back 100 weight replicas (101 total including nominal)
+      // push back 100 weight replicas
       for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
 
-      float pdf_mean = TMath::Mean(wgt_rep.begin(), wgt_rep.end());
       vector<float> pdf_plus, pdf_minus;
 
       for (unsigned int i=0, n=wgt_rep.size(); i<n; i++) {
-        if (wgt_rep[i] >= pdf_mean) pdf_plus.push_back(wgt_rep[i]);
-        else                        pdf_minus.push_back(wgt_rep[i]);
+        if (wgt_rep[i] >= 1.) pdf_plus.push_back(wgt_rep[i]);
+        else                  pdf_minus.push_back(wgt_rep[i]);
       }
 
-      pdfUP[0] += (pdf_mean + rms_pm(pdf_plus, pdf_mean));
-      pdfDN[0] += (pdf_mean - rms_pm(pdf_minus, pdf_mean));
+      pdfUP[0] += (1. + rms_pm(pdf_plus));
+      pdfDN[0] += (1. - rms_pm(pdf_minus));
     }
 
     edm::Handle< edm::View<PileupSummaryInfo> > pileups;
@@ -973,12 +972,12 @@ void ZDilepton::endJob() {
 
 }
 
-double ZDilepton::rms_pm(const vector<float>& vec, const float& total_mean) const {
+double ZDilepton::rms_pm(const vector<float>& vec) const {
 
   int size = vec.size();
   double sum = 0;
 
-  for (int i=0; i<size; i++) sum += ( vec[i]-total_mean )*( vec[i]-total_mean );
+  for (int i=0; i<size; i++) sum += ( vec[i]-1. )*( vec[i]-1. );
 
   return sqrt(sum / size);
 }

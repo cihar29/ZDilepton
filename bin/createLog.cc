@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
   file<<"\n====================================================================================================================="<< "\n" ;
   file<<"                                              Cut Flow Table: Background\n" ;
   file<<"====================================================================================================================="<< "\n" ;
-  file<<"                          |||              ttbar                |||             Drell-Yan             |||           Single-Top              |||           W+Jets" << endl;
+  file<<"                          |||              ttbar                |||             Drell-Yan             |||           Single-Top              |||          Diboson" << endl;
 
   for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
     string cutname = i_cut->first;
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
                 cutname.data(), i_cut->second["ttbar"].first, i_cut->second["ttbar"].first/m_total["ttbar"].first,
                 i_cut->second["Drell-Yan"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
                 i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].first/m_total["Single-Top"].first,
-                i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
+                i_cut->second["Diboson"].first, i_cut->second["Diboson"].first/m_total["Diboson"].first ) << endl;
 
     if (cutname == "MET Filters" || cutname == ">= 1 jet")
       file << "---------------------------------------------------------------------------------------------------------------------" << endl;
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
     file<<"\n===================================================================================================================================="<< "\n" ;
     file<<"                                    Systematics: " << sys <<  "       [absolute UP DOWN on first line and relative UP DOWN in \% on second line] \n" ;
     file<<"===================================================================================================================================="<< "\n" ;
-    file<<Form("                         ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||        W+Jets       ||      background     || %-20s|| %-20s",
+    file<<Form("                         ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||      background     || %-20s|| %-20s",
     zprime.Data(), gluon.Data() ) << endl;
 
     vector<pair<string, map<TString, pair<double, double> > > > &cutsUP   = m_cutsUP[sys];
@@ -230,7 +230,7 @@ int main(int argc, char* argv[]) {
       UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
       UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
       UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
-      UP["W+Jets"].first    -NM["W+Jets"].first    ,           DN["W+Jets"].first    -NM["W+Jets"].first,
+      UP["Diboson"].first   -NM["Diboson"].first   ,           DN["Diboson"].first   -NM["Diboson"].first,
       UP["background"].first-NM["background"].first,           DN["background"].first-NM["background"].first,
       UP[zprime].first      -NM[zprime].first      ,           DN[zprime].first      -NM[zprime].first,
       UP[gluon].first       -NM[gluon].first       ,           DN[gluon].first       -NM[gluon].first
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
       100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
       100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
       100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
-      100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
+      100.*(UP["Diboson"].first   /NM["Diboson"].first    - 1.)    ,      100.*(DN["Diboson"].first   /NM["Diboson"].first    - 1.),
       100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
       100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
       100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
@@ -257,7 +257,7 @@ int main(int argc, char* argv[]) {
     file<<"\n===================================================================================================================================="<< "\n" ;
     file<<"                                    Total systematics        [absolute +- on first line and relative +- in \% on second line] \n"    ;
     file<<"===================================================================================================================================="<< "\n" ;
-    file<<Form("                         ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||        W+Jets       ||      background     || %-20s|| %-20s",
+    file<<Form("                         ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||      background     || %-20s|| %-20s",
     zprime.Data(), gluon.Data() ) << endl;
 
     for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
              sqrt(TS["ttbar"].first)     ,     sqrt(TS["ttbar"].second),
              sqrt(TS["Drell-Yan"].first) ,     sqrt(TS["Drell-Yan"].second),
              sqrt(TS["Single-Top"].first),     sqrt(TS["Single-Top"].second),
-             sqrt(TS["W+Jets"].first)    ,     sqrt(TS["W+Jets"].second ),
+             sqrt(TS["Diboson"].first)   ,     sqrt(TS["Diboson"].second ),
              sqrt(TS["background"].first),     sqrt(TS["background"].second),
              sqrt(TS[zprime].first)      ,     sqrt(TS[zprime].second),
              sqrt(TS[gluon].first)       ,     sqrt(TS[gluon].second)
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
              100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
              100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
              100.*sqrt(TS["Single-Top"].first)/NM["Single-Top"].first,    100.*sqrt(TS["Single-Top"].second)/NM["Single-Top"].first,
-             100.*sqrt(TS["W+Jets"].first)    /NM["W+Jets"].first    ,    100.*sqrt(TS["W+Jets"].second)    /NM["W+Jets"].first,
+             100.*sqrt(TS["Diboson"].first)   /NM["Diboson"].first   ,    100.*sqrt(TS["Diboson"].second)   /NM["Diboson"].first,
              100.*sqrt(TS["background"].first)/NM["background"].first,    100.*sqrt(TS["background"].second)/NM["background"].first,
              100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
              100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
@@ -294,7 +294,7 @@ int main(int argc, char* argv[]) {
   file << "\n\\begin{center}\n";
   file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
   file << "  \\hline\n";
-  file << Form("  Cut & Data & ttbar & Drell-Yan & Single-Top & W+Jets & Background & %s & %s \\\\", zprime.Data(), gluon.Data() ) << endl;
+  file << Form("  Cut & Data & ttbar & Drell-Yan & Single-Top & Diboson & Background & %s & %s \\\\", zprime.Data(), gluon.Data() ) << endl;
   file << "  \\hline\\hline\n";
 
   for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
@@ -302,7 +302,7 @@ int main(int argc, char* argv[]) {
     file << Form("  %s & %.0f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f \\\\\n  \\hline",
                 cutname.data(), i_cut->second["data"].first, i_cut->second["data"].second, i_cut->second["ttbar"].first, i_cut->second["ttbar"].second,
                 i_cut->second["Drell-Yan"].first, i_cut->second["Drell-Yan"].second, i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].second,
-                i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].second, i_cut->second["background"].first, i_cut->second["background"].second,
+                i_cut->second["Diboson"].first, i_cut->second["Diboson"].second, i_cut->second["background"].first, i_cut->second["background"].second,
                 i_cut->second[zprime].first, i_cut->second[zprime].second, i_cut->second[gluon].first, i_cut->second[gluon].second) << endl;
 
     if (cutname == "MET Filters" || cutname == ">= 1 jet")
@@ -327,13 +327,13 @@ int main(int argc, char* argv[]) {
   e_outfile << "\n====================================================================================================================="<< "\n" ;
   e_outfile << "                                              Cut Flow Table: Summary\n" ;
   e_outfile << "====================================================================================================================="<< "\n" ;
-  e_outfile << Form("                          |||    ttbar   |||  Drell-Yan ||| Single-Top |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
+  e_outfile << Form("                          |||    ttbar   |||  Drell-Yan ||| Single-Top |||   Diboson  ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
 
   for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
     string cutname = i_cut->first;
     e_outfile << Form("%-25s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
                 cutname.data(), i_cut->second["ttbar"].first/m_total["ttbar"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
-                i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
+                i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["Diboson"].first/m_total["Diboson"].first,
                 i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
 
     if (cutname == "MET Filters" || cutname == ">= 1 jet")
@@ -351,7 +351,7 @@ int main(int argc, char* argv[]) {
   e_outfile << Form("  ttbar & %1.6f \\\\\n  \\hline", m_last["ttbar"].first/m_total["ttbar"].first) << endl;
   e_outfile << Form("  Drell-Yan & %1.6f \\\\\n  \\hline", m_last["Drell-Yan"].first/m_total["Drell-Yan"].first) << endl;
   e_outfile << Form("  Single-Top & %1.6f \\\\\n  \\hline", m_last["Single-Top"].first/m_total["Single-Top"].first) << endl;
-  e_outfile << Form("  W+Jets & %1.6f \\\\\n  \\hline", m_last["W+Jets"].first/m_total["W+Jets"].first) << endl;
+  e_outfile << Form("  Diboson & %1.6f \\\\\n  \\hline", m_last["Diboson"].first/m_total["Diboson"].first) << endl;
   e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", zprime.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
   e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", gluon.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
 

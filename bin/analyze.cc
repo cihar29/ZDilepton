@@ -34,7 +34,7 @@ void setWeight(const string& parFile);
 bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
-double rms_pm(const vector<float>& vec, const float& total_mean);
+double rms_pm(const vector<float>& vec);
 void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
                const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
                const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]){
     if (topPt_weight=="NOMINAL") weight0 *= countTotal / countTopWeight;
     else if (topPt_weight=="UP") weight0 *= countTotal / countTopWeight2;
   }
-/*
+
   //pdf and q2 reweighting
   if ( inName.Contains("zprime", TString::kIgnoreCase) && (q2!="NOMINAL" || pdf!="NOMINAL") ) {
     double pdfUP=0, pdfDN=0, q2UP=0, q2DN=0, countTotal=0;
@@ -255,7 +255,7 @@ int main(int argc, char* argv[]){
     if      (q2=="UP")    weight0 *= countTotal / q2UP;
     else if (q2=="DOWN")  weight0 *= countTotal / q2DN;
   }
-*/
+
   //Histograms//
 
   int nDirs = 6;
@@ -575,16 +575,15 @@ int main(int argc, char* argv[]){
       }
       //pdf reweighting
       if (pdf != "NOMINAL") {
-        float pdf_mean = TMath::Mean(wgt_rep->begin(), wgt_rep->end());
         vector<float> pdf_plus, pdf_minus;
 
         for (unsigned int i=0, n=wgt_rep->size(); i<n; i++) {
-          if (wgt_rep->at(i) >= pdf_mean) pdf_plus.push_back(wgt_rep->at(i));
-          else                            pdf_minus.push_back(wgt_rep->at(i));
+          if (wgt_rep->at(i) >= 1.) pdf_plus.push_back(wgt_rep->at(i));
+          else                      pdf_minus.push_back(wgt_rep->at(i));
         }
 
-        if      (pdf == "UP")   weight *= (pdf_mean + rms_pm(pdf_plus, pdf_mean));
-        else if (pdf == "DOWN") weight *= (pdf_mean - rms_pm(pdf_minus, pdf_mean));
+        if      (pdf == "UP")   weight *= (1. + rms_pm(pdf_plus));
+        else if (pdf == "DOWN") weight *= (1. - rms_pm(pdf_minus));
       }
       //q2 scale reweighting
       if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
