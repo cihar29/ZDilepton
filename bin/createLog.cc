@@ -1,4 +1,4 @@
-//createLog logData_mm.txt logMC_mm.txt topPt_weight btagSF jec jer mistagSF sig_tt sig_dy sig_st lumi pdf q2_tt q2_dy q2_st q2_zg mutrig muid muiso eltrig elid eliso
+//createLog logData_mm.txt logMC_mm.txt topPt_weight btagSF jec jer mistagSF pileup pdf q2 lumi sig_tt sig_dy sig_st sig_db mutrig muid muiso eltrig elid eliso
 
 #include <iostream>
 #include <fstream>
@@ -180,23 +180,20 @@ int main(int argc, char* argv[]) {
             if (channel == "ee") perEvent_sys *= 2.;
             perEvent_sys *= NM[dataset].first ;
           }
-          else if (sys == "lumi" || sys == "pdf" || sys == "mutrig")
+          else if (sys == "lumi" || sys == "mutrig")
             perEvent_sys *= NM[dataset].first ;
 
-          else if ( (sys=="sig_tt" || sys=="q2_tt") && (dataset == "ttbar" || dataset == "background") )
+          else if ( sys=="sig_tt" && (dataset == "ttbar" || dataset == "background") )
             perEvent_sys *= NM["ttbar"].first ;
 
-          else if ( (sys=="sig_dy" || sys=="q2_dy") && (dataset == "Drell-Yan" || dataset == "background") )
+          else if ( sys=="sig_dy" && (dataset == "Drell-Yan" || dataset == "background") )
             perEvent_sys *= NM["Drell-Yan"].first ;
 
-          else if ( (sys=="sig_st" || sys=="q2_st") && (dataset == "Single-Top" || dataset == "background") )
+          else if ( sys=="sig_st" && (dataset == "Single-Top" || dataset == "background") )
             perEvent_sys *= NM["Single-Top"].first ;
 
           else if ( sys=="sig_db" && (dataset == "Diboson" || dataset == "background") )
             perEvent_sys *= NM["Diboson"].first ;
-
-          else if ( sys=="q2_zg" && (dataset == zprime || dataset == gluon) )
-            perEvent_sys *= NM[dataset].first ;
 
           else perEvent_sys = 0.;
 

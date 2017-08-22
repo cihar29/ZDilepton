@@ -1,15 +1,7 @@
 isMC           true
-topPt_weight   NOMINAL
-jec            NOMINAL
-jer            NOMINAL
-pdf            NOMINAL
-q2             NOMINAL
-btagSF         NOMINAL
-mistagSF       NOMINAL
-pileup         NOMINAL
 setDRCut       OFF
-inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/zprime_M-3000_W-300.root
-outName        ./mm/zprime_M-3000_W-300_mm.root
+inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/TTbar.root
+outName        ./mm/TTbar_mm.root
 channel        mm
 eras           Summer16_23Sep2016V4_MC
 res_era        Spring16_25nsV10_MC
@@ -21,4 +13,3 @@ eRecoSfName    e_Reco_efficiency.root
 eIdSfName      e_MediumID_efficiency.root
 btagName       /uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff_default.root
 pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root
-

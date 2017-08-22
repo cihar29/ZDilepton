@@ -2,15 +2,51 @@
 
 # execute as ./analyze_all.sh
 
+isValid()
+{
+  found=0
+  check=$1
+  array=("${!2}")
+  for a in "${array[@]}" ; do
+    if [[ $a = "$check" ]] ; then
+        found=1
+        break
+    fi
+  done
+}
+
 args=("$@")
 
 if [ $# -eq 0 ] ; then
   echo "Please provide a channel (mm, ee, em)."
-fi
 
-if [ $# -eq 1 ] ; then
+else
 
   channel=${args[0]}
+
+  uncert=""
+  type=""
+  underscore=""
+  if [ $# -eq 3 ] ; then
+
+    uncert=${args[1]}
+    type=${args[2]}
+
+    uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2" "btagSF" "mistagSF" "pileup" )
+    types=( "UP" "DOWN" )
+
+    isValid $uncert uncerts[@]
+    if [ $found -eq 0 ] ; then
+      echo "Invalid uncertainty"
+      exit
+    fi
+    isValid $type types[@]
+    if [ $found -eq 0 ] ; then
+      echo "Invalid type"
+      exit
+    fi
+    underscore="_"
+  fi
 
   dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/"
   mcfiles=(
@@ -46,21 +82,13 @@ if [ $# -eq 1 ] ; then
     "zprime_M-3000_W-300"
   )
 
-  for i in "${mcfiles[@]}"
-  do
+  for file in "${mcfiles[@]}" ; do
 
     lines=( "isMC           true"
-            "topPt_weight   NOMINAL" 
-            "jec            NOMINAL"
-            "jer            NOMINAL"
-            "pdf            NOMINAL"
-            "q2             NOMINAL"
-            "btagSF         NOMINAL"
-            "mistagSF       NOMINAL"
-            "pileup         NOMINAL"
+            "${uncert}      ${type}"
             "setDRCut       OFF"   
-            "inName         ${dir}${i}.root"
-            "outName        ./${channel}/${i}_${channel}.root"
+            "inName         ${dir}${file}.root"
+            "outName        ./${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
             "res_era        Spring16_25nsV10_MC"
@@ -73,14 +101,14 @@ if [ $# -eq 1 ] ; then
             "btagName       /uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff_default.root"
             "pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root"
           )
-    line=""
+    out=""
 
-    for j in "${lines[@]}"
+    for line in "${lines[@]}"
     do
-      line="$line$j\n"
+      out="$out$line\n"
     done
 
-    echo -e "$line" > parsMC.txt
+    echo -e "$out" | column -t > parsMC.txt
 
     analyze parsMC.txt mc_weights.txt
 

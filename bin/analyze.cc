@@ -1321,6 +1321,7 @@ void setPars(const string& parFile) {
     else if (var == "jer") jer = line.data();
     else if (var == "pdf") pdf = line.data();
     else if (var == "q2") q2 = line.data();
+    else if (var == "pileup") pileup = line.data();
     else if (var == "btagSF") btagSF = line.data();
     else if (var == "mistagSF") mistagSF = line.data();
     else if (var == "setDRCut") setDRCut = line.data();
@@ -1348,12 +1349,12 @@ void setPars(const string& parFile) {
   file.close();
 }
 
-double rms_pm(const vector<float>& vec, const float& total_mean) {
+double rms_pm(const vector<float>& vec) {
 
   int size = vec.size();
   double sum = 0;
 
-  for (int i=0; i<size; i++) sum += ( vec[i]-total_mean )*( vec[i]-total_mean );
+  for (int i=0; i<size; i++) sum += ( vec[i]-1. )*( vec[i]-1. );
 
   return sqrt(sum / size);
 }

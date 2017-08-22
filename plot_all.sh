@@ -4,7 +4,7 @@
 
 args=("$@")
 
-if [ $# -eq 0 -o $# -eq 1 ] ; then
+if [ $# -lt 2 ] ; then
   echo "Please provide a channel (mm, ee, em) and cut# (0, 1, ...)"
 fi
 
@@ -70,14 +70,14 @@ if [ $# -eq 2 ] ; then
             "rebin          ${rebin}"
             "plotImpact     false"
           )
-    line=""
+    out=""
 
-    for j in "${lines[@]}"
+    for line in "${lines[@]}"
     do
-      line="$line$j\n"
+      out="$out$line\n"
     done
 
-    echo -e "$line" > plot_pars.txt
+    echo -e "$out" > plot_pars.txt
 
     plot plot_pars.txt
 
