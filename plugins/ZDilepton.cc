@@ -975,6 +975,7 @@ void ZDilepton::endJob() {
 double ZDilepton::rms_pm(const vector<float>& vec) const {
 
   int size = vec.size();
+  if (size == 0) return 0;
   double sum = 0;
 
   for (int i=0; i<size; i++) sum += ( vec[i]-1. )*( vec[i]-1. );

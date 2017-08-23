@@ -98,7 +98,7 @@ else
             "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
             "eRecoSfName    e_Reco_efficiency.root"
             "eIdSfName      e_MediumID_efficiency.root"
-            "btagName       /uscms/home/broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/btag_eff_default.root"
+            "btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/btag_eff.root"
             "pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root"
           )
     out=""

@@ -439,11 +439,6 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  vector<float> *wgt_env = 0, *wgt_rep = 0;
-
-  T->SetBranchAddress("wgt_env", &wgt_env);
-  T->SetBranchAddress("wgt_rep", &wgt_rep);
-
   int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
 
@@ -520,6 +515,7 @@ int main(int argc, char* argv[]){
 
   int nGenJet=MAXJET;
   float genJet_pt[nGenJet], genJet_eta[nGenJet], genJet_phi[nGenJet], genJet_mass[nGenJet];
+  vector<float> *wgt_env = 0, *wgt_rep = 0;
 
   if (isMC) {
     T->SetBranchAddress("jet_hadflavor", jet_hadflavor);
@@ -529,6 +525,9 @@ int main(int argc, char* argv[]){
     T->SetBranchAddress("genJet_eta", genJet_eta);
     T->SetBranchAddress("genJet_phi", genJet_phi);
     T->SetBranchAddress("genJet_mass", genJet_mass);
+
+    T->SetBranchAddress("wgt_env", &wgt_env);
+    T->SetBranchAddress("wgt_rep", &wgt_rep);
   }
 
   float met_pt, met_px, met_py, met_phi;
@@ -574,7 +573,7 @@ int main(int argc, char* argv[]){
         else if (topPt_weight=="UP") weight *= exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
       }
       //pdf reweighting
-      if (pdf != "NOMINAL") {
+      if (pdf != "NOMINAL" && wgt_rep->size()>1) {
         vector<float> pdf_plus, pdf_minus;
 
         for (unsigned int i=0, n=wgt_rep->size(); i<n; i++) {
@@ -586,8 +585,10 @@ int main(int argc, char* argv[]){
         else if (pdf == "DOWN") weight *= (1. - rms_pm(pdf_minus));
       }
       //q2 scale reweighting
-      if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
-      else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
+      if (q2 != "NOMINAL" && wgt_env->size()>1) {
+        if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
+        else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
+      }
     }
     else isGH = (278802<=run && run<=300000);
 
@@ -1352,6 +1353,7 @@ void setPars(const string& parFile) {
 double rms_pm(const vector<float>& vec) {
 
   int size = vec.size();
+  if (size == 0) return 0;
   double sum = 0;
 
   for (int i=0; i<size; i++) sum += ( vec[i]-1. )*( vec[i]-1. );

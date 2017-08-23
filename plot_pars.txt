@@ -1,22 +1,22 @@
-dataFileName   ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/Muon_mm.root
+dataFileName   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/Muon_mm.root
 dataName       Data
 plotData       true
-mcFileNames    ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/TTbar_weighted_V2_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/highDY_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/lowDY_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STschannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STtchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/SaTtchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/STtWchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/SaTtWchannel_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/Wjet_mm.root
-sigFileNames   ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/zprime-M3000-W300_mm.root ~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/gluonkk-M3000_mm.root
+mcFileNames    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/DYhigh_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/DYlow_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STschannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STtWchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STtchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/SaTtWchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/SaTtchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/TTbar_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WJets_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WW_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WZ_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/ZZ_mm.root
+sigFileNames   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/zprime_M-3000_W-300_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/gluon_M-3000_mm.root
 sigScales      1 1
 leftText       CMS
 rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)
 logx           false
-logy           false
-subplot        ratio
-outName        5/dphi_jet1met
-hname          5_dphi_jet1met
-xmin           -6
-xmax           6
+logy           true
+subplot        pull
+outName        5/metpt
+hname          5_metpt
+xmin           0
+xmax           1000
 ymin           0
-subymin        0
+subymin        -2
 subymax        2
-systematics    topPt_weight jec jer btagSF mistagSF pdf q2
+systematics    topPt_weight jec jer btagSF mistagSF pileup pdf q2
 sys_norm       lumi:0.025 sig_tt:0.15 sig_dy:0.30 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01
 rebin          2
 plotImpact     false

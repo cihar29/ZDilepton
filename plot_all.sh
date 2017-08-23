@@ -12,9 +12,20 @@ if [ $# -eq 2 ] ; then
 
   channel=${args[0]}
   cut=${args[1]}
-  dir="~broozbah/nobackup/AnalysisZP/CMSSW_8_0_19/src/Analysis/ZDilepton/June20/SM/"
+  dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/"
 
-  subplot="ratio"
+  if [[ $channel = "mm" ]] ; then
+    dir="${dir}mm/"
+    dataset="Muon"
+  elif [[ $channel = "ee" ]] ; then
+    dir="${dir}ee/"
+    dataset="Ele"
+  else
+    dir="${dir}em/"
+    dataset="Muon"
+  fi
+
+  subplot="pull"
   if [[ "${subplot}" == "ratio" ]] ; then
     subymin="0"
   else
@@ -47,11 +58,11 @@ if [ $# -eq 2 ] ; then
       rebin="1"
     fi
 
-    lines=( "dataFileName   ${dir}Muon_${channel}.root"
+    lines=( "dataFileName   ${dir}${dataset}_${channel}.root"
             "dataName       Data"
             "plotData       true"
             "mcFileNames    ${dir}DYhigh_${channel}.root ${dir}DYlow_${channel}.root ${dir}STschannel_${channel}.root ${dir}STtWchannel_${channel}.root ${dir}STtchannel_${channel}.root ${dir}SaTtWchannel_${channel}.root ${dir}SaTtchannel_${channel}.root ${dir}TTbar_${channel}.root ${dir}WJets_${channel}.root ${dir}WW_${channel}.root ${dir}WZ_${channel}.root ${dir}ZZ_${channel}.root"
-            "sigFileNames   ${dir}zprime-M3000-W300_${channel}.root ${dir}gluonkk-M3000_${channel}.root"
+            "sigFileNames   ${dir}zprime_M-3000_W-300_${channel}.root ${dir}gluon_M-3000_${channel}.root"
             "sigScales      1 1"
             "leftText       CMS"
             "rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)"

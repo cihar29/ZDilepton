@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     else if (dataset.Contains("gluon", TString::kIgnoreCase)) gluon = dataset;
   }
 
-  ofstream file( channel + "_cutflow.txt" );
+  ofstream file( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_cutflow.txt" );
 
   file<<"====================================================================================================================="<< "\n" ;
   file<<"                                              Cut Flow Table: Summary\n" ;
@@ -311,7 +311,7 @@ int main(int argc, char* argv[]) {
 
   file.close();
 
-  ofstream e_outfile( channel + "_efficiencies.txt" );
+  ofstream e_outfile( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_efficiencies.txt" );
 
   ifstream data_infile(dataFile);
   ifstream mc_infile(mcFile);
@@ -441,7 +441,7 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
                || dataset.Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
         else if ( dataset.Contains("ww", TString::kIgnoreCase)
                || dataset.Contains("wz", TString::kIgnoreCase)
-               || dataset.Contains("zz", TString::kIgnoreCase) )   dataset = "Diboson";
+               || dataset.Contains("zz", TString::kIgnoreCase) )   key = "Diboson";
         else                                                       key = dataset;
 
         if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );
