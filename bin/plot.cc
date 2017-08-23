@@ -339,7 +339,7 @@ int main(int argc, char* argv[]) {
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
 
-  for (map<SetEnum, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
+  for (map<SetEnum, TH1F*>::const_reverse_iterator i_MC=m_MCs.rbegin(); i_MC != m_MCs.rend(); ++i_MC)
     leg->AddEntry(i_MC->second, labels[i_MC->first].Data(), "F");
   for (map<SetEnum, TH1F*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
     leg->AddEntry(i_sig->second, labels[i_sig->first].Data(), "L");

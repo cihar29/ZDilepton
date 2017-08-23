@@ -25,7 +25,7 @@ if [ $# -eq 2 ] ; then
     dataset="Muon"
   fi
 
-  subplot="pull"
+  subplot="ratio"
   if [[ "${subplot}" == "ratio" ]] ; then
     subymin="0"
   else
@@ -52,9 +52,9 @@ if [ $# -eq 2 ] ; then
     fi
 
     rebin="2"
-    #if [[ "${hists[i]}" == *"met"* ]] ; then
-    #  rebin="0 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2500 5000"
-    if [[ "${hists[i]}" == *"Good"* || "${hists[i]}" == "nbtag" ]] ; then
+    if [[ "${hists[i]}" == *"met"* ]] ; then
+      rebin="0 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2500 5000"
+    elif [[ "${hists[i]}" == *"Good"* || "${hists[i]}" == "nbtag" ]] ; then
       rebin="1"
     fi
 
@@ -77,7 +77,7 @@ if [ $# -eq 2 ] ; then
             "subymin        ${subymin}"
             "subymax        2"
             "systematics    topPt_weight jec jer btagSF mistagSF pileup pdf q2"
-            "sys_norm       lumi:0.025 sig_tt:0.15 sig_dy:0.30 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01"
+            "sys_norm       lumi:0.025 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01"
             "rebin          ${rebin}"
             "plotImpact     false"
           )

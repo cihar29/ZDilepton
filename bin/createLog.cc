@@ -1,4 +1,4 @@
-//createLog logData_mm.txt logMC_mm.txt topPt_weight btagSF jec jer mistagSF pileup pdf q2 lumi sig_tt sig_dy sig_st sig_db mutrig muid muiso eltrig elid eliso
+//createLog logData_mm.txt logMC_mm.txt topPt_weight btagSF jec jer mistagSF pileup pdf q2 lumi sig_st sig_db mutrig muid muiso eltrig elid eliso
 
 #include <iostream>
 #include <fstream>
@@ -423,7 +423,7 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       double N = stod(str);
 
       //data
-      if ( dataset.Contains("Muon", TString::kIgnoreCase) || dataset.Contains("Electron", TString::kIgnoreCase) ) {
+      if ( dataset.Contains("Muon", TString::kIgnoreCase) || dataset.Contains("Ele", TString::kIgnoreCase) ) {
         cuts.push_back( make_pair(cut_name, map<TString, pair<double, double> >()) );
         map<TString, pair<double, double> >& m = cuts.back().second;
         m["data"] = make_pair( N, sqrt(N) );
