@@ -9,7 +9,7 @@ uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2" "btagSF" "mistagSF" "pileup" )
 types=( "UP" "DOWN" )
 
 for chan in "${channels[@]}" ; do
-  echo "Processing" $chan $uncert $type
+  echo "Processing" $chan
   sh ./analyze_all.sh $chan > "logs/logMC_${chan}.txt"
 
   for uncert in "${uncerts[@]}" ; do
