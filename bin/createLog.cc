@@ -37,8 +37,9 @@ int main(int argc, char* argv[]) {
   map<TString, pair<double, double> >& m_total = cuts[0].second;
   for (map<TString, pair<double, double> >::iterator i_set = m_total.begin(); i_set != m_total.end(); ++i_set) {
     TString dataset = i_set->first;
-    if (dataset.Contains("zprime", TString::kIgnoreCase)) zprime = dataset;
-    else if (dataset.Contains("gluon", TString::kIgnoreCase)) gluon = dataset;
+
+    if (dataset.Contains("zprime_M-3000", TString::kIgnoreCase)) zprime = dataset;
+    else if (dataset.Contains("gluon_M-3000", TString::kIgnoreCase)) gluon = dataset;
   }
 
   ofstream file( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_cutflow.txt" );
@@ -106,6 +107,18 @@ int main(int argc, char* argv[]) {
     systematics.push_back(sys);
   }
 
+   map <string,string> sys_latex = { {"lumi","luminosity"} , {"sig_st","$\\sigma(single-top)$"} ,{"sig_db","$\\sigma(single\\_diboson)$"}
+				      , {"mutrig","$\\mu$ trigger"} ,{"muid","$\\mu$ ID"} , {"muiso","$\\mu$ Isolation"} , {"eltrig","e trigger"}
+				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b$\\_$tagging"}
+                          	      , {"mistagSF","mis$\\_$tagging"} , {"pileup","pileup"} , {"topPt_weight","$top \\hspace{0.5mm} p_{T}$ modeling"}
+				      , {"q2","Q2 scale"} , {"pdf","PDF"} } ;
+
+   map <string,string> sys_labels = { {"lumi","luminosity"} , {"sig_st","\u03C3(single-top)"} ,{"sig_db","\u03C3(single_diboson)"}
+				      , {"mutrig","\u03BC trigger"} ,{"muid","\u03BC ID"} , {"muiso","\u03BC Isolation"} , {"eltrig","e trigger"}
+				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b-tagging"}
+                          	      , {"mistagSF","mis-tagging"} , {"pileup","pileup"} , {"topPt_weight","top pT modeling"}
+				      , {"q2","Q2 scale"} , {"pdf","PDF"} } ;
+
   //use maps that holds vector for each systematics sources. Two maps for UP and DOWN variation for a given sys. source.
   //map(systematics_source, vector(cut_name, map(dataset, (N, error) ) )
   map <string, vector<pair<string, map<TString, pair<double, double> > > > >  m_cutsUP;
@@ -148,7 +161,7 @@ int main(int argc, char* argv[]) {
     string sys = systematics[i_sys];
 
     file<<"\n===================================================================================================================================="<< "\n" ;
-    file<<"                                    Systematics: " << sys <<  "       [absolute UP DOWN on first line and relative UP DOWN in \% on second line] \n" ;
+    file<<"                                    Systematics: " << sys_labels[systematics[i_sys]]<<  "       [absolute UP DOWN on first line and relative UP DOWN in \% on second line] \n" ;
     file<<"===================================================================================================================================="<< "\n" ;
     file<<Form("                         ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||      background     || %-20s|| %-20s",
     zprime.Data(), gluon.Data() ) << endl;
@@ -301,7 +314,7 @@ int main(int argc, char* argv[]) {
       map<TString, pair<double, double> > &DN = m_cutsDOWN[sys][cut_systematic].second;
 
       file<< Form("%-25s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f ",
-      sys.data(),
+      sys_latex[systematics[i_sys]].data(),
       UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
       UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
       UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
@@ -345,13 +358,18 @@ int main(int argc, char* argv[]) {
            100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
            ) << endl;
 
-    file << "\n\\begin{sidewaystable}\n";
-    file << "  \\tiny\n";
-    file << "  \\begin{center}\n";
-    file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
-    file << "  \\multicolumn{8}{c}{" + cuts[cut_systematic].first + "} \\\\\n";
+    file << "\\begin{sidewaystable}\n";
+    file << "\\resizebox{\\textheight}{!}{\n";
+    file << "\\setlength\\tabcolsep{2pt}\n";
+    file << "\\fontsize{3mm}{3mm} \\selectfont \n";
+
+    //file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
+    file << "  \\begin{tabular}{ |p{4cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}| }\n";
+
+    file << " \\multicolumn{8}{c}{channel : $" + channel + "$} \\\\\n";
+    file << "  \\multicolumn{8}{c}{$" + cuts[cut_systematic].first + "$} \\\\\n";
     file << "  \\hline\n";
-    file << Form("  Cut & ttbar & Drell-Yan & Single-Top & Diboson & Background & %s & %s \\\\", zprime.Data(), gluon.Data() ) << endl;
+    file << Form(" \\centering Cut & \\centering ttbar & \\centering Drell-Yan & \\centering Single-Top & \\centering Diboson & \\centering Background & \\centering $%s$ & \hspace{2mm} $%s$ \\\\", zprime.Data(), gluon.Data() ) << endl;
     file << "  \\hline\\hline\n";
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) { // Loop over systematics sources
@@ -361,18 +379,8 @@ int main(int argc, char* argv[]) {
       map<TString, pair<double, double> > &UP = m_cutsUP[sys][cut_systematic].second;
       map<TString, pair<double, double> > &DN = m_cutsDOWN[sys][cut_systematic].second;
 
-      file << Form("  %s & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f \\\\\n",
-      sys.data(),
-      UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
-      UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
-      UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
-      UP["Diboson"].first   -NM["Diboson"].first   ,           DN["Diboson"].first   -NM["Diboson"].first,
-      UP["background"].first-NM["background"].first,           DN["background"].first-NM["background"].first,
-      UP[zprime].first      -NM[zprime].first      ,           DN[zprime].first      -NM[zprime].first,
-      UP[gluon].first       -NM[gluon].first       ,           DN[gluon].first       -NM[gluon].first
-      );
-
-      file << Form("& %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f \\\\\n  \\hline",
+      file << Form(" \\centering %s & \\centering %.2f %.2f & \\centering %.2f %.2f &  \\centering %.2f %.2f & \\centering %.2f %.2f & \\centering %.2f %.2f & \\centering %.2f %.2f & \\hspace{2mm} %.2f %.2f \\\\\n",
+      sys_latex[systematics[i_sys]].data(),
       100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
       100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
       100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
@@ -382,18 +390,9 @@ int main(int argc, char* argv[]) {
       100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
       ) << endl;
     }
-    file << Form("  %s & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f \\\\\n",
-    "Total Sys",
-           sqrt(TS["ttbar"].first)     ,     sqrt(TS["ttbar"].second),
-           sqrt(TS["Drell-Yan"].first) ,     sqrt(TS["Drell-Yan"].second),
-           sqrt(TS["Single-Top"].first),     sqrt(TS["Single-Top"].second),
-           sqrt(TS["Diboson"].first)   ,     sqrt(TS["Diboson"].second ),
-           sqrt(TS["background"].first),     sqrt(TS["background"].second),
-           sqrt(TS[zprime].first)  ,         sqrt(TS[zprime].second),
-           sqrt(TS[gluon].first)   ,         sqrt(TS[gluon].second)
-           );
 
-    file << Form("& %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f \\\\\n  \\hline",
+    file << Form(" \\centering %s & \\centering %.2f -%.2f  & \\centering %.2f -%.2f & \\centering %.2f -%.2f &\\centering %.2f -%.2f & \\centering %.2f -%.2f & \\centering %.2f -%.2f & \\hspace{2mm} %.2f -%.2f \\\\\n",
+    "Total Sys",
            100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
            100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
            100.*sqrt(TS["Single-Top"].first)/NM["Single-Top"].first,    100.*sqrt(TS["Single-Top"].second)/NM["Single-Top"].first,
@@ -402,18 +401,20 @@ int main(int argc, char* argv[]) {
            100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
            100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
            ) << endl; 
-
-    file << "  \\end{tabular}\n";
-    file << "\\end{center}\n";
+    file << "  \\hline\n";
+    file << "  \\end{tabular}}\n";
     file << "\\end{sidewaystable}" << endl;
   }
 
-  file << "\n\\begin{sidewaystable}\n";
-  file << "  \\tiny\n";
-  file << "  \\begin{center}\n";
-  file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
+  file << " \\newpage " << endl;
+  file << "\\begin{sidewaystable}\n";
+  file << "\\resizebox{\\textheight}{!}{\n";
+  file << "\\setlength\\tabcolsep{2pt}\n";
+  file << "\\fontsize{3mm}{3mm} \\selectfont \n";
+  file << "  \\begin{tabular}{ |p{4cm}||p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}| }\n";
+  file << " \\multicolumn{8}{c}{channel : $" + channel + "$} \\\\\n";
   file << "  \\hline\n";
-  file << Form("  Cut & Data & ttbar & Drell-Yan & Single-Top & Diboson & Background & %s & %s \\\\", zprime.Data(), gluon.Data() ) << endl;
+  file << Form(" \\centering Cut & \\centering Data & \\centering ttbar & \\centering Drell-Yan & \\centering Single-Top & \\centering Diboson & \\centering Background & \\centering $%s$ & \\hspace{2mm} $%s$ \\\\", zprime.Data(), gluon.Data() ) << endl;
   file << "  \\hline\\hline\n";
 
   for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
@@ -423,7 +424,7 @@ int main(int argc, char* argv[]) {
     if (systematics.size() > 0) {
       map<TString, pair<double, double> > TS = cuts_TotalSysPlusMinus[i_cut].second ;
 
-      file << Form("  %s & $%.0f \\pm %.1f$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ \\\\\n  \\hline",
+      file << Form(" \\centering %s & \\centering $%.0f \\pm %.1f$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\centering $%.1f^{+%.1f}_{-%.1f}$ & \\hspace{2mm} $%.1f^{+%.1f}_{-%.1f}$ \\\\\n  \\hline",
 
                   cutname.data(), NM["data"].first, NM["data"].second,
                   NM["ttbar"].first, sqrt( NM["ttbar"].second*NM["ttbar"].second + TS["ttbar"].first ), sqrt( NM["ttbar"].second*NM["ttbar"].second + TS["ttbar"].second ),
@@ -444,8 +445,7 @@ int main(int argc, char* argv[]) {
       file << "  \\hline\n";
   }
 
-  file << "  \\end{tabular}\n";
-  file << "\\end{center}\n";
+  file << "  \\end{tabular}}\n";
   file << "\\end{sidewaystable}" << endl;
 
   file.close();
@@ -476,8 +476,10 @@ int main(int argc, char* argv[]) {
       e_outfile << "---------------------------------------------------------------------------------------------------------------------" << endl;
   }
 
+  e_outfile << "\\newpage" << endl;
   e_outfile << "\n\\begin{center}\n";
   e_outfile << "  \\begin{tabular}{ |c|c| }\n";
+  e_outfile << "  \\multicolumn{2}{c}{channel "<< channel << " } \\\\\n";
   e_outfile << "  \\multicolumn{2}{c}{$\\geq$ 2 Jets, = 1 btag} \\\\\n";
   e_outfile << "  \\hline\n";
   e_outfile << "  Process & Efficiency \\\\\n";
@@ -489,8 +491,9 @@ int main(int argc, char* argv[]) {
   e_outfile << Form("  Drell-Yan & %1.6f \\\\\n  \\hline", m_last["Drell-Yan"].first/m_total["Drell-Yan"].first) << endl;
   e_outfile << Form("  Single-Top & %1.6f \\\\\n  \\hline", m_last["Single-Top"].first/m_total["Single-Top"].first) << endl;
   e_outfile << Form("  Diboson & %1.6f \\\\\n  \\hline", m_last["Diboson"].first/m_total["Diboson"].first) << endl;
-  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", zprime.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
-  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", gluon.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
+  e_outfile << Form("  W+Jets & %1.6f \\\\\n  \\hline", m_last["W+Jets"].first/m_total["W+Jets"].first) << endl;
+  e_outfile << Form("  $%-20s$ & %1.6f \\\\\n  \\hline", zprime.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
+  e_outfile << Form("  $%-20s$ & %1.6f \\\\\n  \\hline", gluon.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
 
   e_outfile << "  \\end{tabular}\n";
   e_outfile << "\\end{center}" << endl;
@@ -620,3 +623,4 @@ double delta(double delta1, double delta2, string plus_minus) {
   }
   return del;
 }
+
