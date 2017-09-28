@@ -51,7 +51,7 @@ bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
-TString setDRCut="OFF"; //ON (keep events with rmin0,rmin1<1.4), REVERSE (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
+TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -237,9 +237,8 @@ int main(int argc, char* argv[]){
   }
 
   //pdf and q2 reweighting
-  if ( inName.Contains("zprime", TString::kIgnoreCase) && (q2!="NOMINAL" || pdf!="NOMINAL") ) {
+  if ( q2!="NOMINAL" || pdf!="NOMINAL" ) {
     double pdfUP=0, pdfDN=0, q2UP=0, q2DN=0, countTotal=0;
-
     nextkey = inFile->GetListOfKeys();
     while ( (key = (TKey*)nextkey()) ) {
       TString keyname = key->GetName();
@@ -250,12 +249,19 @@ int main(int argc, char* argv[]){
       else if (keyname=="q2UP")  q2UP += (*(vector<double>*)key->ReadObj())[0];
       else if (keyname=="q2DN")  q2DN += (*(vector<double>*)key->ReadObj())[0];
     }
-    if      (pdf=="UP")   weight0 *= countTotal / pdfUP;
-    else if (pdf=="DOWN") weight0 *= countTotal / pdfDN;
-    if      (q2=="UP")    weight0 *= countTotal / q2UP;
-    else if (q2=="DOWN")  weight0 *= countTotal / q2DN;
+    if( inName.Contains("zprime", TString::kIgnoreCase) ){
+      if      (pdf=="UP")   weight0 *= countTotal / pdfUP;
+      else if (pdf=="DOWN") weight0 *= countTotal / pdfDN;
+      if      (q2=="UP")    weight0 *= countTotal / q2UP;
+      else if (q2=="DOWN")  weight0 *= countTotal / q2DN;
+    }
+    /*if( inName.Contains("ttbar", TString::kIgnoreCase) || inName.Contains("DY", TString::kIgnoreCase)){
+      if      (pdf=="UP")   v_cuts[countEvts].second = pdfUP;
+      else if (pdf=="DOWN") v_cuts[countEvts].second = pdfDN;
+      if      (q2=="UP")    v_cuts[countEvts].second = q2UP;
+      else if (q2=="DOWN")  v_cuts[countEvts].second = q2DN;
+    }*/
   }
-
   //Histograms//
 
   int nDirs = 6;
@@ -895,8 +901,8 @@ int main(int argc, char* argv[]){
     else { if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue; }
     v_cuts[ptrelCut].second += weight;
 
-    if (setDRCut=="ON") { if (rmin0>1.4 || rmin1>1.4) continue; }
-    else if (setDRCut=="REVERSE") { if (rmin0<1.4 && rmin1<1.4) continue; }
+    if (setDRCut=="SIGNAL") { if (rmin0>1.4 || rmin1>1.4) continue; }
+    else if (setDRCut=="CONTROL") { if (rmin0<1.4 && rmin1<1.4) continue; }
     v_cuts[dRCut].second += weight;
 
     double met_corrpx = met_px - ctype1_x;
