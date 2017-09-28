@@ -51,7 +51,7 @@ bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
-TString setDRCut="OFF"; //SIGNAL (keep events with rmin0,rmin1<1.4), CONTROL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
+TString setDRCut="OFF"; //ON (keep events with rmin0,rmin1<1.4), NOMINAL (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -895,8 +895,8 @@ int main(int argc, char* argv[]){
     else { if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue; }
     v_cuts[ptrelCut].second += weight;
 
-    if (setDRCut=="SIGNAL") { if (rmin0>1.4 || rmin1>1.4) continue; }
-    else if (setDRCut=="CONTROL") { if (rmin0<1.4 && rmin1<1.4) continue; }
+    if (setDRCut=="ON") { if (rmin0>1.4 || rmin1>1.4) continue; }
+    else if (setDRCut=="NOMINAL") { if (rmin0<1.4 && rmin1<1.4) continue; }
     v_cuts[dRCut].second += weight;
 
     double met_corrpx = met_px - ctype1_x;
