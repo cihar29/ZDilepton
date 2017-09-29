@@ -1,4 +1,4 @@
-//createLog logData_mm.txt logMC_mm.txt 22 topPt_weight btagSF jec jer mistagSF pileup pdf q2 lumi sig_st sig_db mutrig muid muiso eltrig elid eliso
+//createLog logData_mm.txt logMC_mm.txt 22 topPt_weight btagSF jec jer mistagSF pileup pdf q2ttbar q2dy q2st q2signal lumi sig_st sig_db mutrig muid muiso eltrig elid eliso
 
 #include <iostream>
 #include <fstream>
