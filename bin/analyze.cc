@@ -49,9 +49,10 @@ map<TString, TH1*> m_Histos1D;
 //parameters- edit in pars.txt
 bool isMC;
 TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
-TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL";
+TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL", q2ttbar="NOMINAL", q2dy="NOMINAL", q2st="NOMINAL", q2signal="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
-TString setDRCut="OFF"; //ON (keep events with rmin0,rmin1<1.4), REVERSE (keep events if rmin0 or rmin1 > 1.4, OFF (no cut)
+TString setDRCut="OFF"; //ON (keep events with rmin0 && rmin1<1.4), REVERSE (keep events if rmin0 || rmin1 > 1.4) , OFF (no cut) 
+// ONbt (keep events with rmin0 && rmin1<0.8),  ONnb (keep events with rmin0 && rmin1<1.4 but rmin0>0.8 || rmin1>0.8)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -237,6 +238,14 @@ int main(int argc, char* argv[]){
   }
 
   //pdf and q2 reweighting
+  if (inName.Contains("ttbar", TString::kIgnoreCase) && q2ttbar=="DOWN") q2="DOWN";
+  if (inName.Contains("ttbar", TString::kIgnoreCase) && q2ttbar=="UP")   q2="UP";
+  if (inName.Contains("dy", TString::kIgnoreCase)    && q2dy=="DOWN")    q2="DOWN";
+  if (inName.Contains("dy", TString::kIgnoreCase)    && q2dy=="UP")      q2="UP";
+  if ((inName.Contains("st", TString::kIgnoreCase) || inName.Contains("sat", TString::kIgnoreCase)) && q2st=="DOWN") q2="DOWN";   
+  if ((inName.Contains("st", TString::kIgnoreCase) || inName.Contains("sat", TString::kIgnoreCase)) && q2st=="UP")   q2="UP";  
+  if (inName.Contains("zprime", TString::kIgnoreCase) && q2signal=="DOWN") q2="DOWN";
+  if (inName.Contains("zprime", TString::kIgnoreCase) && q2signal=="UP")   q2="UP";
   if ( q2!="NOMINAL" || pdf!="NOMINAL" ) {
     double pdfUP=0, pdfDN=0, q2UP=0, q2DN=0, countTotal=0;
     nextkey = inFile->GetListOfKeys();
@@ -554,6 +563,7 @@ int main(int argc, char* argv[]){
     bool isGH = false;
 
     if (isMC) {
+
       weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
 
       //ttbar reweighting
@@ -591,6 +601,8 @@ int main(int argc, char* argv[]){
         else if (pdf == "DOWN") weight *= (1. - rms_pm(pdf_minus));
       }
       //q2 scale reweighting
+      //cout << "size  " << wgt_env->size() << endl;
+      //cout << "max " << TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
       if (q2 != "NOMINAL" && wgt_env->size()>1) {
         if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
         else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
@@ -901,7 +913,11 @@ int main(int argc, char* argv[]){
     else { if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue; }
     v_cuts[ptrelCut].second += weight;
 
-    if (setDRCut=="ON") { if (rmin0>1.4 || rmin1>1.4) continue; }
+    if (setDRCut.Contains("ON",TString::kIgnoreCase) ) { 
+      if (rmin0>1.4 || rmin1>1.4) continue;
+      if (setDRCut=="ONbt") if (  rmin0>0.8 || rmin1>0.8  )  continue;
+      if (setDRCut=="ONnb") if (!(rmin0>0.8 || rmin1>0.8) )  continue;
+    }
     else if (setDRCut=="REVERSE") { if (rmin0<1.4 && rmin1<1.4) continue; }
     v_cuts[dRCut].second += weight;
 
@@ -1327,7 +1343,10 @@ void setPars(const string& parFile) {
     else if (var == "jec") jec = line.data();
     else if (var == "jer") jer = line.data();
     else if (var == "pdf") pdf = line.data();
-    else if (var == "q2") q2 = line.data();
+    else if (var == "q2ttbar") q2ttbar = line.data();
+    else if (var == "q2dy") q2dy = line.data();
+    else if (var == "q2st") q2st = line.data();
+    else if (var == "q2signal") q2signal = line.data();
     else if (var == "pileup") pileup = line.data();
     else if (var == "btagSF") btagSF = line.data();
     else if (var == "mistagSF") mistagSF = line.data();
