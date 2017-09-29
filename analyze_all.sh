@@ -32,7 +32,7 @@ else
     uncert=${args[1]}
     type=${args[2]}
 
-    uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2" "btagSF" "mistagSF" "pileup" )
+    uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
     types=( "UP" "DOWN" )
 
     isValid $uncert uncerts[@]
@@ -88,16 +88,16 @@ else
             "${uncert}      ${type}"
             "setDRCut       OFF"   
             "inName         ${dir}${file}.root"
-            "outName        ./${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
+            "outName        ./root_Sep28/${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
             "res_era        Spring16_25nsV10_MC"
             "jet_type       AK4PFchs"
-            "muTrigSfName   Trigger_EfficienciesAndSF_Period4.root"
-            "muIdSfName     ID_EfficienciesAndSF_GH.root"
-            "muTrackSfName  Tracking_EfficienciesAndSF_GH.root"
-            "eRecoSfName    e_Reco_efficiency.root"
-            "eIdSfName      e_MediumID_efficiency.root"
+            "muTrigSfName   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/Trigger_EfficienciesAndSF_Period4.root"
+            "muIdSfName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/ID_EfficienciesAndSF_GH.root"
+            "muTrackSfName  /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/Tracking_EfficienciesAndSF_GH.root"
+            "eRecoSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_Reco_efficiency.root"
+            "eIdSfName      /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_MediumID_efficiency.root"
             "btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/btag_eff.root"
             "pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root"
           )
