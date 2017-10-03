@@ -214,16 +214,6 @@ int main(int argc, char* argv[]) {
           UP[dataset].first = perEvent_sys + NM[dataset].first;
           DN[dataset].first = NM[dataset].first - perEvent_sys;
         }
-        else {
-          if (sys == "topPt_weight" && dataset == "background") { // topPt_weight should only affect ttbar
-            UP[dataset].first = UP["ttbar"].first - NM["ttbar"].first + NM[dataset].first;
-            DN[dataset].first = DN["ttbar"].first - NM["ttbar"].first + NM[dataset].first;
-          }
-          else if (sys == "topPt_weight" && dataset != "background" && dataset != "ttbar") {
-            UP[dataset].first = NM[dataset].first ;
-            DN[dataset].first = NM[dataset].first ;
-          }
-        }
 
         double deltaUP = UP[dataset].first - NM[dataset].first ;
         double deltaDN = DN[dataset].first - NM[dataset].first ;
@@ -369,7 +359,7 @@ int main(int argc, char* argv[]) {
     file << " \\multicolumn{8}{c}{channel : $" + channel + "$} \\\\\n";
     file << "  \\multicolumn{8}{c}{$" + cuts[cut_systematic].first + "$} \\\\\n";
     file << "  \\hline\n";
-    file << Form(" \\centering Cut & \\centering ttbar & \\centering Drell-Yan & \\centering Single-Top & \\centering Diboson & \\centering Background & \\centering $%s$ & \hspace{2mm} $%s$ \\\\", zprime.Data(), gluon.Data() ) << endl;
+    file << Form(" \\centering Cut & \\centering ttbar & \\centering Drell-Yan & \\centering Single-Top & \\centering Diboson & \\centering Background & \\centering $%s$ & \\hspace{2mm} $%s$ \\\\", zprime.Data(), gluon.Data() ) << endl;
     file << "  \\hline\\hline\n";
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) { // Loop over systematics sources

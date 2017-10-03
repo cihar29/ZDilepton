@@ -1,23 +1,23 @@
-dataFileName   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/Muon_mm.root
+dataFileName   mm/Muon_mm.root
 dataName       Data
-plotData       true
-mcFileNames    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/DYhigh_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/DYlow_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STschannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STtWchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/STtchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/SaTtWchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/SaTtchannel_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/TTbar_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WJets_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WW_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/WZ_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/ZZ_mm.root
-sigFileNames   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/zprime_M-3000_W-300_mm.root /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mm/gluon_M-3000_mm.root
-sigScales      1 1
+plotData       false
+mcFileNames    mm/DYhigh_mm.root mm/DYlow_mm.root mm/STschannel_mm.root mm/STtWchannel_mm.root mm/STtchannel_mm.root mm/SaTtWchannel_mm.root mm/SaTtchannel_mm.root mm/TTbar_mm.root mm/WJets_mm.root mm/WW_mm.root mm/WZ_mm.root mm/ZZ_mm.root
+sigFileNames   mm/gluon_M-1000_mm.root mm/gluon_M-1250_mm.root mm/gluon_M-1500_mm.root mm/gluon_M-2000_mm.root mm/gluon_M-2500_mm.root mm/gluon_M-3000_mm.root mm/gluon_M-3500_mm.root mm/gluon_M-4000_mm.root mm/gluon_M-500_mm.root mm/gluon_M-750_mm.root mm/zprime_M-1000_W-10_mm.root mm/zprime_M-1000_W-100_mm.root mm/zprime_M-1000_W-300_mm.root mm/zprime_M-1250_W-125_mm.root mm/zprime_M-1250_W-12p5_mm.root mm/zprime_M-1500_W-15_mm.root mm/zprime_M-1500_W-150_mm.root mm/zprime_M-3000_W-300_mm.root
+sigScales      10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10
 leftText       CMS
 rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)
 logx           false
 logy           false
 subplot        ratio
-outName        5/dphi_jet1met
-hname          5_dphi_jet1met
-xmin           -6
-xmax           6
+outName        mm/5/masslljjm
+hname          5_masslljjm
+xmin           0
+xmax           5000
 ymin           0
 subymin        0
 subymax        2
-systematics    topPt_weight jec jer btagSF mistagSF pileup pdf q2
+systematics    topPt_weight jec jer btagSF mistagSF pileup pdf q2ttbar q2dy q2st q2signal
 sys_norm       lumi:0.025 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01
-rebin          0 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2500 5000
+rebin          0 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 1500 1600 1800 2000 2500 3000 5000
 plotImpact     false
-
+theta          false

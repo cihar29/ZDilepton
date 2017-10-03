@@ -12,7 +12,7 @@ if [ $# -eq 2 ] ; then
 
   channel=${args[0]}
   cut=${args[1]}
-  dir="root_trees/SIGNAL/"
+  dir=""
 
   if [[ $channel = "mm" ]] ; then
     dir="${dir}mm/"
@@ -64,14 +64,14 @@ if [ $# -eq 2 ] ; then
             "dataName       Data"
             "plotData       false"
             "mcFileNames    ${dir}DYhigh_${channel}.root ${dir}DYlow_${channel}.root ${dir}STschannel_${channel}.root ${dir}STtWchannel_${channel}.root ${dir}STtchannel_${channel}.root ${dir}SaTtWchannel_${channel}.root ${dir}SaTtchannel_${channel}.root ${dir}TTbar_${channel}.root ${dir}WJets_${channel}.root ${dir}WW_${channel}.root ${dir}WZ_${channel}.root ${dir}ZZ_${channel}.root"
-            "sigFileNames   ${dir}zprime_M-3000_W-300_${channel}.root ${dir}gluon_M-3000_${channel}.root"
-            "sigScales      1 1"
+            "sigFileNames   ${dir}gluon_M-1000_${channel}.root ${dir}gluon_M-1250_${channel}.root ${dir}gluon_M-1500_${channel}.root ${dir}gluon_M-2000_${channel}.root ${dir}gluon_M-2500_${channel}.root ${dir}gluon_M-3000_${channel}.root ${dir}gluon_M-3500_${channel}.root ${dir}gluon_M-4000_${channel}.root ${dir}gluon_M-500_${channel}.root ${dir}gluon_M-750_${channel}.root ${dir}zprime_M-1000_W-10_${channel}.root ${dir}zprime_M-1000_W-100_${channel}.root ${dir}zprime_M-1000_W-300_${channel}.root ${dir}zprime_M-1250_W-125_${channel}.root ${dir}zprime_M-1250_W-12p5_${channel}.root ${dir}zprime_M-1500_W-15_${channel}.root ${dir}zprime_M-1500_W-150_${channel}.root ${dir}zprime_M-3000_W-300_${channel}.root"
+            "sigScales      10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10"
             "leftText       CMS"
             "rightText      Run 2016 - 35.9 fb^{-1} (13 TeV)"
             "logx           false"
             "logy           ${logy}"
             "subplot        ${subplot}"
-            "outName        Sep25/SetDRCut/${channel}/${cut}/${hists[i]}"
+            "outName        ${channel}/${cut}/${hists[i]}"
             "hname          ${cut}_${hists[i]}"
             "xmin           ${xmins[i]}"
             "xmax           ${xmaxs[i]}"
@@ -82,6 +82,7 @@ if [ $# -eq 2 ] ; then
             "sys_norm       lumi:0.025 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01"
             "rebin          ${rebin}"
             "plotImpact     false"
+            "theta          false" # zp1, zp10, zp30, or gkk
           )
     out=""
 

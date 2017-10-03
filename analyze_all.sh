@@ -88,7 +88,7 @@ else
             "${uncert}      ${type}"
             "setDRCut       OFF"   
             "inName         ${dir}${file}.root"
-            "outName        ./root_Sep28/${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
+            "outName        ${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
             "channel        ${channel}"
             "eras           Summer16_23Sep2016V4_MC"
             "res_era        Spring16_25nsV10_MC"

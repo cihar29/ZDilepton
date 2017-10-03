@@ -2,10 +2,10 @@
 
 # execute as nohup ./run_all.sh &
 
-#START=$(date +%s.%N)
+START=$(date +%s.%N)
 
 channels=( "mm" "em" "ee" )
-uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2" "btagSF" "mistagSF" "pileup" )
+uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
 types=( "UP" "DOWN" )
 
 for chan in "${channels[@]}" ; do
@@ -20,6 +20,6 @@ for chan in "${channels[@]}" ; do
   done
 done
 
-#END=$(date +%s.%N)
-#DIFF=$(echo "$END - $START" | bc)
-#echo $DIFF
+END=$(date +%s.%N)
+DIFF=$(echo "$END - $START" | bc)
+echo $DIFF

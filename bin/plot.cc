@@ -26,10 +26,10 @@ void drawText();
 
 //parameters- edit in plot_pars.txt
 vector<TString> mcFileNames, sigFileNames, systematics;
-vector<double> mcScales, sigScales, rebin;
+vector<double> sigScales, rebin;
 map<TString, float> sys_norm;
 string subplot, dataName;
-TString dataFileName, outName;
+TString dataFileName, outName, theta;
 TString hname, leftText, rightText;
 float xmin, xmax, ymin, ymax, subymin, subymax;
 bool logx, logy, plotData, plotImpact;
@@ -47,26 +47,25 @@ int main(int argc, char* argv[]) {
   TString labels[] = { "W+Jets", "VV", "Single-Top", "Z/#gamma*#rightarrowl^{+}l^{-}", "t#bar{t}", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
 
   TFile* dataFile = TFile::Open(dataFileName);
-  TH1F* h_Data = (TH1F*) dataFile->FindObjectAny(hname);
+  TH1D* h_Data = (TH1D*) dataFile->FindObjectAny(hname);
 
   if (rebin.size() == 1) h_Data->Rebin(rebin[0]);
-  else h_Data = (TH1F*) h_Data->Rebin(rebin.size()-1, "h_Data", &rebin[0]);
+  else h_Data = (TH1D*) h_Data->Rebin(rebin.size()-1, "h_Data", &rebin[0]);
   int nBins = h_Data->GetNbinsX();
 
   h_Data->SetMarkerStyle(20);
   h_Data->SetLineColor(kBlack);
   h_Data->SetMarkerSize(0.65);
 
-  map<SetEnum, TH1F*> m_MCs, m_bkg;
-  map<pair<SetEnum, TString>, TH1F*> m_MCUPs, m_MCDNs, m_bkgUPs, m_bkgDNs;
+  map<SetEnum, TH1D*> m_MCs, m_bkg;
+  map<pair<SetEnum, TString>, TH1D*> m_MCUPs, m_MCDNs, m_bkgUPs, m_bkgDNs;
   for (int i=0,n=mcFileNames.size(); i<n; i++) {
     TFile* mcFile = TFile::Open(mcFileNames[i]);
 
-    TH1F* h_MC = (TH1F*) mcFile->FindObjectAny(hname);
-    //h_MC->Scale(mcScales[i]);
+    TH1D* h_MC = (TH1D*) mcFile->FindObjectAny(hname);
 
     if (rebin.size() == 1) h_MC->Rebin(rebin[0]);
-    else h_MC = (TH1F*) h_MC->Rebin(rebin.size()-1, "h_MC", &rebin[0]);
+    else h_MC = (TH1D*) h_MC->Rebin(rebin.size()-1, "h_MC", &rebin[0]);
 
     SetEnum dataset = undefined;
     if ( mcFileNames[i].Contains("ttbar", TString::kIgnoreCase) )     dataset = ttbar;
@@ -81,7 +80,7 @@ int main(int argc, char* argv[]) {
     if ( m_MCs.find(dataset) == m_MCs.end() ) m_MCs[dataset] = h_MC;
     else m_MCs[dataset]->Add(h_MC);
 
-    if ( m_bkg.find(bkg) == m_bkg.end() ) m_bkg[bkg] = (TH1F*) h_MC->Clone("h_bkg"); //second map to start with h_MC (needs new object)
+    if ( m_bkg.find(bkg) == m_bkg.end() ) m_bkg[bkg] = (TH1D*) h_MC->Clone("h_bkg"); //second map to start with h_MC (needs new object)
     else m_bkg[bkg]->Add(h_MC);
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
@@ -89,15 +88,13 @@ int main(int argc, char* argv[]) {
       TFile* mcFileUP = TFile::Open( mcFileNames[i]( 0, mcFileNames[i].Index(".root") ) + "_" + sys + "UP.root" );
       TFile* mcFileDN = TFile::Open( mcFileNames[i]( 0, mcFileNames[i].Index(".root") ) + "_" + sys + "DOWN.root" );
 
-      TH1F* h_MCUP = (TH1F*) mcFileUP->FindObjectAny(hname);
-      //h_MCUP->Scale(mcScales[i]);
-      TH1F* h_MCDN = (TH1F*) mcFileDN->FindObjectAny(hname);
-      //h_MCDN->Scale(mcScales[i]);
+      TH1D* h_MCUP = (TH1D*) mcFileUP->FindObjectAny(hname);
+      TH1D* h_MCDN = (TH1D*) mcFileDN->FindObjectAny(hname);
 
       if (rebin.size() == 1) h_MCUP->Rebin(rebin[0]);
-      else h_MCUP = (TH1F*) h_MCUP->Rebin(rebin.size()-1, "h_MCUP", &rebin[0]);
+      else h_MCUP = (TH1D*) h_MCUP->Rebin(rebin.size()-1, "h_MCUP", &rebin[0]);
       if (rebin.size() == 1) h_MCDN->Rebin(rebin[0]);
-      else h_MCDN = (TH1F*) h_MCDN->Rebin(rebin.size()-1, "h_MCDN", &rebin[0]);
+      else h_MCDN = (TH1D*) h_MCDN->Rebin(rebin.size()-1, "h_MCDN", &rebin[0]);
 
       pair<SetEnum, TString> keypair = make_pair(dataset, sys);
       if ( m_MCUPs.find(keypair) == m_MCUPs.end() ) m_MCUPs[keypair] = h_MCUP;
@@ -105,20 +102,16 @@ int main(int argc, char* argv[]) {
       if ( m_MCDNs.find(keypair) == m_MCDNs.end() ) m_MCDNs[keypair] = h_MCDN;
       else m_MCDNs[keypair]->Add(h_MCDN);
 
-      TH1F* h_bkgUP = 0, *h_bkgDN = 0;
-      if (sys == "topPt_weight" && dataset != ttbar) { h_bkgUP = h_MC; h_bkgDN = h_MC; } // topPt_weight only affects ttbar
-      else { h_bkgUP = h_MCUP; h_bkgDN = h_MCDN; }
-
       keypair = make_pair(bkg, sys);
-      if ( m_bkgUPs.find(keypair) == m_bkgUPs.end() ) m_bkgUPs[keypair] = (TH1F*) h_bkgUP->Clone("h_bkgUP");
-      else m_bkgUPs[keypair]->Add(h_bkgUP);
-      if ( m_bkgDNs.find(keypair) == m_bkgDNs.end() ) m_bkgDNs[keypair] = (TH1F*) h_bkgDN->Clone("h_bkgDN");
-      else m_bkgDNs[keypair]->Add(h_bkgDN);
+      if ( m_bkgUPs.find(keypair) == m_bkgUPs.end() ) m_bkgUPs[keypair] = (TH1D*) h_MCUP->Clone("h_bkgUP");
+      else m_bkgUPs[keypair]->Add(h_MCUP);
+      if ( m_bkgDNs.find(keypair) == m_bkgDNs.end() ) m_bkgDNs[keypair] = (TH1D*) h_MCDN->Clone("h_bkgDN");
+      else m_bkgDNs[keypair]->Add(h_MCDN);
     }
   }
 
   THStack* mcStack = new THStack();
-  for (map<SetEnum, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) mcStack->Add( i_MC->second );
+  for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) mcStack->Add( i_MC->second );
 
   if ( !m_MCs.empty() ) {
     m_MCs[ttbar]->SetLineColor(2);
@@ -137,40 +130,62 @@ int main(int argc, char* argv[]) {
     m_MCs[st]->SetFillColor(28);
   }
 
-  map<SetEnum, TH1F*> m_sigs;
-  map<pair<SetEnum, TString>, TH1F*> m_sigUPs, m_sigDNs;
+  map<TString, TH1D*> m_sigs_theta;
+  map<pair<TString, TString>, TH1D*> m_sigUPs_theta, m_sigDNs_theta;
+
+  map<SetEnum, TH1D*> m_sigs;
+  map<pair<SetEnum, TString>, TH1D*> m_sigUPs, m_sigDNs;
   for (int i=0,n=sigFileNames.size(); i<n; i++) {
 
+    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" && !sigFileNames[i].Contains("M-3000") ) continue;
+
     TFile* sigFile = TFile::Open(sigFileNames[i]);
-    TH1F* h_sig = (TH1F*) sigFile->FindObjectAny(hname);
-    h_sig->Scale(sigScales[i]);
+    TH1D* h_sig = (TH1D*) sigFile->FindObjectAny(hname);
+    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sig->Scale(sigScales[i]);
 
     if (rebin.size() == 1) h_sig->Rebin(rebin[0]);
-    else h_sig = (TH1F*) h_sig->Rebin(rebin.size()-1, "h_sig", &rebin[0]);
+    else h_sig = (TH1D*) h_sig->Rebin(rebin.size()-1, "h_sig", &rebin[0]);
 
     SetEnum dataset = undefined;
-    if ( sigFileNames[i].Contains("zprime", TString::kIgnoreCase) )     dataset = zprime;
-    else if ( sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) dataset = gluon;
+    TString dataset_theta = "undefined";
+
+    if ( sigFileNames[i].Contains("zprime", TString::kIgnoreCase) ) {
+      dataset = zprime;
+      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Index("_W")-sigFileNames[i].Index("M-")-2);
+      TString width = sigFileNames[i](sigFileNames[i].Index("W-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("W-")-2);
+      if ( width.Contains('p', TString::kIgnoreCase) ) width.ReplaceAll('p', '.');
+      dataset_theta = "zp" + mass + "_" + to_string( int( stof(width.Data())/stof(mass.Data())*100 ) );
+    }
+    else if ( sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) {
+      dataset = gluon;
+      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("M-")-2);
+      dataset_theta = "gkk" + mass;
+    }
     m_sigs[dataset] = h_sig;
+    m_sigs_theta[dataset_theta] = h_sig;
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
       TString sys = systematics[i_sys];
       TFile* sigFileUP = TFile::Open( sigFileNames[i]( 0, sigFileNames[i].Index(".root") ) + "_" + sys + "UP.root" );
       TFile* sigFileDN = TFile::Open( sigFileNames[i]( 0, sigFileNames[i].Index(".root") ) + "_" + sys + "DOWN.root" );
 
-      TH1F* h_sigUP = (TH1F*) sigFileUP->FindObjectAny(hname);
+      TH1D* h_sigUP = (TH1D*) sigFileUP->FindObjectAny(hname);
       h_sigUP->Scale(sigScales[i]);
-      TH1F* h_sigDN = (TH1F*) sigFileDN->FindObjectAny(hname);
+      TH1D* h_sigDN = (TH1D*) sigFileDN->FindObjectAny(hname);
       h_sigDN->Scale(sigScales[i]);
 
       if (rebin.size() == 1) h_sigUP->Rebin(rebin[0]);
-      else h_sigUP = (TH1F*) h_sigUP->Rebin(rebin.size()-1, "h_sigUP", &rebin[0]);
+      else h_sigUP = (TH1D*) h_sigUP->Rebin(rebin.size()-1, "h_sigUP", &rebin[0]);
       if (rebin.size() == 1) h_sigDN->Rebin(rebin[0]);
-      else h_sigDN = (TH1F*) h_sigDN->Rebin(rebin.size()-1, "h_sigDN", &rebin[0]);
+      else h_sigDN = (TH1D*) h_sigDN->Rebin(rebin.size()-1, "h_sigDN", &rebin[0]);
 
       pair<SetEnum, TString> keypair = make_pair(dataset, sys);
       m_sigUPs[keypair] = h_sigUP;
       m_sigDNs[keypair] = h_sigDN;
+
+      pair<TString, TString> keypair_theta = make_pair(dataset_theta, sys);
+      m_sigUPs_theta[keypair_theta] = h_sigUP;
+      m_sigDNs_theta[keypair_theta] = h_sigDN;
     }
   }
 
@@ -183,7 +198,7 @@ int main(int argc, char* argv[]) {
     m_sigs[gluon]->SetLineStyle(2);
   }
 
-  string channel = "em";
+  TString channel = "em";
   if      (dataFileName.Contains("mm", TString::kIgnoreCase)) channel = "mm";
   else if (dataFileName.Contains("ee", TString::kIgnoreCase)) channel = "ee";
 
@@ -292,9 +307,9 @@ int main(int argc, char* argv[]) {
   {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
-  TH1F* hist = 0;
-  if (rebin.size() == 1) hist = new TH1F("hist", "hist", nBins, h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(nBins+1));
-  else hist = new TH1F("hist", "hist", rebin.size()-1, &rebin[0]);
+  TH1D* hist = 0;
+  if (rebin.size() == 1) hist = new TH1D("hist", "hist", nBins, h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(nBins+1));
+  else hist = new TH1D("hist", "hist", rebin.size()-1, &rebin[0]);
 
   if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
@@ -339,13 +354,13 @@ int main(int argc, char* argv[]) {
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
 
-  for (map<SetEnum, TH1F*>::const_reverse_iterator i_MC=m_MCs.rbegin(); i_MC != m_MCs.rend(); ++i_MC)
+  for (map<SetEnum, TH1D*>::const_reverse_iterator i_MC=m_MCs.rbegin(); i_MC != m_MCs.rend(); ++i_MC)
     leg->AddEntry(i_MC->second, labels[i_MC->first].Data(), "F");
-  for (map<SetEnum, TH1F*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
+  for (map<SetEnum, TH1D*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
     leg->AddEntry(i_sig->second, labels[i_sig->first].Data(), "L");
 
   mcStack->Draw("samehist");
-  for (map<SetEnum, TH1F*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
+  for (map<SetEnum, TH1D*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
     i_sig->second->Draw("samehist");
 
   leg->AddEntry(background, "Bkg Uncertainty", "F");
@@ -361,14 +376,14 @@ int main(int argc, char* argv[]) {
 
   drawText();
 
-  TH1F* bhist = 0;
+  TH1D* bhist = 0;
   if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
     bottom->cd();
     if (logx) gPad->SetLogx();
 
-    bhist = (TH1F*) hist->Clone("bhist");
+    bhist = (TH1D*) hist->Clone("bhist");
 
-    TH1F* hsubplot = (TH1F*) h_Data->Clone("hsubplot");
+    TH1D* hsubplot = (TH1D*) h_Data->Clone("hsubplot");
 
     TGraphAsymmErrors* bkg_env = (TGraphAsymmErrors*) background->Clone("bkg_env");
     double *yarray = background->GetY(), *eyhigh = background->GetEYhigh(), *eylow = background->GetEYlow();
@@ -439,9 +454,61 @@ int main(int argc, char* argv[]) {
 
   c->Print("./plots/" + outName + ".pdf");
 
-  if (plotImpact) {
+  TString outNames[]  = { "wjet", "vv", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
 
-    TString outNames[]  = { "wjet", "vv", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
+  if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {
+    TFile* outFile = new TFile(channel + "__" + theta + "__" + hname( hname.Index('_')+1, hname.Length()-hname.Index('_')-1 ) + ".root","RECREATE");
+    outFile->cd();
+
+    h_Data->Write( channel + "__DATA" );
+
+    for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+      SetEnum dataset = i_MC->first;
+      i_MC->second->Write( channel + "__" + outNames[dataset] );
+
+      for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
+        TString sys = systematics[i_sys];
+        if (sys_norm.find(sys) != sys_norm.end()) continue;
+
+        m_MCUPs[make_pair(dataset, sys)]->Write( channel + "__" + outNames[dataset] + "__" + sys + "__" + "up" );
+        m_MCDNs[make_pair(dataset, sys)]->Write( channel + "__" + outNames[dataset] + "__" + sys + "__" + "down" );
+      }
+    }
+
+    for (map<TString, TH1D*>::const_iterator i_sig=m_sigs_theta.begin(); i_sig != m_sigs_theta.end(); ++i_sig) {
+      TString dataset = i_sig->first;
+
+      if (theta == "gkk" && !dataset.Contains("gkk")) continue;
+      else if (theta != "gkk") {
+        TString width = dataset( dataset.Index('_')+1, dataset.Length()-dataset.Index('_')-1 );
+        if      (theta == "zp1"  && width != "1")  continue;
+        else if (theta == "zp10" && width != "10") continue;
+        else if (theta == "zp30" && width != "30") continue;
+      }
+
+      if (theta == "gkk") i_sig->second->Write( channel + "__" + dataset );
+      else                i_sig->second->Write( channel + "__" + dataset(0, dataset.Index('_')) );
+
+      for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
+        TString sys = systematics[i_sys];
+        if (sys_norm.find(sys) != sys_norm.end()) continue;
+
+        if (theta == "gkk") {
+          m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "up" );
+          m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "down" );
+        }
+        else {
+          m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset(0, dataset.Index('_')) + "__" + sys + "__" + "up" );
+          m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset(0, dataset.Index('_')) + "__" + sys + "__" + "down" );
+        }
+      }
+    }
+
+    delete outFile;
+    outFile = 0;
+  }
+
+  if (plotImpact) {
 
     delete leg;
     TLegend* leg = new TLegend(.65,.9-.06*4,.85,.9);
@@ -467,18 +534,17 @@ int main(int argc, char* argv[]) {
       m_MCUPs[make_pair(bkg, sys)] = m_bkgUPs[make_pair(bkg, sys)]; //merge background to mc map
       m_MCDNs[make_pair(bkg, sys)] = m_bkgDNs[make_pair(bkg, sys)];
 
-      for (map<SetEnum, TH1F*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+      for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
 
         c->Clear("D");  leg->Clear();
 
         SetEnum dataset = i_MC->first;
-        if (sys == "topPt_weight" && dataset != ttbar && dataset != bkg) continue;
 
         top->cd();  hist->Draw();  drawText();
 
-        TH1F* h_NM = i_MC->second;
-        TH1F* h_UP = m_MCUPs[make_pair(dataset, sys)];
-        TH1F* h_DN = m_MCDNs[make_pair(dataset, sys)];
+        TH1D* h_NM = i_MC->second;
+        TH1D* h_UP = m_MCUPs[make_pair(dataset, sys)];
+        TH1D* h_DN = m_MCDNs[make_pair(dataset, sys)];
 
         if (logy) hist->GetYaxis()->SetRangeUser(0.1, int(h_NM->GetMaximum()*100) );
         else      hist->GetYaxis()->SetRangeUser(ymin, int(h_NM->GetMaximum()*1.5) );
@@ -495,8 +561,8 @@ int main(int argc, char* argv[]) {
 
         bottom->cd();  bhist->Draw();
 
-        TH1F* hsubUP = (TH1F*) h_UP->Clone("hsubUP");
-        TH1F* hsubDN = (TH1F*) h_DN->Clone("hsubDN");
+        TH1D* hsubUP = (TH1D*) h_UP->Clone("hsubUP");
+        TH1D* hsubDN = (TH1D*) h_DN->Clone("hsubDN");
         if (subplot=="ratio") { hsubUP->Divide(h_NM); hsubDN->Divide(h_NM); }
         else                  { hsubUP->Add(h_NM, -1); hsubUP->Divide(h_NM); hsubDN->Add(h_NM, -1); hsubDN->Divide(h_NM); }
         hsubUP->Draw("histsame");  hsubDN->Draw("histsame");
@@ -599,14 +665,6 @@ void setPars(const string& parFile) {
       int col = line.find(':');
       sys_norm[line.substr(0, col).data()] = stof( line.substr(col+1, delim_pos-col-1) );
     }
-    else if (var == "mcScales") {
-      while ( (delim_pos = line.find(' ')) != -1) {
-        mcScales.push_back( stod( line.substr(0, delim_pos) ) );
-        line.erase(0, delim_pos + 1);
-        while (line.at(0) == ' ') line.erase(0, 1);
-      }
-      mcScales.push_back( stod(line) );
-    }
     else if (var == "sigScales") {
       while ( (delim_pos = line.find(' ')) != -1) {
         sigScales.push_back( stod( line.substr(0, delim_pos) ) );
@@ -624,6 +682,7 @@ void setPars(const string& parFile) {
       rebin.push_back( stod(line) );
     }
     else if (var == "outName")   outName = line.data();
+    else if (var == "theta")     theta = line.data();
     else if (var == "hname")     hname = line.data();
     else if (var == "leftText")  leftText = line.data();
     else if (var == "rightText") rightText = line.data();
