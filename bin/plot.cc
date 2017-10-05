@@ -137,8 +137,33 @@ int main(int argc, char* argv[]) {
   map<pair<SetEnum, TString>, TH1D*> m_sigUPs, m_sigDNs;
   for (int i=0,n=sigFileNames.size(); i<n; i++) {
 
-    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" &&
-         !sigFileNames[i].Contains("gluon_M-3000") && !sigFileNames[i].Contains("zprime_M-3000_W-300") ) continue;
+    SetEnum dataset = undefined;
+    TString dataset_theta = "undefined";
+
+    if (theta == "gkk") {
+      if ( !sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) continue;
+      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("M-")-2);
+      dataset_theta = "gkk" + mass;
+    }
+    else if (theta == "zp1" || theta == "zp10" || theta == "zp30") {
+      if ( !sigFileNames[i].Contains("zprime", TString::kIgnoreCase) ) continue;
+
+      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Index("_W")-sigFileNames[i].Index("M-")-2);
+      TString width = sigFileNames[i](sigFileNames[i].Index("W-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("W-")-2);
+      dataset_theta = "zp" + mass + "_" + width;
+
+      if ( width.Contains('p', TString::kIgnoreCase) ) width.ReplaceAll('p', '.');
+      int percent = stof( width.Data() ) / stof( mass.Data() ) * 100;
+
+      if      (theta == "zp1"  && percent != 1)  continue;
+      else if (theta == "zp10" && percent != 10) continue;
+      else if (theta == "zp30" && percent != 30) continue;
+    }
+    else {
+      if      ( sigFileNames[i].Contains("zprime_M-3000_W-300", TString::kIgnoreCase) ) dataset = zprime; //only plot M-3000
+      else if ( sigFileNames[i].Contains("gluon_M-3000", TString::kIgnoreCase) )        dataset = gluon;
+      else continue;
+    }
 
     TFile* sigFile = TFile::Open(sigFileNames[i]);
     TH1D* h_sig = (TH1D*) sigFile->FindObjectAny(hname);
@@ -147,22 +172,7 @@ int main(int argc, char* argv[]) {
     if (rebin.size() == 1) h_sig->Rebin(rebin[0]);
     else h_sig = (TH1D*) h_sig->Rebin(rebin.size()-1, "h_sig", &rebin[0]);
 
-    SetEnum dataset = undefined;
-    TString dataset_theta = "undefined";
-
-    if ( sigFileNames[i].Contains("zprime", TString::kIgnoreCase) ) {
-      dataset = zprime;
-      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Index("_W")-sigFileNames[i].Index("M-")-2);
-      TString width = sigFileNames[i](sigFileNames[i].Index("W-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("W-")-2);
-      if ( width.Contains('p', TString::kIgnoreCase) ) width.ReplaceAll('p', '.');
-      dataset_theta = "zp" + mass + "_" + to_string( int( stof(width.Data())/stof(mass.Data())*100 ) );
-    }
-    else if ( sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) {
-      dataset = gluon;
-      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("M-")-2);
-      dataset_theta = "gkk" + mass;
-    }
-    m_sigs[dataset] = h_sig;
+    if (dataset != undefined) m_sigs[dataset] = h_sig;
     m_sigs_theta[dataset_theta] = h_sig;
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
@@ -180,9 +190,11 @@ int main(int argc, char* argv[]) {
       if (rebin.size() == 1) h_sigDN->Rebin(rebin[0]);
       else h_sigDN = (TH1D*) h_sigDN->Rebin(rebin.size()-1, "h_sigDN", &rebin[0]);
 
-      pair<SetEnum, TString> keypair = make_pair(dataset, sys);
-      m_sigUPs[keypair] = h_sigUP;
-      m_sigDNs[keypair] = h_sigDN;
+      if (dataset != undefined) {
+        pair<SetEnum, TString> keypair = make_pair(dataset, sys);
+        m_sigUPs[keypair] = h_sigUP;
+        m_sigDNs[keypair] = h_sigDN;
+      }
 
       pair<TString, TString> keypair_theta = make_pair(dataset_theta, sys);
       m_sigUPs_theta[keypair_theta] = h_sigUP;
@@ -478,30 +490,14 @@ int main(int argc, char* argv[]) {
 
     for (map<TString, TH1D*>::const_iterator i_sig=m_sigs_theta.begin(); i_sig != m_sigs_theta.end(); ++i_sig) {
       TString dataset = i_sig->first;
-
-      if (theta == "gkk" && !dataset.Contains("gkk")) continue;
-      else if (theta != "gkk") {
-        TString width = dataset( dataset.Index('_')+1, dataset.Length()-dataset.Index('_')-1 );
-        if      (theta == "zp1"  && width != "1")  continue;
-        else if (theta == "zp10" && width != "10") continue;
-        else if (theta == "zp30" && width != "30") continue;
-      }
-
-      if (theta == "gkk") i_sig->second->Write( channel + "__" + dataset );
-      else                i_sig->second->Write( channel + "__" + dataset(0, dataset.Index('_')) );
+      i_sig->second->Write( channel + "__" + dataset );
 
       for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
         TString sys = systematics[i_sys];
         if (sys_norm.find(sys) != sys_norm.end()) continue;
 
-        if (theta == "gkk") {
-          m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "up" );
-          m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "down" );
-        }
-        else {
-          m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset(0, dataset.Index('_')) + "__" + sys + "__" + "up" );
-          m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset(0, dataset.Index('_')) + "__" + sys + "__" + "down" );
-        }
+        m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "up" );
+        m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "down" );
       }
     }
 
