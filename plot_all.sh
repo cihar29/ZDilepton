@@ -79,7 +79,7 @@ if [ $# -eq 2 ] ; then
             "subymin        ${subymin}"
             "subymax        2"
             "systematics    topPt_weight jec jer btagSF mistagSF pileup pdf q2ttbar q2dy q2st q2signal"
-            "sys_norm       lumi:0.025 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.05 elid:0.01 eliso:0.01"
+            "sys_norm       lumi:0.025 sig_st:0.16 sig_db:0.15 mutrig:0.005 muid:0.01 muiso:0.01 eltrig:0.01 elid:0.01 eliso:0.01"
             "rebin          ${rebin}"
             "plotImpact     false"
             "theta          false" # zp1, zp10, zp30, or gkk

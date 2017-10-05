@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
       if (sys_norm.find(sys) != sys_norm.end()) {  // normalization-only systematics
         double perEvent_sys = sys_norm[sys] ; // per event systematics
 
-        if (sys == "muid" || sys == "muiso") {
+        if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
           if (channel == "mm") perEvent_sys *= 2.;
           perEvent_sys *= nom;
         }
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
           if (channel == "ee") perEvent_sys *= 2.;
           perEvent_sys *= nom;
         }
-        else if (sys == "lumi" || sys == "mutrig") perEvent_sys *= nom;
+        else if (sys == "lumi") perEvent_sys *= nom;
 
         else if (sys=="sig_tt") perEvent_sys *= m_MCs[ttbar]->GetBinContent(bin);
 

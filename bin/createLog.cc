@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
   sys_norm["mutrig"] = 0.005; // muon trigger uncertainty. Only applicable in mumu and emu channels.
   sys_norm["muid"]   = 0.01;  // muon ID uncertainty per muon.
   sys_norm["muiso"]  = 0.01;  // muon ptrel efficiency uncertainty per muon.
-  sys_norm["eltrig"] = 0.05;  // electron trigger uncertainty. Only applicable in ee.
+  sys_norm["eltrig"] = 0.01;  // electron trigger uncertainty. Only applicable in ee.
   sys_norm["elid"]   = 0.01;  // electron ID uncertainty per electron.
   sys_norm["eliso"]  = 0.01;  // electron ptrel efficiency uncertainty per muon.
 
@@ -111,13 +111,14 @@ int main(int argc, char* argv[]) {
 				      , {"mutrig","$\\mu$ trigger"} ,{"muid","$\\mu$ ID"} , {"muiso","$\\mu$ Isolation"} , {"eltrig","e trigger"}
 				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b$\\_$tagging"}
                           	      , {"mistagSF","mis$\\_$tagging"} , {"pileup","pileup"} , {"topPt_weight","$top \\hspace{0.5mm} p_{T}$ modeling"}
-				      , {"q2","Q2 scale"} , {"pdf","PDF"} } ;
+				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
+
 
    map <string,string> sys_labels = { {"lumi","luminosity"} , {"sig_st","\u03C3(single-top)"} ,{"sig_db","\u03C3(single_diboson)"}
 				      , {"mutrig","\u03BC trigger"} ,{"muid","\u03BC ID"} , {"muiso","\u03BC Isolation"} , {"eltrig","e trigger"}
 				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b-tagging"}
                           	      , {"mistagSF","mis-tagging"} , {"pileup","pileup"} , {"topPt_weight","top pT modeling"}
-				      , {"q2","Q2 scale"} , {"pdf","PDF"} } ;
+				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
 
   //use maps that holds vector for each systematics sources. Two maps for UP and DOWN variation for a given sys. source.
   //map(systematics_source, vector(cut_name, map(dataset, (N, error) ) )
@@ -186,7 +187,7 @@ int main(int argc, char* argv[]) {
         if (sys_norm.find(sys) != sys_norm.end()) {  // normalization-only systematics
           double perEvent_sys = sys_norm[sys] ; // per event systematics
 
-          if (sys == "muid" || sys == "muiso") {
+          if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
             if (channel == "mm") perEvent_sys *= 2.;
             perEvent_sys *= NM[dataset].first ;
           }
@@ -194,7 +195,7 @@ int main(int argc, char* argv[]) {
             if (channel == "ee") perEvent_sys *= 2.;
             perEvent_sys *= NM[dataset].first ;
           }
-          else if (sys == "lumi" || sys == "mutrig")
+          else if (sys == "lumi")
             perEvent_sys *= NM[dataset].first ;
 
           else if ( sys=="sig_tt" && (dataset == "ttbar" || dataset == "background") )
@@ -304,7 +305,7 @@ int main(int argc, char* argv[]) {
       map<TString, pair<double, double> > &DN = m_cutsDOWN[sys][cut_systematic].second;
 
       file<< Form("%-25s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f ",
-      sys_latex[systematics[i_sys]].data(),
+      sys_labels[systematics[i_sys]].data(),
       UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
       UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
       UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
