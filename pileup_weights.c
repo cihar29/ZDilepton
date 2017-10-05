@@ -39,7 +39,27 @@ void pileup_weights() {
     "zprime_M-1250_W-12p5",
     "zprime_M-1500_W-15",
     "zprime_M-1500_W-150",
-    "zprime_M-3000_W-300"
+    "zprime_M-3000_W-300",
+    "zprime_M-500_W-5",
+    "zprime_M-500_W-50",
+    "zprime_M-750_W-7p5",
+    "zprime_M-750_W-75",
+    "zprime_M-2000_W-20",
+    "zprime_M-2000_W-200",
+    "zprime_M-2000_W-600",
+    "zprime_M-2500_W-25",
+    "zprime_M-2500_W-250",
+    "zprime_M-3000_W-30",
+    "zprime_M-3500_W-35",
+    "zprime_M-3500_W-350",
+    "zprime_M-4000_W-40",
+    "zprime_M-4000_W-400",
+    "zprime_M-4000_W-1200",
+    "zprime_M-4500_W-45",
+    "zprime_M-4500_W-450",
+    "zprime_M-5000_W-50",
+    "zprime_M-5000_W-500",
+    "zprime_M-5000_W-1500"
   };
   int file_size = sizeof(files)/sizeof(files[0]);
 

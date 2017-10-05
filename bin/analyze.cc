@@ -53,7 +53,7 @@ TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL", q2ttbar="NOMI
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //ON (keep events with rmin0 && rmin1<1.4), REVERSE (keep events if rmin0 || rmin1 > 1.4) , OFF (no cut) 
 // ONbt (keep events with rmin0 && rmin1<0.8),  ONnb (keep events with rmin0 && rmin1<1.4 but rmin0>0.8 || rmin1>0.8)
-TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eRecoSfName, eIdSfName, btagName, pileupName;
+TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eTrigSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
 double weight0, weight;
@@ -140,10 +140,10 @@ int main(int argc, char* argv[]){
   //Reweighting and SF Files//
 
   TH1F* pileup_weights=0, *btag_eff_b=0, *btag_eff_c=0, *btag_eff_udsg=0;
-  TH2F* muTrigSfHist=0, *muIdSfHist=0, *eRecoSfHist=0, *eIdSfHist=0;
+  TH2F* muTrigSfHist=0, *muIdSfHist=0, *eTrigSfHist=0, *eRecoSfHist=0, *eIdSfHist=0;
   TGraphAsymmErrors* muTrackSfGraph=0;
   
-  int muTrig_pT=0, muId_pT=0, eReco_pT=0, eId_pT=0;
+  int muTrig_pT=0, muId_pT=0, eTrig_pT=95, eReco_pT=0, eId_pT=0;
 
   if (isMC) {
     TFile* muTrigSfFile = TFile::Open(muTrigSfName);
@@ -154,6 +154,9 @@ int main(int argc, char* argv[]){
 
     TFile* muTrackSfFile = TFile::Open(muTrackSfName);
     muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
+
+    TFile* eTrigSfFile = TFile::Open(eTrigSfName);
+    eTrigSfHist = (TH2F*) eTrigSfFile->Get("SE_tight_ScaleFactor");
 
     TFile* eRecoSfFile = TFile::Open(eRecoSfName);
     eRecoSfHist = (TH2F*) eRecoSfFile->Get("EGamma_SF2D");
@@ -264,12 +267,6 @@ int main(int argc, char* argv[]){
       if      (q2=="UP")    weight0 *= countTotal / q2UP;
       else if (q2=="DOWN")  weight0 *= countTotal / q2DN;
     }
-    /*if( inName.Contains("ttbar", TString::kIgnoreCase) || inName.Contains("DY", TString::kIgnoreCase)){
-      if      (pdf=="UP")   v_cuts[countEvts].second = pdfUP;
-      else if (pdf=="DOWN") v_cuts[countEvts].second = pdfDN;
-      if      (q2=="UP")    v_cuts[countEvts].second = q2UP;
-      else if (q2=="DOWN")  v_cuts[countEvts].second = q2DN;
-    }*/
   }
   //Histograms//
 
@@ -398,6 +395,8 @@ int main(int argc, char* argv[]){
   hname = "muIdSf";
   m_Histos1D[hname] = new TH1D(hname,hname,100,0,2);
   hname = "muTrackSf";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,0,2);
+  hname = "eTrigSf";
   m_Histos1D[hname] = new TH1D(hname,hname,100,0,2);
   hname = "eRecoSf";
   m_Histos1D[hname] = new TH1D(hname,hname,100,0,2);
@@ -601,8 +600,6 @@ int main(int argc, char* argv[]){
         else if (pdf == "DOWN") weight *= (1. - rms_pm(pdf_minus));
       }
       //q2 scale reweighting
-      //cout << "size  " << wgt_env->size() << endl;
-      //cout << "max " << TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
       if (q2 != "NOMINAL" && wgt_env->size()>1) {
         if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
         else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
@@ -674,10 +671,15 @@ int main(int argc, char* argv[]){
         if ( !(*trig_passed)[7] ) continue;
 
         if (isMC) {
+          double eTrigSf0 = eTrigSfHist->GetBinContent( eTrigSfHist->FindBin( fabs(ele_etaSupClust[0]), ele_pt[0]>eTrig_pT?eTrig_pT:ele_pt[0] ) );
+          double eTrigSf1 = eTrigSfHist->GetBinContent( eTrigSfHist->FindBin( fabs(ele_etaSupClust[1]), ele_pt[1]>eTrig_pT?eTrig_pT:ele_pt[1] ) );
+          weight *= eTrigSf0*eTrigSf1;
+
           double eRecoSf = eRecoSfHist->GetBinContent( eRecoSfHist->FindBin( ele_etaSupClust[0], ele_pt[0]>eReco_pT?eReco_pT:ele_pt[0] ) )
                          * eRecoSfHist->GetBinContent( eRecoSfHist->FindBin( ele_etaSupClust[1], ele_pt[1]>eReco_pT?eReco_pT:ele_pt[1] ) );
-
           weight *= eRecoSf;
+
+          FillHist1D("eTrigSf", eTrigSf0*eTrigSf1, 1.);
           FillHist1D("eRecoSf", eRecoSf, 1.);
         }
         v_cuts[trigCut].second += weight;
@@ -1356,6 +1358,7 @@ void setPars(const string& parFile) {
     else if (var == "muTrigSfName") muTrigSfName = line.data();
     else if (var == "muIdSfName") muIdSfName = line.data();
     else if (var == "muTrackSfName") muTrackSfName = line.data();
+    else if (var == "eTrigSfName") eTrigSfName = line.data();
     else if (var == "eRecoSfName") eRecoSfName = line.data();
     else if (var == "eIdSfName") eIdSfName = line.data();
     else if (var == "btagName") btagName = line.data();
