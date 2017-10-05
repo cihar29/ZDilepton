@@ -156,7 +156,7 @@ int main(int argc, char* argv[]){
     muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
 
     TFile* eTrigSfFile = TFile::Open(eTrigSfName);
-    eTrigSfHist = (TH2F*) eTrigSfFile->Get("SE_tight_ScaleFactor");
+    eTrigSfHist = (TH2F*) eTrigSfFile->Get("tight_ScaleFactor");
 
     TFile* eRecoSfFile = TFile::Open(eRecoSfName);
     eRecoSfHist = (TH2F*) eRecoSfFile->Get("EGamma_SF2D");

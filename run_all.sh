@@ -22,4 +22,4 @@ done
 
 END=$(date +%s.%N)
 DIFF=$(echo "$END - $START" | bc)
-echo $DIFF
+echo "$DIFF seconds"

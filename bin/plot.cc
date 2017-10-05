@@ -137,7 +137,8 @@ int main(int argc, char* argv[]) {
   map<pair<SetEnum, TString>, TH1D*> m_sigUPs, m_sigDNs;
   for (int i=0,n=sigFileNames.size(); i<n; i++) {
 
-    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" && !sigFileNames[i].Contains("M-3000") ) continue;
+    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" &&
+         !sigFileNames[i].Contains("gluon_M-3000") && !sigFileNames[i].Contains("zprime_M-3000_W-300") ) continue;
 
     TFile* sigFile = TFile::Open(sigFileNames[i]);
     TH1D* h_sig = (TH1D*) sigFile->FindObjectAny(hname);
@@ -304,7 +305,7 @@ int main(int argc, char* argv[]) {
   {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} (GeV)"},
   {"minjet1pt","Jet p_{T}^{rmin subleading lepton} (GeV)"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} (GeV)"},
   {"cleanjet1pt","Jet p_{T}^{cleaned from subleading lepton} (GeV)"},{"masslmin0","M_{leading lep,rmin jet} (Gev)"},{"masslmin1","M_{subleading lep,rmin jet} (Gev)"},
-  {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"}};
+  {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"},{"nPV","N_{Good Primary vertices}"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   TH1D* hist = 0;

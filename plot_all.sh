@@ -34,15 +34,15 @@ if [ $# -eq 2 ] ; then
 
   hists=( "dilepmass" "jet0btag" "jet0eta" "jet0pt" "jet1btag" "jet1eta" "jet1pt" "jethT" "lep0eta" "lep0pt" "lep1eta" "lep1pt" "metcorrpt"
           "sT" "masslljjm" "lep0perp" "lep1perp" "lepept" "lepmpt" "metpt" "nGoodEle" "nGoodMuon" "nGoodJet" "minjet0pt" "minjet1pt" "cleanjet0pt" "cleanjet1pt"
-          "nbtag" "rl0cleanj" "rl1cleanj" "rl0l1" "rmin0" "rmin1" "sumrmin" "rbl" "masslmin0" "masslmin1" "sT_met" "dphi_jet0met" "dphi_jet1met" )
+          "nbtag" "rl0cleanj" "rl1cleanj" "rl0l1" "rmin0" "rmin1" "sumrmin" "rbl" "masslmin0" "masslmin1" "sT_met" "dphi_jet0met" "dphi_jet1met" "nPV")
 
   xmins=( 0 0 -5 0 0 -5 0 0 -5 0 -5 0 0
           0 0 0 0 0 0 0 0 0 0 0 0 0 0
-          0 0 0 0 0 0 0 0 0 0 0 -6 -6)
+          0 0 0 0 0 0 0 0 0 0 0 -6 -6 0)
 
   xmaxs=( 1000 1 5 2000 1 5 2000 3000 5 1000 5 600 1000
           5000 5000 1000 1000 1000 1000 1000 5 5 25 1000 1000 1000 1000
-          5 5 5 5 5 5 10 5 2000 2000 5000 6 6)
+          5 5 5 5 5 5 10 5 2000 2000 5000 6 6 80)
 
   for ((i=0;i<${#hists[@]};++i)); do
 
