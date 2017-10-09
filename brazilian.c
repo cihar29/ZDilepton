@@ -5,22 +5,23 @@ void readFile(const string& dir, const string& parFile, vector< vector<double> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_sumrmin" ) {
+void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_mass" ) {
 
   vector< vector<double> > v_exp, v_obs, v_theory;
   readFile( dir+folder+"/", "bayesian_limits_expected.txt", v_exp );
   readFile( dir+folder+"/", "bayesian_limits_observed.txt", v_obs );
   readFile( "", "theory.txt", v_theory );
 
-  TString sig = "", tfolder = folder.data();
-  if      (tfolder.Contains("zp10", TString::kIgnoreCase)) sig = "Z' (10% width)";
-  else if (tfolder.Contains("zp1", TString::kIgnoreCase))  sig = "Z' (1% width)";
-  else if (tfolder.Contains("zp30", TString::kIgnoreCase)) sig = "Z' (30% width)";
-  else if (tfolder.Contains("gkk", TString::kIgnoreCase))  sig = "g_{kk}";
+  TString signame = "", tfolder = folder.data();
+  int sig = -1;
+  if      (tfolder.Contains("zp10", TString::kIgnoreCase)) { signame = "Z' (10% width)"; sig = 3; }
+  else if (tfolder.Contains("zp1", TString::kIgnoreCase))  { signame = "Z' (1% width)";  sig = 2; }
+  else if (tfolder.Contains("zp30", TString::kIgnoreCase)) { signame = "Z' (30% width)"; sig = 4; }
+  else if (tfolder.Contains("gkk", TString::kIgnoreCase))  { signame = "g_{kk}";         sig = 1; }
 
   TString xtitle = "";
   if      (tfolder.Contains("mass", TString::kIgnoreCase)) xtitle = "M_{lljjmet} (Gev)";
-  else if (tfolder.Contains("met", TString::kIgnoreCase))  xtitle = "S_{T} (GeV)";
+  else if (tfolder.Contains("st", TString::kIgnoreCase))  xtitle = "S_{T} (GeV)";
   else if (tfolder.Contains("rmin", TString::kIgnoreCase)) xtitle = "#DeltaR_{min0} + #DeltaR_{min1}";
 
   setStyle();
@@ -36,7 +37,6 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
     g_band0->SetPoint(i, v_exp[i][0], 0);
     g_band1->SetPoint(i, v_exp[i][0], 0);
     g_obs->SetPoint(i, v_obs[i][0], v_obs[i][1]);
-    if (i < v_theory.size()) g_theory->SetPoint(i, v_theory[i][0], v_theory[i][2]);
 
     g_band0->SetPointEYlow( i, -1*v_exp[i][2] );
     g_band0->SetPointEYhigh( i, v_exp[i][3] );
@@ -45,6 +45,14 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
 
     g_obs->SetPointError( i, 0, v_obs[i][2] );
   }
+  int pt=0;  // Must use separate loop for theory, as zp30 doesn't have a lot of mass points
+  for (int i=0,n=v_theory.size(); i<n; i++) {
+    if (sig < v_theory[i].size()) {
+      g_theory->SetPoint(pt, v_theory[i][0], v_theory[i][sig]);
+      pt++;
+    }
+  }
+
   g_band0->SetFillColor(kYellow+1);
   g_band1->SetFillColor(kGreen+1);
   g_exp->SetLineColor(kBlack);
@@ -70,7 +78,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   leg->AddEntry(g_band1, "#bf{68% expected}", "F");
   leg->AddEntry(g_band0, "#bf{95% expected}", "F");
   leg->AddEntry(g_obs,   "#bf{Observed}", "PLE");
-  leg->AddEntry(g_theory, Form( "#bf{%s}", sig.Data() ), "L");
+  leg->AddEntry(g_theory, Form( "#bf{%s}", signame.Data() ), "L");
 
   g_band0->GetXaxis()->SetNdivisions(5, 5, 0);
   g_band0->GetXaxis()->SetRangeUser(500, 5000);
