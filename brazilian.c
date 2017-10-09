@@ -5,19 +5,19 @@ void readFile(const string& dir, const string& parFile, vector< vector<double> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_mass" ) {
+void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_mass", bool plotObs=false) {
 
   vector< vector<double> > v_exp, v_obs, v_theory;
   readFile( dir+folder+"/", "bayesian_limits_expected.txt", v_exp );
   readFile( dir+folder+"/", "bayesian_limits_observed.txt", v_obs );
   readFile( "", "theory.txt", v_theory );
 
-  TString signame = "", tfolder = folder.data();
+  TString signame = "", tfolder = folder.data(), ytitle="#sigma(Z'#rightarrowt#bar{t}) (pb)";
   int sig = -1;
   if      (tfolder.Contains("zp10", TString::kIgnoreCase)) { signame = "Z' (10% width)"; sig = 3; }
   else if (tfolder.Contains("zp1", TString::kIgnoreCase))  { signame = "Z' (1% width)";  sig = 2; }
   else if (tfolder.Contains("zp30", TString::kIgnoreCase)) { signame = "Z' (30% width)"; sig = 4; }
-  else if (tfolder.Contains("gkk", TString::kIgnoreCase))  { signame = "g_{kk}";         sig = 1; }
+  else if (tfolder.Contains("gkk", TString::kIgnoreCase))  { signame = "g_{kk}";         sig = 1; ytitle = "#sigma(g_{kk}#rightarrowt#bar{t}) (pb)";}
 
   TString xtitle = "";
   if      (tfolder.Contains("mass", TString::kIgnoreCase)) xtitle = "M_{lljjmet} (Gev)";
@@ -66,7 +66,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_theory->SetLineWidth(4);
   g_theory->SetLineColor(kRed);
 
-  int legEntries = 5;
+  int legEntries = plotObs ? 5 : 4;
   TLegend* leg = new TLegend(.6,.9-.06*legEntries,.85,.9);
   leg->SetTextSize(0.04);
   leg->SetBorderSize(0);
@@ -77,7 +77,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   leg->AddEntry(g_exp,   "#bf{Expected}", "L");
   leg->AddEntry(g_band1, "#bf{68% expected}", "F");
   leg->AddEntry(g_band0, "#bf{95% expected}", "F");
-  leg->AddEntry(g_obs,   "#bf{Observed}", "PLE");
+  if (plotObs) leg->AddEntry(g_obs,   "#bf{Observed}", "PLE");
   leg->AddEntry(g_theory, Form( "#bf{%s}", signame.Data() ), "L");
 
   g_band0->GetXaxis()->SetNdivisions(5, 5, 0);
@@ -88,7 +88,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_band0->GetXaxis()->SetTitleOffset(1.1);
 
   g_band0->GetYaxis()->SetRangeUser(0.0001, 10);
-  g_band0->GetYaxis()->SetTitle("#sigma(Z'#rightarrowt#bar{t}) (pb)");
+  g_band0->GetYaxis()->SetTitle(ytitle);
   g_band0->GetYaxis()->SetLabelSize(0.04);
   g_band0->GetYaxis()->SetTitleSize(0.05);
   g_band0->GetYaxis()->SetTitleOffset(1.3);
@@ -96,7 +96,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_band0->Draw("AE3");
   g_band1->Draw("sameE3");
   g_exp->Draw("Lsame");
-  g_obs->Draw("PLsame");
+  if (plotObs) g_obs->Draw("PLsame");
   g_theory->Draw("Lsame");
   leg->Draw();
 
