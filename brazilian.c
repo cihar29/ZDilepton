@@ -5,7 +5,7 @@ void readFile(const string& dir, const string& parFile, vector< vector<double> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_mass", bool plotObs=false) {
+void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "zp10_st", bool plotObs=false) {
 
   vector< vector<double> > v_exp, v_obs, v_theory;
   readFile( dir+folder+"/", "bayesian_limits_expected.txt", v_exp );
@@ -45,9 +45,9 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
 
     g_obs->SetPointError( i, 0, v_obs[i][2] );
   }
-  int pt=0;  // Must use separate loop for theory, as zp30 doesn't have a lot of mass points
+  int pt=0;
   for (int i=0,n=v_theory.size(); i<n; i++) {
-    if (sig < v_theory[i].size()) {
+    if (v_theory[i][sig] != 0) {
       g_theory->SetPoint(pt, v_theory[i][0], v_theory[i][sig]);
       pt++;
     }
@@ -63,7 +63,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_obs->SetMarkerColor(kGray+2);
   g_obs->SetLineColor(kGray+2);
   g_obs->SetMarkerSize(0.65);
-  g_theory->SetLineWidth(4);
+  g_theory->SetLineWidth(3);
   g_theory->SetLineColor(kRed);
 
   int legEntries = plotObs ? 5 : 4;
@@ -87,7 +87,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_band0->GetXaxis()->SetTitleSize(0.05);
   g_band0->GetXaxis()->SetTitleOffset(1.1);
 
-  g_band0->GetYaxis()->SetRangeUser(0.0001, 10);
+  g_band0->GetYaxis()->SetRangeUser(0.01, 100);
   g_band0->GetYaxis()->SetTitle(ytitle);
   g_band0->GetYaxis()->SetLabelSize(0.04);
   g_band0->GetYaxis()->SetTitleSize(0.05);
@@ -98,7 +98,9 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   g_exp->Draw("Lsame");
   if (plotObs) g_obs->Draw("PLsame");
   g_theory->Draw("Lsame");
+
   leg->Draw();
+  gPad->RedrawAxis();
 
   TLatex text;
   text.SetNDC();
@@ -111,8 +113,8 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   text.SetTextFont(42);
   text.DrawLatex(1-rightText.Length()/70., 0.96, rightText);
 
-  text.DrawLatex(0.2,0.87,"#bf{#geq 1 btag}");
-  text.DrawLatex(0.2,0.82,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
+  //text.DrawLatex(0.2,0.87,"#bf{#geq 1 btag}");
+  //text.DrawLatex(0.2,0.82,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
 
   c->Print( (folder + ".pdf").data() );
 }

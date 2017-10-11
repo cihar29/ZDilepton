@@ -181,9 +181,9 @@ int main(int argc, char* argv[]) {
       TFile* sigFileDN = TFile::Open( sigFileNames[i]( 0, sigFileNames[i].Index(".root") ) + "_" + sys + "DOWN.root" );
 
       TH1D* h_sigUP = (TH1D*) sigFileUP->FindObjectAny(hname);
-      h_sigUP->Scale(sigScales[i]);
+      if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sigUP->Scale(sigScales[i]);
       TH1D* h_sigDN = (TH1D*) sigFileDN->FindObjectAny(hname);
-      h_sigDN->Scale(sigScales[i]);
+      if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sigDN->Scale(sigScales[i]);
 
       if (rebin.size() == 1) h_sigUP->Rebin(rebin[0]);
       else h_sigUP = (TH1D*) h_sigUP->Rebin(rebin.size()-1, "h_sigUP", &rebin[0]);
@@ -474,10 +474,16 @@ int main(int argc, char* argv[]) {
     outFile->cd();
 
     h_Data->Write( channel + "__DATA" );
+    for (int i=1; i<=nBins; i++) {
+      if (h_Data->GetBinError(i) / h_Data->GetBinContent(i) > 0.2) cout << "Warning: Data " << h_Data->GetBinCenter(i) << endl;
+    }
 
     for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
       SetEnum dataset = i_MC->first;
       i_MC->second->Write( channel + "__" + outNames[dataset] );
+      for (int i=1; i<=nBins; i++) {
+        if (i_MC->second->GetBinError(i) / i_MC->second->GetBinContent(i) > 0.2) cout << "Warning: " << outNames[dataset] << " " << i_MC->second->GetBinCenter(i) << endl;
+      }
 
       for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
         TString sys = systematics[i_sys];
@@ -491,6 +497,9 @@ int main(int argc, char* argv[]) {
     for (map<TString, TH1D*>::const_iterator i_sig=m_sigs_theta.begin(); i_sig != m_sigs_theta.end(); ++i_sig) {
       TString dataset = i_sig->first;
       i_sig->second->Write( channel + "__" + dataset );
+      for (int i=1; i<=nBins; i++) {
+        if (i_sig->second->GetBinError(i) / i_sig->second->GetBinContent(i) > 0.2) cout << "Warning: " << dataset << " " << i_sig->second->GetBinCenter(i) << endl;
+      }
 
       for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
         TString sys = systematics[i_sys];
