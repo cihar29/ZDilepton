@@ -54,7 +54,6 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TVector.h>
-#include <TLorentzVector.h>
 #include <TH1.h>
 #include <TH2.h>
 
@@ -148,6 +147,7 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
 
     TH1F* fullMu = new TH1F("fullMu","fullMu",100,0,100);
+    TH1F* m_ttbar = new TH1F("m_ttbar","m_ttbar",500,0,5000);
     TH1F* deltat_pt = new TH1F("deltat_pt","deltat_pt",100,-500,500);
     TH1F* deltaTbar_pt = new TH1F("deltaTbar_pt","deltaTbar_pt",100,-500,500);
     TH2F* ttbar_pt = new TH2F("ttbar_pt","ttbar_pt",50,0,1000,50,0,1000);
@@ -386,7 +386,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
-    float t_pt=-1, tbar_pt=-1, t_pt2=-1, tbar_pt2=-1;
+    reco::Candidate::LorentzVector t_p4, tbar_p4;
+    float t_pt2=-1, tbar_pt2=-1;
     for (int i=0, n=genParticles->size(); i<n; i++) {
       const reco::GenParticle& p = genParticles->at(i);
 
@@ -394,22 +395,25 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       int status = p.status();
       int nDaught = p.numberOfDaughters();
 
-      if (id==6 && 20<=status && status<30) t_pt = p.pt();
-      else if (id==-6 && 20<=status && status<30) tbar_pt = p.pt();
+      if (id==6 && 20<=status && status<30) t_p4 = p.p4();
+      else if (id==-6 && 20<=status && status<30) tbar_p4 = p.p4();
 
       else if (id==6 && nDaught==2) t_pt2 = p.pt();
       else if (id==-6 && nDaught==2) tbar_pt2 = p.pt();
     }
-    if (t_pt==-1) {
+    if (t_p4.E() == 0) {
       for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==6) { t_pt = genParticles->at(i).pt(); break; }
+        if (genParticles->at(i).pdgId()==6) { t_p4 = genParticles->at(i).p4(); break; }
       }
     }
-    if (tbar_pt==-1) {
+    if (tbar_p4.E() == 0) {
       for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==-6) { tbar_pt = genParticles->at(i).pt(); break; }
+        if (genParticles->at(i).pdgId()==-6) { tbar_p4 = genParticles->at(i).p4(); break; }
       }
     }
+    m_ttbar->Fill( (t_p4+tbar_p4).M() );
+
+    float t_pt = t_p4.Pt(), tbar_pt = tbar_p4.Pt();
     nTopPtWeight[0] += sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
     nTopPtWeight2[0] += exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
 
@@ -508,18 +512,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     for (int i=0, n=leps.size(); i<n && !dilepmass_flag; i++) {
 
       char flavi = leps[i].second;
-      reco::CandidatePtr lepi = leps[i].first;
-      TLorentzVector vlepi;
-      vlepi.SetPtEtaPhiM( lepi->pt(), lepi->eta(), lepi->phi(), lepi->mass() );
+      reco::Candidate::LorentzVector vlepi = leps[i].first->p4();
 
       for (int j=i+1; j<n && !dilepmass_flag; j++) {
         char flavj = leps[j].second;
 
         if (flavi==flavj) {
-          reco::CandidatePtr lepj = leps[j].first;
-          TLorentzVector vlepj;
-          vlepj.SetPtEtaPhiM( lepj->pt(), lepj->eta(), lepj->phi(), lepj->mass() );
-
+          reco::Candidate::LorentzVector vlepj = leps[j].first->p4();
           if ( (vlepi+vlepj).M() > minDiLepMass_ ) dilepmass_flag = true;
         }
       }
@@ -657,13 +656,14 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       nPV++;
   }
 
-  //--------------Generated Particles and weights-------------//
+  //-------------- Generated Particles -------------//
 
   if(isMC_) {
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
 
     vector<pair<reco::GenParticle, int> > reducedGens;
+    bool firstTs = false;
 
     //cout << "#\tID\tstatus\td1\td2\tm1\tm2\t4 momentum" << endl;
     //cout << "--------------------------------------------------------------------"<<endl;
@@ -689,8 +689,10 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       if (id>1000000)  //Z'
         reducedGens.push_back(make_pair(p,i));
 
-      if (fabs(id)==6 && 20<=status && status<30) //first t's
+      if (fabs(id)==6 && 20<=status && status<30) {  //first t's
         reducedGens.push_back(make_pair(p,i));
+        firstTs = true;
+      }
 
       else if (fabs(id)==6 && nDaught==2){   //last t's
         reducedGens.push_back(make_pair(p,i));
@@ -704,8 +706,17 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //q or lep
       }
     }
+
+    if (!firstTs) {
+      for (int i=0, n=genParticles->size(); i<n; i++) {
+        if (genParticles->at(i).pdgId()==6) { reducedGens.insert( reducedGens.begin(), make_pair(genParticles->at(i),i) ); break; }
+      }
+      for (int i=0, n=genParticles->size(); i<n; i++) {
+        if (genParticles->at(i).pdgId()==-6) { reducedGens.insert( reducedGens.begin(), make_pair(genParticles->at(i),i) ); break; }
+      }
+    }
+
     //cout << endl << "STORED PARTICLES" << endl;
-      
     nGen = reducedGens.size();
 
     for (int i=0; i<nGen; i++) {
@@ -943,6 +954,7 @@ void ZDilepton::endJob() {
 
     fullMu->Write();
     if (isMC_) {
+      m_ttbar->Write();
       ttbar_pt->Write();
       ttbar_pt2->Write();
       deltat_pt->Write();

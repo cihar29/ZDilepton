@@ -5,7 +5,7 @@ void readFile(const string& dir, const string& parFile, vector< vector<double> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "zp10_st", bool plotObs=false) {
+void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/nominal/", string folder = "zp10_st", bool plotObs=false) {
 
   vector< vector<double> > v_exp, v_obs, v_theory;
   readFile( dir+folder+"/", "bayesian_limits_expected.txt", v_exp );
@@ -18,11 +18,6 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   else if (tfolder.Contains("zp1", TString::kIgnoreCase))  { signame = "Z' (1% width)";  sig = 2; }
   else if (tfolder.Contains("zp30", TString::kIgnoreCase)) { signame = "Z' (30% width)"; sig = 4; }
   else if (tfolder.Contains("gkk", TString::kIgnoreCase))  { signame = "g_{kk}";         sig = 1; ytitle = "#sigma(g_{kk}#rightarrowt#bar{t}) (pb)";}
-
-  TString xtitle = "";
-  if      (tfolder.Contains("mass", TString::kIgnoreCase)) xtitle = "M_{lljjmet} (Gev)";
-  else if (tfolder.Contains("st", TString::kIgnoreCase))  xtitle = "S_{T} (GeV)";
-  else if (tfolder.Contains("rmin", TString::kIgnoreCase)) xtitle = "#DeltaR_{min0} + #DeltaR_{min1}";
 
   setStyle();
 
@@ -82,7 +77,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
 
   g_band0->GetXaxis()->SetNdivisions(5, 5, 0);
   g_band0->GetXaxis()->SetRangeUser(500, 5000);
-  g_band0->GetXaxis()->SetTitle(xtitle);
+  g_band0->GetXaxis()->SetTitle("Mass (GeV)");
   g_band0->GetXaxis()->SetLabelSize(0.04);
   g_band0->GetXaxis()->SetTitleSize(0.05);
   g_band0->GetXaxis()->SetTitleOffset(1.1);

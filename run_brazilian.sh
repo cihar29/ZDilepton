@@ -2,7 +2,7 @@
 
 # execute as ./run_brazilian.sh
 
-dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/"
+dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/nominal/"
 plotObs="false"
 
 signals=( "gkk" "zp1" "zp10" "zp30" )

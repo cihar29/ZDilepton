@@ -554,7 +554,7 @@ int main(int argc, char* argv[]){
   int sameRlepjet=0;
   time_t start = time(NULL);
 
-  for (Long64_t n=0; n<nEntries; n++){
+  for (Long64_t n=0; n<nEntries; n++) {
     T->GetEntry(n);
 
     TLorentzVector lep0, lep1;
@@ -684,7 +684,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( !ele_MediumID[0] && !ele_MediumID[1] ) continue;
+        if ( !ele_MediumID[0] || !ele_MediumID[1] ) continue;
         if ( ele_pt[0] < 45 || ele_pt[1] < 36 ) continue;
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
 
@@ -703,10 +703,10 @@ int main(int argc, char* argv[]){
         //use these events for em channel
         if ( nMuon>0 && muon_pt[0]>53 && fabs(muon_eta[0])<2.4 ) {
           if ( isMC || isGH ) {
-            if ( !muon_IsMediumID[0] ) continue;
+            if ( muon_IsMediumID[0] ) continue;
           }
           else {
-            if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
+            if ( isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
           }
         }
         v_cuts[thirdLepCut].second += weight;

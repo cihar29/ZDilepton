@@ -2,7 +2,7 @@
 
 # execute as nohup ./run_all.sh &
 
-START=$(date +%s.%N)
+start=$(date +%s.%N)
 
 channels=( "mm" "em" "ee" )
 uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
@@ -20,6 +20,5 @@ for chan in "${channels[@]}" ; do
   done
 done
 
-END=$(date +%s.%N)
-DIFF=$(echo "$END - $START" | bc)
-echo "$DIFF seconds"
+end=$(date +%s.%N)
+echo "$(echo "$end - $start" | bc) seconds"
