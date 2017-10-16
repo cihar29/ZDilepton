@@ -147,7 +147,13 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
 
     TH1F* fullMu = new TH1F("fullMu","fullMu",100,0,100);
-    TH1F* m_ttbar = new TH1F("m_ttbar","m_ttbar",500,0,5000);
+    TH1F* m_ttbar =       new TH1F("m_ttbar","m_ttbar",500,0,5000);
+    TH1F* m_ttbar_pt =    new TH1F("m_ttbar_pt","m_ttbar_pt",500,0,5000);
+    TH1F* m_ttbar_pt2 =   new TH1F("m_ttbar_pt2","m_ttbar_pt2",500,0,5000);
+    TH1F* m_ttbar_pdfUP = new TH1F("m_ttbar_pdfUP","m_ttbar_pdfUP",500,0,5000);
+    TH1F* m_ttbar_pdfDN = new TH1F("m_ttbar_pdfDN","m_ttbar_pdfDN",500,0,5000);
+    TH1F* m_ttbar_q2UP =  new TH1F("m_ttbar_q2UP","m_ttbar_q2UP",500,0,5000);
+    TH1F* m_ttbar_q2DN =  new TH1F("m_ttbar_q2DN","m_ttbar_q2DN",500,0,5000);
     TH1F* deltat_pt = new TH1F("deltat_pt","deltat_pt",100,-500,500);
     TH1F* deltaTbar_pt = new TH1F("deltaTbar_pt","deltaTbar_pt",100,-500,500);
     TH2F* ttbar_pt = new TH2F("ttbar_pt","ttbar_pt",50,0,1000,50,0,1000);
@@ -398,38 +404,38 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       if (id==6 && 20<=status && status<30) t_p4 = p.p4();
       else if (id==-6 && 20<=status && status<30) tbar_p4 = p.p4();
 
-      else if (id==6 && nDaught==2) t_pt2 = p.pt();
-      else if (id==-6 && nDaught==2) tbar_pt2 = p.pt();
-    }
-    if (t_p4.E() == 0) {
-      for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==6) { t_p4 = genParticles->at(i).p4(); break; }
-      }
-    }
-    if (tbar_p4.E() == 0) {
-      for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==-6) { tbar_p4 = genParticles->at(i).p4(); break; }
-      }
-    }
-    m_ttbar->Fill( (t_p4+tbar_p4).M() );
+      else if (fabs(id)==6 && nDaught==2) {   //last t's
+        const reco::GenParticle& daught0 = genParticles->at( p.daughterRef(0).key() );
 
+        if ( fabs(daught0.pdgId())==5 || fabs(daught0.pdgId())==24 ) {
+          if (id==6) t_pt2 = p.pt();
+          else       tbar_pt2 = p.pt();
+        }
+      }
+    }
     float t_pt = t_p4.Pt(), tbar_pt = tbar_p4.Pt();
-    nTopPtWeight[0] += sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
-    nTopPtWeight2[0] += exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
+    double mass_ttbar = (t_p4+tbar_p4).M();
 
     ttbar_pt->Fill(t_pt, tbar_pt);
+    ttbar_pt2->Fill(t_pt2, tbar_pt2);
+    deltat_pt->Fill(t_pt-t_pt2);
+    deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
 
-    if ( t_pt2 != -1 && tbar_pt2 != -1 ) {
-      ttbar_pt2->Fill(t_pt2, tbar_pt2);
-      deltat_pt->Fill(t_pt-t_pt2);
-      deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
-    }
+    m_ttbar->Fill(mass_ttbar);
+
+    double wgt_pt = sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
+    double wgt_pt2 = exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
+
+    nTopPtWeight[0] += wgt_pt;
+    nTopPtWeight2[0] += wgt_pt2;
+    m_ttbar_pt->Fill(mass_ttbar, wgt_pt);
+    m_ttbar_pt2->Fill(mass_ttbar, wgt_pt2);
 
     wgt_env.clear(); wgt_rep.clear();
 
     edm::Handle<GenEventInfoProduct> genEventHandle;
-    iEvent.getByToken(genEventTag_, genEventHandle);
-    genEventHandle->weight(); //nominal weight = 1, twiki says this must be activated
+    //nominal weight = 1, twiki says this must be activated
+    if ( iEvent.getByToken(genEventTag_, genEventHandle) ) genEventHandle->weight();
 
     edm::Handle<LHEEventProduct> lheEvtProduct;
     if ( iEvent.getByToken(extLHETag_ , lheEvtProduct) ) {
@@ -441,8 +447,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         wgt_env.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
       }
 
-      q2UP[0] += TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
-      q2DN[0] += TMath::MinElement(wgt_env.size(), &wgt_env[0]);
+      double wgt_q2UP = TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
+      double wgt_q2DN = TMath::MinElement(wgt_env.size(), &wgt_env[0]);
+
+      q2UP[0] += wgt_q2UP;
+      q2DN[0] += wgt_q2DN;
+      m_ttbar_q2UP->Fill(mass_ttbar, wgt_q2UP);
+      m_ttbar_q2DN->Fill(mass_ttbar, wgt_q2DN);
 
       // push back 100 weight replicas
       for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
@@ -454,8 +465,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         else                  pdf_minus.push_back(wgt_rep[i]);
       }
 
-      pdfUP[0] += (1. + rms_pm(pdf_plus));
-      pdfDN[0] += (1. - rms_pm(pdf_minus));
+      double wgt_pdfUP = 1. + rms_pm(pdf_plus);
+      double wgt_pdfDN = 1. - rms_pm(pdf_minus);
+
+      pdfUP[0] += wgt_pdfUP;
+      pdfDN[0] += wgt_pdfDN;
+      m_ttbar_pdfUP->Fill(mass_ttbar, wgt_pdfUP);
+      m_ttbar_pdfDN->Fill(mass_ttbar, wgt_pdfDN);
     }
 
     edm::Handle< edm::View<PileupSummaryInfo> > pileups;
@@ -536,7 +552,8 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   edm::Handle< edm::View<pat::Jet> > jets;
   iEvent.getByToken(jetTag_, jets);
 
-  nJet = jets->size();
+  int jetsize = jets->size();
+  nJet = jetsize>MAXJET ? MAXJET : jetsize;
   int leadJetPt_flag = false;
 
   for (int i=0; i<nJet; i++){
@@ -663,7 +680,6 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(genParticleTag_, genParticles);
 
     vector<pair<reco::GenParticle, int> > reducedGens;
-    bool firstTs = false;
 
     //cout << "#\tID\tstatus\td1\td2\tm1\tm2\t4 momentum" << endl;
     //cout << "--------------------------------------------------------------------"<<endl;
@@ -689,30 +705,24 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       if (id>1000000)  //Z'
         reducedGens.push_back(make_pair(p,i));
 
-      if (fabs(id)==6 && 20<=status && status<30) {  //first t's
+      if (fabs(id)==6 && 20<=status && status<30)  //first t's
         reducedGens.push_back(make_pair(p,i));
-        firstTs = true;
+
+      else if (fabs(id)==6 && nDaught==2) {   //last t's
+
+        const reco::GenParticle& daught0 = genParticles->at( p.daughterRef(0).key() );
+
+        if ( fabs(daught0.pdgId())==5 || fabs(daught0.pdgId())==24 ) {
+          reducedGens.push_back(make_pair(p,i));
+          reducedGens.push_back(make_pair( daught0,p.daughterRef(0).key()) ); //b or W (first)
+          reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //b or W (first)
+        }
       }
 
-      else if (fabs(id)==6 && nDaught==2){   //last t's
-        reducedGens.push_back(make_pair(p,i));
-        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(0).key()),p.daughterRef(0).key()) ); //b or W (first)
-        reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //b or W (first)
-      }
-
-      else if (fabs(id)==24 && nDaught==2){   //last W's
+      else if (fabs(id)==24 && nDaught==2) {   //last W's
         reducedGens.push_back(make_pair(p,i));
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(0).key()),p.daughterRef(0).key()) ); //q or lep
         reducedGens.push_back(make_pair( genParticles->at(p.daughterRef(1).key()),p.daughterRef(1).key()) ); //q or lep
-      }
-    }
-
-    if (!firstTs) {
-      for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==6) { reducedGens.insert( reducedGens.begin(), make_pair(genParticles->at(i),i) ); break; }
-      }
-      for (int i=0, n=genParticles->size(); i<n; i++) {
-        if (genParticles->at(i).pdgId()==-6) { reducedGens.insert( reducedGens.begin(), make_pair(genParticles->at(i),i) ); break; }
       }
     }
 
@@ -955,6 +965,13 @@ void ZDilepton::endJob() {
     fullMu->Write();
     if (isMC_) {
       m_ttbar->Write();
+      m_ttbar_pt->Write();
+      m_ttbar_pt2->Write();
+      m_ttbar_pdfUP->Write();
+      m_ttbar_pdfDN->Write();
+      m_ttbar_q2UP->Write();
+      m_ttbar_q2DN->Write();
+
       ttbar_pt->Write();
       ttbar_pt2->Write();
       deltat_pt->Write();
@@ -962,7 +979,6 @@ void ZDilepton::endJob() {
 
       root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
       root_file->WriteObject(&nTopPtWeight2, "nTopPtWeight2");
-
       root_file->WriteObject(&pdfUP, "pdfUP");
       root_file->WriteObject(&pdfDN, "pdfDN");
       root_file->WriteObject(&q2UP, "q2UP");
