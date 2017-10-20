@@ -48,7 +48,7 @@ map<TString, TH1*> m_Histos1D;
 
 //parameters- edit in pars.txt
 bool isMC;
-TString topPt_weight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (tPt*tbarPt), DOWN (no top reweighting)
+TString topPtWeight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (no top reweighting), DOWN (tPt*tbarPt)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL", q2ttbar="NOMINAL", q2dy="NOMINAL", q2st="NOMINAL", q2signal="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
 TString setDRCut="OFF"; //ON (keep events with rmin0 && rmin1<1.4), REVERSE (keep events if rmin0 || rmin1 > 1.4) , OFF (no cut) 
@@ -225,19 +225,19 @@ int main(int argc, char* argv[]){
   if ( (int) (v_cuts[countMet].second + 0.5) != (int) (weight0 * nEntries + 0.5) ) { cout << "hadd added incorrectly." << endl; return -1; }
 
   //ttbar reweighting
-  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight!="DOWN" ) {
-    double countTopWeight=0, countTopWeight2=0, countTotal=0;
+  if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPtWeight!="UP" ) {
+    double topPtWeightNOM=0, topPtWeightDN=0, countTotal=0;
 
     nextkey = inFile->GetListOfKeys();
     while ( (key = (TKey*)nextkey()) ) {
       TString keyname = key->GetName();
 
       if (keyname=="totalEvts") countTotal += (*(vector<int>*)key->ReadObj())[0];
-      else if (keyname=="nTopPtWeight") countTopWeight += (*(vector<double>*)key->ReadObj())[0];
-      else if (keyname=="nTopPtWeight2") countTopWeight2 += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="topPtWeightNOM") topPtWeightNOM += (*(vector<double>*)key->ReadObj())[0];
+      else if (keyname=="topPtWeightDN") topPtWeightDN += (*(vector<double>*)key->ReadObj())[0];
     }
-    if (topPt_weight=="NOMINAL") weight0 *= countTotal / countTopWeight;
-    else if (topPt_weight=="UP") weight0 *= countTotal / countTopWeight2;
+    if (topPtWeight=="NOMINAL") weight0 *= countTotal / topPtWeightNOM;
+    else if (topPtWeight=="DOWN") weight0 *= countTotal / topPtWeightDN;
   }
 
   //pdf and q2 reweighting
@@ -422,6 +422,11 @@ int main(int argc, char* argv[]){
   hname = "jetPt_bTagM_udsg";
   m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
 
+  hname = "t_pt";
+  m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
+  hname = "tbar_pt";
+  m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
+
   //Set Branches//
 
   ULong64_t event;
@@ -566,26 +571,19 @@ int main(int argc, char* argv[]){
       weight *= pileup_weights->GetBinContent( pileup_weights->FindBin(mu) );
 
       //ttbar reweighting
-      if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPt_weight!="DOWN" ) {
-        double t_pt=0, tbar_pt=0;
+      if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPtWeight!="UP" ) {
+        double t_pt2=0, tbar_pt2=0;
 
-        //use first t's
+        //use last t's
         for (int i=0; i<nGen; i++) {
-          if (gen_PID[i]==6 && 20<=gen_status[i] && gen_status[i]<30) t_pt = gen_pt[i];
-          else if (gen_PID[i]==-6 && 20<=gen_status[i] && gen_status[i]<30) tbar_pt = gen_pt[i];
+          if (gen_PID[i]==6 && gen_status[i]>30) t_pt2 = gen_pt[i];
+          else if (gen_PID[i]==-6 && gen_status[i]>30) tbar_pt2 = gen_pt[i];
         }
-        if (t_pt==0) {
-          for (int i=0; i<nGen; i++) {
-            if (gen_PID[i]==6) { t_pt = gen_pt[i]; break; }
-          }
-        }
-        if (tbar_pt==0) {
-          for (int i=0; i<nGen; i++) {
-            if (gen_PID[i]==-6) { tbar_pt = gen_pt[i]; break; }
-          }
-        }
-        if (topPt_weight=="NOMINAL") weight *= sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
-        else if (topPt_weight=="UP") weight *= exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
+        if (topPtWeight=="NOMINAL") weight *= sqrt( exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2) );
+        else if (topPtWeight=="DOWN") weight *= exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2);
+
+        FillHist1D("t_pt", t_pt2, weight);
+        FillHist1D("tbar_pt", tbar_pt2, weight);
       }
       //pdf reweighting
       if (pdf != "NOMINAL" && wgt_rep->size()>1) {
@@ -1291,7 +1289,16 @@ void setWeight(const string& wFile) {
   string line;
 
   TString name = inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 );
-  while (getline(file, line)){
+  if ( name.Contains("ttbar", TString::kIgnoreCase) ) {
+
+    if      (topPtWeight != "NOMINAL") name += "_topPtWeight" + topPtWeight;
+    else if (q2ttbar     != "NOMINAL") name += "_q2" + q2ttbar;
+    else if (pdf         != "NOMINAL") name += "_pdf" + pdf;
+
+    name.ReplaceAll("DOWN", "DN");
+  }
+
+  while (getline(file, line)) {
 
     if (line.length() > 0) {
       while (line.at(0) == ' ') line.erase(0, 1);
@@ -1341,7 +1348,7 @@ void setPars(const string& parFile) {
       if (line == "true") isMC = true;
       else isMC = false;
     }
-    else if (var == "topPt_weight") topPt_weight = line.data();
+    else if (var == "topPtWeight") topPtWeight = line.data();
     else if (var == "jec") jec = line.data();
     else if (var == "jer") jer = line.data();
     else if (var == "pdf") pdf = line.data();

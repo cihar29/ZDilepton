@@ -32,7 +32,7 @@ else
     uncert=${args[1]}
     type=${args[2]}
 
-    uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
+    uncerts=( "topPtWeight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
     types=( "UP" "DOWN" )
 
     isValid $uncert uncerts[@]
@@ -57,7 +57,9 @@ else
     "STtchannel"
     "SaTtWchannel"
     "SaTtchannel"
-    "TTbar"
+    "TTbar0-700"
+    "TTbar700-1000"
+    "TTbar1000-inf"
     "WJets"
     "WW"
     "WZ"
@@ -106,7 +108,7 @@ else
 
     lines=( "isMC           true"
             "${uncert}      ${type}"
-            "setDRCut       OFF"   
+            "setDRCut       OFF"
             "inName         ${dir}${file}.root"
             "outName        ${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
             "channel        ${channel}"

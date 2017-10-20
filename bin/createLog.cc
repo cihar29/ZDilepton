@@ -1,4 +1,4 @@
-//createLog logData_mm.txt logMC_mm.txt 22 lumi sig_st sig_db mutrig muid muiso eltrig elid eliso jec jer btagSF mistagSF pileup topPt_weight pdf q2ttbar q2dy q2st q2signal
+//createLog logData_mm.txt logMC_mm.txt 22 lumi sig_st sig_db mutrig muid muiso eltrig elid eliso jec jer btagSF mistagSF pileup topPtWeight pdf q2ttbar q2dy q2st q2signal
 
 #include <iostream>
 #include <fstream>
@@ -110,14 +110,14 @@ int main(int argc, char* argv[]) {
    map <string,string> sys_latex = { {"lumi","luminosity"} , {"sig_st","$\\sigma(single-top)$"} ,{"sig_db","$\\sigma(single\\_diboson)$"}
 				      , {"mutrig","$\\mu$ trigger"} ,{"muid","$\\mu$ ID"} , {"muiso","$\\mu$ Isolation"} , {"eltrig","e trigger"}
 				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b$\\_$tagging"}
-                          	      , {"mistagSF","mis$\\_$tagging"} , {"pileup","pileup"} , {"topPt_weight","$top \\hspace{0.5mm} p_{T}$ modeling"}
+                          	      , {"mistagSF","mis$\\_$tagging"} , {"pileup","pileup"} , {"topPtWeight","$top \\hspace{0.5mm} p_{T}$ modeling"}
 				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
 
 
    map <string,string> sys_labels = { {"lumi","luminosity"} , {"sig_st","\u03C3(single-top)"} ,{"sig_db","\u03C3(single_diboson)"}
 				      , {"mutrig","\u03BC trigger"} ,{"muid","\u03BC ID"} , {"muiso","\u03BC Isolation"} , {"eltrig","e trigger"}
 				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b-tagging"}
-                          	      , {"mistagSF","mis-tagging"} , {"pileup","pileup"} , {"topPt_weight","top pT modeling"}
+                          	      , {"mistagSF","mis-tagging"} , {"pileup","pileup"} , {"topPtWeight","top pT modeling"}
 				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
 
   //use maps that holds vector for each systematics sources. Two maps for UP and DOWN variation for a given sys. source.

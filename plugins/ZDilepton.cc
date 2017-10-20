@@ -92,8 +92,8 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_eeBadScFilter",
       "Flag_globalTightHalo2016Filter"
     };
-    vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, jetpteta_cut, met_cut, dilepmass_cut;
-    vector<double> nTopPtWeight, nTopPtWeight2, pdfUP, pdfDN, q2UP, q2DN;
+    vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, dilepmass_cut, jetpteta_cut, met_cut;
+    vector<double> topPtWeightNOM, topPtWeightDN, pdfUP, pdfDN, q2UP, q2DN;
 
     string triggers[nTriggers] = {
       "HLT_Mu45_eta2p1_v",
@@ -147,13 +147,22 @@ class ZDilepton : public edm::EDAnalyzer {
     float met_shiftedpx[METUNCERT], met_shiftedpy[METUNCERT];
 
     TH1F* fullMu = new TH1F("fullMu","fullMu",100,0,100);
-    TH1F* m_ttbar =       new TH1F("m_ttbar","m_ttbar",500,0,5000);
-    TH1F* m_ttbar_pt =    new TH1F("m_ttbar_pt","m_ttbar_pt",500,0,5000);
-    TH1F* m_ttbar_pt2 =   new TH1F("m_ttbar_pt2","m_ttbar_pt2",500,0,5000);
-    TH1F* m_ttbar_pdfUP = new TH1F("m_ttbar_pdfUP","m_ttbar_pdfUP",500,0,5000);
-    TH1F* m_ttbar_pdfDN = new TH1F("m_ttbar_pdfDN","m_ttbar_pdfDN",500,0,5000);
-    TH1F* m_ttbar_q2UP =  new TH1F("m_ttbar_q2UP","m_ttbar_q2UP",500,0,5000);
-    TH1F* m_ttbar_q2DN =  new TH1F("m_ttbar_q2DN","m_ttbar_q2DN",500,0,5000);
+    TH2F* fullMu_mass = new TH2F("fullMu_mass","fullMu_mass",500,0,5000,100,0,100);
+
+    TH1D* mass_totalEvts = new TH1D("mass_totalEvts","mass_totalEvts",500,0,5000);
+    TH1D* mass_dilep = new TH1D("mass_dilep","mass_dilep",500,0,5000);
+    TH1D* mass_leppt = new TH1D("mass_leppt","mass_leppt",500,0,5000);
+    TH1D* mass_dilepmass = new TH1D("mass_dilepmass","mass_dilepmass",500,0,5000);
+    TH1D* mass_jetpteta = new TH1D("mass_jetpteta","mass_jetpteta",500,0,5000);
+    TH1D* mass_met = new TH1D("mass_met","mass_met",500,0,5000);
+
+    TH1D* mass_topPtWeightNOM = new TH1D("mass_topPtWeightNOM","mass_topPtWeightNOM",500,0,5000);
+    TH1D* mass_topPtWeightDN = new TH1D("mass_topPtWeightDN","mass_topPtWeightDN",500,0,5000);
+    TH1D* mass_pdfUP = new TH1D("mass_pdfUP","mass_pdfUP",500,0,5000);
+    TH1D* mass_pdfDN = new TH1D("mass_pdfDN","mass_pdfDN",500,0,5000);
+    TH1D* mass_q2UP = new TH1D("mass_q2UP","mass_q2UP",500,0,5000);
+    TH1D* mass_q2DN = new TH1D("mass_q2DN","mass_q2DN",500,0,5000);
+
     TH1F* deltat_pt = new TH1F("deltat_pt","deltat_pt",100,-500,500);
     TH1F* deltaTbar_pt = new TH1F("deltaTbar_pt","deltaTbar_pt",100,-500,500);
     TH2F* ttbar_pt = new TH2F("ttbar_pt","ttbar_pt",50,0,1000,50,0,1000);
@@ -161,7 +170,7 @@ class ZDilepton : public edm::EDAnalyzer {
 
     TString fileName_;
     string btag_;
-    bool isMC_;
+    bool isMC_, isTT_;
     double minLepPt_, minSubLepPt_, minDiLepMass_, minLeadJetPt_;
 
     EffectiveAreas ele_areas_;
@@ -197,6 +206,7 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   fileName_ = iConfig.getParameter<string>("fileName");
   btag_ = iConfig.getParameter<string>("btag");
   isMC_ = iConfig.getParameter<bool>("isMC");
+  isTT_ = iConfig.getParameter<bool>("isTT");
   patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< edm::View<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
@@ -251,7 +261,7 @@ void  ZDilepton::beginJob() {
 
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
-  nTopPtWeight.assign(1, 0.); nTopPtWeight2.assign(1, 0.); pdfUP.assign(1, 0.); pdfDN.assign(1, 0.); q2UP.assign(1, 0.); q2DN.assign(1, 0.);
+  topPtWeightNOM.assign(1, 0.); topPtWeightDN.assign(1, 0.); pdfUP.assign(1, 0.); pdfDN.assign(1, 0.); q2UP.assign(1, 0.); q2DN.assign(1, 0.);
 
   tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
   tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
@@ -388,6 +398,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //------------ Mu, topPt, pdf, and q2 ------------//
 
+  double mass_ttbar = 0;
   if (isMC_) {
     edm::Handle< edm::View<reco::GenParticle> > genParticles;
     iEvent.getByToken(genParticleTag_, genParticles);
@@ -414,22 +425,23 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
     }
     float t_pt = t_p4.Pt(), tbar_pt = tbar_p4.Pt();
-    double mass_ttbar = (t_p4+tbar_p4).M();
+    mass_ttbar = (t_p4+tbar_p4).M() > 5000 ? 4999 : (t_p4+tbar_p4).M();
 
     ttbar_pt->Fill(t_pt, tbar_pt);
     ttbar_pt2->Fill(t_pt2, tbar_pt2);
     deltat_pt->Fill(t_pt-t_pt2);
     deltaTbar_pt->Fill(tbar_pt-tbar_pt2);
 
-    m_ttbar->Fill(mass_ttbar);
+    mass_totalEvts->Fill(mass_ttbar);
 
-    double wgt_pt = sqrt( exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt) );
-    double wgt_pt2 = exp(0.0615-0.0005*t_pt) * exp(0.0615-0.0005*tbar_pt);
+    double wgt_topPtWeightNOM = isTT_ ? sqrt( exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2) ) : 1.;
+    double wgt_topPtWeightDN = exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2);
 
-    nTopPtWeight[0] += wgt_pt;
-    nTopPtWeight2[0] += wgt_pt2;
-    m_ttbar_pt->Fill(mass_ttbar, wgt_pt);
-    m_ttbar_pt2->Fill(mass_ttbar, wgt_pt2);
+    topPtWeightNOM[0] += wgt_topPtWeightNOM;
+    topPtWeightDN[0] += wgt_topPtWeightDN;
+
+    mass_topPtWeightNOM->Fill( mass_ttbar, wgt_topPtWeightNOM );
+    mass_topPtWeightDN->Fill( mass_ttbar, wgt_topPtWeightDN );
 
     wgt_env.clear(); wgt_rep.clear();
 
@@ -450,10 +462,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       double wgt_q2UP = TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
       double wgt_q2DN = TMath::MinElement(wgt_env.size(), &wgt_env[0]);
 
-      q2UP[0] += wgt_q2UP;
-      q2DN[0] += wgt_q2DN;
-      m_ttbar_q2UP->Fill(mass_ttbar, wgt_q2UP);
-      m_ttbar_q2DN->Fill(mass_ttbar, wgt_q2DN);
+      q2UP[0] += wgt_q2UP * wgt_topPtWeightNOM;
+      q2DN[0] += wgt_q2DN * wgt_topPtWeightNOM;
+
+      mass_q2UP->Fill( mass_ttbar, wgt_q2UP * wgt_topPtWeightNOM );
+      mass_q2DN->Fill( mass_ttbar, wgt_q2DN * wgt_topPtWeightNOM );
 
       // push back 100 weight replicas
       for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
@@ -468,15 +481,18 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       double wgt_pdfUP = 1. + rms_pm(pdf_plus);
       double wgt_pdfDN = 1. - rms_pm(pdf_minus);
 
-      pdfUP[0] += wgt_pdfUP;
-      pdfDN[0] += wgt_pdfDN;
-      m_ttbar_pdfUP->Fill(mass_ttbar, wgt_pdfUP);
-      m_ttbar_pdfDN->Fill(mass_ttbar, wgt_pdfDN);
+      pdfUP[0] += wgt_pdfUP * wgt_topPtWeightNOM;
+      pdfDN[0] += wgt_pdfDN * wgt_topPtWeightNOM;
+
+      mass_pdfUP->Fill( mass_ttbar, wgt_pdfUP * wgt_topPtWeightNOM );
+      mass_pdfDN->Fill( mass_ttbar, wgt_pdfDN * wgt_topPtWeightNOM );
     }
 
     edm::Handle< edm::View<PileupSummaryInfo> > pileups;
     iEvent.getByToken(muTag_, pileups);
     mu = pileups->at(1).getTrueNumInteractions();
+
+    fullMu_mass->Fill(mass_ttbar, mu);
   }
   else {
     mu = getAvgPU( run, lumi );
@@ -514,11 +530,13 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   if (leps.size() < 2) return;
   dilep_cut[0]++;
+  mass_dilep->Fill(mass_ttbar);
 
   sort(leps.begin(), leps.end(), sortLepPt);
 
   if (leps[0].first->pt() < minLepPt_ || leps[1].first->pt() < minSubLepPt_) return;
   leppt_cut[0]++;
+  mass_leppt->Fill(mass_ttbar);
 
   lep0flavor = leps[0].second;
   lep1flavor = leps[1].second;
@@ -542,6 +560,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     if (!dilepmass_flag) return;
   }
   dilepmass_cut[0]++;
+  mass_dilepmass->Fill(mass_ttbar);
 
   vector<reco::CandidatePtr> lep0Sources, lep1Sources;
   for (unsigned int i=0, n=leps[0].first->numberOfSourceCandidatePtrs(); i<n; i++) lep0Sources.push_back(leps[0].first->sourceCandidatePtr(i));
@@ -605,6 +624,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
   if (!leadJetPt_flag) return;
   jetpteta_cut[0]++;
+  mass_jetpteta->Fill(mass_ttbar);
 
   //------------ MET Filters ------------//
 
@@ -649,6 +669,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     return;
   }
   met_cut[0]++;
+  mass_met->Fill(mass_ttbar);
 
   //------------ Rho ------------//
 
@@ -964,21 +985,29 @@ void ZDilepton::endJob() {
 
     fullMu->Write();
     if (isMC_) {
-      m_ttbar->Write();
-      m_ttbar_pt->Write();
-      m_ttbar_pt2->Write();
-      m_ttbar_pdfUP->Write();
-      m_ttbar_pdfDN->Write();
-      m_ttbar_q2UP->Write();
-      m_ttbar_q2DN->Write();
+      fullMu_mass->Write();
+
+      mass_totalEvts->Write();
+      mass_dilep->Write();
+      mass_leppt->Write();
+      mass_dilepmass->Write();
+      mass_jetpteta->Write();
+      mass_met->Write();
+
+      mass_topPtWeightNOM->Write();
+      mass_topPtWeightDN->Write();
+      mass_pdfUP->Write();
+      mass_pdfDN->Write();
+      mass_q2UP->Write();
+      mass_q2DN->Write();
 
       ttbar_pt->Write();
       ttbar_pt2->Write();
       deltat_pt->Write();
       deltaTbar_pt->Write();
 
-      root_file->WriteObject(&nTopPtWeight, "nTopPtWeight");
-      root_file->WriteObject(&nTopPtWeight2, "nTopPtWeight2");
+      root_file->WriteObject(&topPtWeightNOM, "topPtWeightNOM");
+      root_file->WriteObject(&topPtWeightDN, "topPtWeightDN");
       root_file->WriteObject(&pdfUP, "pdfUP");
       root_file->WriteObject(&pdfDN, "pdfDN");
       root_file->WriteObject(&q2UP, "q2UP");

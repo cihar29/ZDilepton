@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# execute as nohup ./run_all.sh &
+# execute as nohup ./run_all.sh > & run.txt &
 
 start=$(date +%s.%N)
 
 channels=( "mm" "em" "ee" )
-uncerts=( "topPt_weight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
+uncerts=( "topPtWeight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
 types=( "UP" "DOWN" )
 
 for chan in "${channels[@]}" ; do
