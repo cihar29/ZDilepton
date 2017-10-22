@@ -347,8 +347,12 @@ int main(int argc, char* argv[]) {
   hist->GetXaxis()->SetNdivisions(5, 5, 0);
   hist->GetXaxis()->SetRangeUser(xmin, xmax);
 
-  if (logy) hist->GetYaxis()->SetRangeUser(0.1, int(h_Data->GetMaximum()*100) );
-  else      hist->GetYaxis()->SetRangeUser(ymin, int(h_Data->GetMaximum()*1.5) );
+  ymax = h_Data->GetMaximum();
+  if (ymax == 0) ymax = mcStack->GetMaximum();
+  if (logy) { ymax *= 100; ymin = 0.1; }
+  else        ymax *= 1.5;
+
+  hist->GetYaxis()->SetRangeUser(ymin, int(ymax) );
 
   hist->Draw();
   int legEntries = m_MCs.size() + m_sigs.size();

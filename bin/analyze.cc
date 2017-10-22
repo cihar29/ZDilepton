@@ -31,7 +31,6 @@ using namespace std;
 void FillHist1D(const TString& histName, const Double_t& value, const double& weight);
 void setPars(const string& parFile); 
 void setWeight(const string& parFile); 
-bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits);
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
 double rms_pm(const vector<float>& vec);
@@ -150,7 +149,7 @@ int main(int argc, char* argv[]){
     muTrigSfHist = (TH2F*) muTrigSfFile->Get("Mu50_OR_TkMu50_PtEtaBins/abseta_pt_ratio");
 
     TFile* muIdSfFile = TFile::Open(muIdSfName);
-    muIdSfHist = (TH2F*) muIdSfFile->Get("MC_NUM_MediumID_DEN_genTracks_PAR_pt_eta/abseta_pt_ratio");
+    muIdSfHist = (TH2F*) muIdSfFile->Get("MC_NUM_TightID_DEN_genTracks_PAR_pt_eta/abseta_pt_ratio");
 
     TFile* muTrackSfFile = TFile::Open(muTrackSfName);
     muTrackSfGraph = (TGraphAsymmErrors*) muTrackSfFile->Get("ratio_eff_eta3_dr030e030_corr");
@@ -477,29 +476,19 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("lep1flavor", &lep1flavor);
 
   int nMuon=MAXLEP, muon_charge[nMuon];
-  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon], muon_D0[nMuon], muon_Dz[nMuon];
-  float muon_chi2[nMuon], muon_tspm[nMuon], muon_kinkf[nMuon], muon_segcom[nMuon], muon_ftrackhits[nMuon];
-  bool muon_isGlob[nMuon], muon_IsMediumID[nMuon];
+  float muon_eta[nMuon], muon_pt[nMuon], muon_phi[nMuon];
+  bool muon_IsTightID[nMuon];
 
   T->SetBranchAddress("nMuon", &nMuon);
   T->SetBranchAddress("muon_charge", muon_charge);
   T->SetBranchAddress("muon_eta", muon_eta);
   T->SetBranchAddress("muon_pt", muon_pt);
   T->SetBranchAddress("muon_phi", muon_phi);
-  T->SetBranchAddress("muon_D0", muon_D0);
-  T->SetBranchAddress("muon_Dz", muon_Dz);
-  T->SetBranchAddress("muon_IsMediumID", muon_IsMediumID);
-
-  T->SetBranchAddress("muon_isGlob", muon_isGlob);
-  T->SetBranchAddress("muon_chi2", muon_chi2);
-  T->SetBranchAddress("muon_tspm", muon_tspm);
-  T->SetBranchAddress("muon_kinkf", muon_kinkf);
-  T->SetBranchAddress("muon_segcom", muon_segcom);
-  T->SetBranchAddress("muon_ftrackhits", muon_ftrackhits);
+  T->SetBranchAddress("muon_IsTightID", muon_IsTightID);
 
   int nEle=MAXLEP, ele_charge[nEle];
   float ele_eta[nEle], ele_pt[nEle], ele_phi[nEle], ele_etaSupClust[nEle];
-  bool ele_MediumID[nEle];
+  bool ele_TightID[nEle];
 
   T->SetBranchAddress("nEle", &nEle);
   T->SetBranchAddress("ele_charge", ele_charge);
@@ -507,7 +496,7 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("ele_pt", ele_pt);
   T->SetBranchAddress("ele_phi", ele_phi);
   T->SetBranchAddress("ele_etaSupClust", ele_etaSupClust);
-  T->SetBranchAddress("ele_MediumID", ele_MediumID);
+  T->SetBranchAddress("ele_TightID", ele_TightID);
 
   int nJet=MAXJET;
   int jet_hadflavor[nJet];
@@ -564,7 +553,6 @@ int main(int argc, char* argv[]){
 
     TLorentzVector lep0, lep1;
     weight = weight0;
-    bool isGH = false;
 
     if (isMC) {
 
@@ -603,7 +591,6 @@ int main(int argc, char* argv[]){
         else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
       }
     }
-    else isGH = (278802<=run && run<=300000);
 
     if (channel == "mm") {
       if (lep0flavor == 'm' && lep1flavor == 'm') {
@@ -628,13 +615,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( isMC || isGH ) {
-          if ( !muon_IsMediumID[0] || !muon_IsMediumID[1] ) continue;
-        }
-        else {
-          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ||
-               !isMediumMuonBCDEF(muon_isGlob[1], muon_chi2[1], muon_tspm[1], muon_kinkf[1], muon_segcom[1], muon_ftrackhits[1]) ) continue;
-        }
+        if ( !muon_IsTightID[0] || !muon_IsTightID[1] ) continue;
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(muon_eta[1]) > 2.4) continue;
 
@@ -651,7 +632,7 @@ int main(int argc, char* argv[]){
         v_cuts[signCut].second += weight;
 
         //use these events for em channel
-        if ( nEle>0 && ele_MediumID[0] && ele_pt[0]>25 && fabs(ele_eta[0])<2.5 ) continue;
+        if ( nEle>0 && ele_TightID[0] && ele_pt[0]>25 && fabs(ele_eta[0])<2.5 ) continue;
         v_cuts[thirdLepCut].second += weight;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
@@ -682,7 +663,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( !ele_MediumID[0] || !ele_MediumID[1] ) continue;
+        if ( !ele_TightID[0] || !ele_TightID[1] ) continue;
         if ( ele_pt[0] < 45 || ele_pt[1] < 36 ) continue;
         if (fabs(ele_eta[0]) > 2.5 || fabs(ele_eta[1]) > 2.5) continue;
 
@@ -699,14 +680,7 @@ int main(int argc, char* argv[]){
         v_cuts[signCut].second += weight;
 
         //use these events for em channel
-        if ( nMuon>0 && muon_pt[0]>53 && fabs(muon_eta[0])<2.4 ) {
-          if ( isMC || isGH ) {
-            if ( muon_IsMediumID[0] ) continue;
-          }
-          else {
-            if ( isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
-          }
-        }
+        if ( nMuon>0 && muon_IsTightID[0] && muon_pt[0]>53 && fabs(muon_eta[0])<2.4 ) continue;
         v_cuts[thirdLepCut].second += weight;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
@@ -736,14 +710,7 @@ int main(int argc, char* argv[]){
         }
         v_cuts[trigCut].second += weight;
 
-        if ( !ele_MediumID[0] ) continue;
-
-        if ( isMC || isGH ) {
-          if ( !muon_IsMediumID[0] ) continue;
-        }
-        else {
-          if ( !isMediumMuonBCDEF(muon_isGlob[0], muon_chi2[0], muon_tspm[0], muon_kinkf[0], muon_segcom[0], muon_ftrackhits[0]) ) continue;
-        }
+        if ( !muon_IsTightID[0] || !ele_TightID[0] ) continue;
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
         if (fabs(muon_eta[0]) > 2.4 || fabs(ele_eta[0]) > 2.5) continue;
 
@@ -959,17 +926,12 @@ int main(int argc, char* argv[]){
 
     int nGoodMuon=0;
     for (int i=0; i<nMuon; i++) {
-      if ( isMC || isGH ) {
-        if (muon_IsMediumID[i]) nGoodMuon++;
-      }
-      else {
-        if (isMediumMuonBCDEF(muon_isGlob[i], muon_chi2[i], muon_tspm[i], muon_kinkf[i], muon_segcom[i], muon_ftrackhits[i])) nGoodMuon++;
-      }
+      if (muon_IsTightID[i]) nGoodMuon++;
     }
 
     int nGoodEle=0;
     for (int i=0; i<nEle; i++) {
-      if (ele_MediumID[i]) nGoodEle++;
+      if (ele_TightID[i]) nGoodEle++;
     }
 
     double sT = hT+lep0.Pt()+lep1.Pt();
@@ -1274,13 +1236,6 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"dphi_jet1met", dphi_jet1met, weight);
 
     FillHist1D(prefix+"nPV", nPV, weight);
-}
-
-bool isMediumMuonBCDEF(const bool& isGlob, const float& chi2, const float& tspm, const float& kinkf, const float& segcom, const float& ftrackhits) {
-
-  bool goodGlob = isGlob && chi2<3 && tspm<12 && kinkf<20; 
-  
-  return ( ftrackhits>0.49 && segcom>(goodGlob ? 0.303 : 0.451) );
 }
 
 void setWeight(const string& wFile) {
