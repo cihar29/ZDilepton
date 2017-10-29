@@ -50,8 +50,9 @@ bool isMC;
 TString topPtWeight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (no top reweighting), DOWN (tPt*tbarPt)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL", q2ttbar="NOMINAL", q2dy="NOMINAL", q2st="NOMINAL", q2signal="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
-TString setDRCut="OFF"; //ON (keep events with rmin0 && rmin1<1.4), REVERSE (keep events if rmin0 || rmin1 > 1.4) , OFF (no cut) 
-// ONbt (keep events with rmin0 && rmin1<0.8),  ONnb (keep events with rmin0 && rmin1<1.4 but rmin0>0.8 || rmin1>0.8)
+TString setSUMDRCut="OFF";
+//ON (keep events with sumrmin<2.0), REVERSE (keep events with sumrmin>=2.0), OFF (no cut)
+//ONbt (keep events with sumrmin<1.0),  ONnb (keep events with 1<=sumrmin<2.0)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eTrigSfName, eRecoSfName, eIdSfName, btagName, pileupName;
 string channel, jet_type, res_era;
 vector<string> eras;
@@ -193,8 +194,9 @@ int main(int argc, char* argv[]){
 
   enum Cuts{
     countEvts, countDilep, countLeppt, countDilepmass, countJetpteta, countMet,
-    channelCut, trigCut, lepkinCut, signCut, thirdLepCut, dilepmassCut, dilepVetoCut, ptrelCut, dRCut, metCut, jetCut,
-    zerobtagCut1jet, onebtagCut1jet, zerobtagCut2jets, onebtagCut2jets, twobtagsCut2jets, morethan0btagCut2jets, numCuts
+    channelCut, trigCut, lepkinCut, signCut, thirdLepCut, dilepmassCut, dilepVetoCut, ptrelCut, dRCut, jetCut,
+    zerobtagCut1jet_metR, onebtagCut1jet_metR, zerobtagCut2jets_metR, morethan0btagCut2jets_metR,
+    zerobtagCut1jet, onebtagCut1jet, zerobtagCut2jets, morethan0btagCut2jets, numCuts
   };
   vector<pair<string, double> > v_cuts(numCuts);
 
@@ -202,11 +204,13 @@ int main(int argc, char* argv[]){
   v_cuts[countDilepmass]=make_pair("Dilepton Mass Cut",0.); v_cuts[countJetpteta]=make_pair("Leading Jet Pt/eta cut",0.);
   v_cuts[countMet]=make_pair("MET Filters",0.); v_cuts[channelCut]=make_pair("Correct Channel",0.); v_cuts[signCut]=make_pair("Opposite Lepton Sign",0.);
   v_cuts[trigCut]=make_pair("HLT Trigger",0.); v_cuts[lepkinCut]=make_pair("Lepton kinematics cut",0.); v_cuts[thirdLepCut]=make_pair("Third lepton cut",0.);
-  v_cuts[dilepmassCut]=make_pair("Dilepton mass cut",0.); v_cuts[zerobtagCut1jet]=make_pair("= 1 Jet, = 0 btags",0.); v_cuts[ptrelCut]=make_pair("pTrel cut",0.);
-  v_cuts[zerobtagCut2jets]=make_pair(">= 2 Jets, = 0 btags",0.); v_cuts[dilepVetoCut]=make_pair("Z-mass veto",0.);
-  v_cuts[onebtagCut1jet]=make_pair("= 1 Jet, >= 1 btag",0.); v_cuts[onebtagCut2jets]=make_pair(">= 2 Jets, = 1 btag",0.);
-  v_cuts[twobtagsCut2jets]=make_pair(">= 2 Jets, >= 2 btags",0.); v_cuts[metCut]=make_pair("MET cut",0.); v_cuts[jetCut]=make_pair(">= 1 jet",0.);
-  v_cuts[dRCut]=make_pair("DeltaR cut",0.); v_cuts[morethan0btagCut2jets]=make_pair(">= 2 Jets, >=1 btags",0.);
+  v_cuts[dilepmassCut]=make_pair("Dilepton mass cut",0.); v_cuts[ptrelCut]=make_pair("pTrel cut",0.); v_cuts[dRCut]=make_pair("DeltaR cut",0.);
+  v_cuts[dilepVetoCut]=make_pair("Z-mass veto",0.); v_cuts[jetCut]=make_pair(">= 1 jet",0.);
+  v_cuts[zerobtagCut1jet_metR]=make_pair("= 1 Jet, = 0 btags, metR",0.);  v_cuts[onebtagCut1jet_metR]=make_pair("= 1 Jet, >= 1 btag, metR",0.);
+  v_cuts[zerobtagCut2jets_metR]=make_pair(">= 2 Jets, = 0 btags, metR",0.); v_cuts[morethan0btagCut2jets_metR]=make_pair(">= 2 Jets, >= 1 btag, metR",0.);
+  v_cuts[zerobtagCut1jet]=make_pair("= 1 Jet, = 0 btags",0.);  v_cuts[onebtagCut1jet]=make_pair("= 1 Jet, >= 1 btag",0.);
+  v_cuts[zerobtagCut2jets]=make_pair(">= 2 Jets, = 0 btags",0.); v_cuts[morethan0btagCut2jets]=make_pair(">= 2 Jets, >= 1 btag",0.);
+
 
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
@@ -269,7 +273,7 @@ int main(int argc, char* argv[]){
   }
   //Histograms//
 
-  int nDirs = 6;
+  int nDirs = 8;
   for (int i=0; i<nDirs; i++) {
     TString hname = Form("%i_nJet",i);
     m_Histos1D[hname] = new TH1D(hname,hname,MAXJET,0,MAXJET);
@@ -373,9 +377,13 @@ int main(int argc, char* argv[]){
     hname = Form("%i_rl1cleanj",i);
     m_Histos1D[hname] = new TH1D(hname,hname,100,0,5);
     hname = Form("%i_lep0perp",i);
-    m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
     hname = Form("%i_lep1perp",i);
-    m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
+    hname = Form("%i_lep0perp_in",i);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
+    hname = Form("%i_lep1perp_in",i);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
 
     hname = Form("%i_metpt",i);
     m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
@@ -876,25 +884,16 @@ int main(int argc, char* argv[]){
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
-    if (channel=="ee") { if ( (lep0perp<30 && rmin0<0.4) || (lep1perp<30 && rmin1<0.4) ) continue; }
-    else { if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue; }
+    if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue;
     v_cuts[ptrelCut].second += weight;
 
-    if (setDRCut.Contains("ON",TString::kIgnoreCase) ) { 
-      if (rmin0>1.4 || rmin1>1.4) continue;
-      if (setDRCut=="ONbt") { if (  rmin0>0.8 || rmin1>0.8  )  continue; }
-      if (setDRCut=="ONnb") { if (!(rmin0>0.8 || rmin1>0.8) )  continue; }
+    if (setSUMDRCut.Contains("ON",TString::kIgnoreCase) ) {
+      if (rmin0+rmin1 >= 2.) continue;
+      if (setSUMDRCut=="ONbt") { if (rmin0+rmin1 >= 1.) continue; }
+      if (setSUMDRCut=="ONnb") { if (rmin0+rmin1 < 1.)  continue; }
     }
-    else if (setDRCut=="REVERSE") { if (rmin0<1.4 && rmin1<1.4) continue; }
+    else if (setSUMDRCut=="REVERSE") { if (rmin0+rmin1 < 2.) continue; }
     v_cuts[dRCut].second += weight;
-
-    double met_corrpx = met_px - ctype1_x;
-    double met_corrpy = met_py - ctype1_y;
-    double met_corrpt = sqrt(met_corrpx*met_corrpx + met_corrpy*met_corrpy);
-
-    if (channel=="ee") { if (met_corrpt < 50) continue; }
-    else { if (met_corrpt < 30) continue; }
-    v_cuts[metCut].second += weight;
 
     sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
@@ -903,6 +902,10 @@ int main(int argc, char* argv[]){
     //at least one jet 
     if ( jet0pt < 100 || fabs(jet_eta[jet0index]) > 2.4 ) continue;
     v_cuts[jetCut].second += weight;
+
+    double met_corrpx = met_px - ctype1_x;
+    double met_corrpy = met_py - ctype1_y;
+    double met_corrpt = sqrt(met_corrpx*met_corrpx + met_corrpy*met_corrpy);
 
     TLorentzVector met;
     met.SetPtEtaPhiE(met_corrpt, 0, met_phi, met_corrpt);
@@ -1033,71 +1036,38 @@ int main(int argc, char* argv[]){
       if (gab.Pt() != 0 && glep.Pt() != 0) rabl = gab.DeltaR(glep);
     }
 
+    int prefix;
+
     //exactly one jet
     if ( jet1pt < 50 || fabs(jet_eta[jet1index]) > 2.4 ) {
-
       //zero btags
       if (!jet0btag) {
-        v_cuts[zerobtagCut1jet].second += weight;
-
-        FillHists("0_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
+        if (met_corrpt < 30) { v_cuts[zerobtagCut1jet_metR].second += weight; prefix=0; }
+        else                 { v_cuts[zerobtagCut1jet].second += weight; prefix=4; }
       }
       //at least one btag
       else {
-        v_cuts[onebtagCut1jet].second += weight;
-
-        FillHists("1_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
+        if (met_corrpt < 30) { v_cuts[onebtagCut1jet_metR].second += weight; prefix=1; }
+        else                 { v_cuts[onebtagCut1jet].second += weight; prefix=5; }
       }
     }
     //at least two jets
     else {
-
       //exactly zero btags
       if ( !jet0btag && !jet1btag ) {
-        v_cuts[zerobtagCut2jets].second += weight;
-
-        FillHists("2_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
+        if (met_corrpt < 30) { v_cuts[zerobtagCut2jets_metR].second += weight; prefix=2; }
+        else                 { v_cuts[zerobtagCut2jets].second += weight; prefix=6; }
       }
-      //at least two btags
-      else if ( jet0btag && jet1btag ) {
-        v_cuts[twobtagsCut2jets].second += weight;
-        v_cuts[morethan0btagCut2jets].second += weight;
-
-        FillHists("4_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
-
-        FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
-      }
-      //exactly one btag
+      //at least one btag
       else {
-        v_cuts[onebtagCut2jets].second += weight;
-        v_cuts[morethan0btagCut2jets].second += weight;
-
-        FillHists("3_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
-
-        FillHists("5_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-                  rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-                  hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-                  deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
+        if (met_corrpt < 30) { v_cuts[morethan0btagCut2jets_metR].second += weight; prefix=3; }
+        else                 { v_cuts[morethan0btagCut2jets].second += weight; prefix=7; }
       }
     }
+    FillHists(to_string(prefix)+"_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
+              rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
+              hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
+              deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
   }
   cout << difftime(time(NULL), start) << " s" << endl;
   cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
@@ -1109,22 +1079,22 @@ int main(int argc, char* argv[]){
   cout<<"                                     Cut Flow Table: " + inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 ) + "\n";
   cout<<"===================================================================================================\n";
 
-  cout<<      "                          |||          Nevent          |||     Efficiency (Relative Efficiency)\n";
+  cout<<      "                               |||          Nevent          |||     Efficiency (Relative Efficiency)\n";
 
   for (int i=0; i<numCuts; i++) {
     if (i == 0)
-      cout << Form("%-25s |||       %12.1f       |||       %1.6f (%1.4f)",
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
                    v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[0].second) << endl;
 
-    else if (i >= zerobtagCut1jet)
-      cout << Form("%-25s |||       %12.1f       |||       %1.6f (%1.4f)",
-                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[zerobtagCut1jet-1].second) << endl;
+    else if (i > jetCut)
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
+                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[jetCut].second) << endl;
 
     else
-      cout << Form("%-25s |||       %12.1f       |||       %1.6f (%1.4f)",
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
                    v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[i-1].second) << endl;
 
-    if (i==countMet || i==zerobtagCut1jet-1)
+    if (i==countMet || i==jetCut)
       cout << "---------------------------------------------------------------------------------------------------" << endl;
 
     cuts->SetBinContent(i+1, v_cuts[i].second);
@@ -1200,6 +1170,9 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"rl1cleanj", rl1cleanj, weight);
     FillHist1D(prefix+"lep0perp", lep0perp, weight);
     FillHist1D(prefix+"lep1perp", lep1perp, weight);
+
+    if (rmin0 < 0.4) FillHist1D(prefix+"lep0perp_in", lep0perp, weight);
+    if (rmin1 < 0.4) FillHist1D(prefix+"lep1perp_in", lep1perp, weight);
 
     FillHist1D(prefix+"jet0pt", jet0.Pt(), weight);
     FillHist1D(prefix+"jet0eta", jet0.Eta(), weight);
@@ -1314,7 +1287,7 @@ void setPars(const string& parFile) {
     else if (var == "pileup") pileup = line.data();
     else if (var == "btagSF") btagSF = line.data();
     else if (var == "mistagSF") mistagSF = line.data();
-    else if (var == "setDRCut") setDRCut = line.data();
+    else if (var == "setSUMDRCut") setSUMDRCut = line.data();
     else if (var == "inName") inName = line.data();
     else if (var == "outName") outName = line.data();
     else if (var == "muTrigSfName") muTrigSfName = line.data();

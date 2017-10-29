@@ -317,7 +317,8 @@ int main(int argc, char* argv[]) {
   {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} (GeV)"},
   {"minjet1pt","Jet p_{T}^{rmin subleading lepton} (GeV)"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} (GeV)"},
   {"cleanjet1pt","Jet p_{T}^{cleaned from subleading lepton} (GeV)"},{"masslmin0","M_{leading lep,rmin jet} (Gev)"},{"masslmin1","M_{subleading lep,rmin jet} (Gev)"},
-  {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"},{"nPV","N_{Good Primary vertices}"}};
+  {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"},{"nPV","N_{Good Primary vertices}"},
+  {"lep0perp_in","Leading Lepton p_{T}^{rel} In (GeV)"},{"lep1perp_in","Subleading Lepton p_{T}^{rel} In (GeV)"}};
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
   TH1D* hist = 0;
@@ -611,12 +612,20 @@ void drawText() {
   else if (dataFileName.Contains("ee", TString::kIgnoreCase))  text.DrawLatex(textposx,textposy,"#bf{ee}");
   else                                                         text.DrawLatex(textposx,textposy,"#bf{e#mu}");
 
-  if      (hname.Contains("0_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{= 0 btags}");    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV}"); }
-  else if (hname.Contains("1_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{#geq 1 btag}");  text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV}"); }
-  else if (hname.Contains("2_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{= 0 btags}");    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}"); }
-  else if (hname.Contains("3_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{= 1 btag}");     text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}"); }
-  else if (hname.Contains("4_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{#geq 2 btags}"); text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}"); }
-  else if (hname.Contains("5_")) { text.DrawLatex(textposx,textposy-0.05,"#bf{#geq 1 btag}");  text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}"); }
+  if (hname.Contains("0_") || hname.Contains("2_") || hname.Contains("4_") || hname.Contains("6_"))
+    text.DrawLatex(textposx,textposy-0.05,"#bf{= 0 btags}");
+  else
+    text.DrawLatex(textposx,textposy-0.05,"#bf{#geq 1 btag}");
+
+  if (hname.Contains("0_") || hname.Contains("1_") || hname.Contains("4_") || hname.Contains("5_"))
+    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV}");
+  else
+    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
+
+  if (hname.Contains("0_") || hname.Contains("1_") || hname.Contains("2_") || hname.Contains("3_"))
+    text.DrawLatex(textposx,textposy-0.15,"#bf{p_{T}^{miss} < 30 GeV}");
+  else
+    text.DrawLatex(textposx,textposy-0.15,"#bf{p_{T}^{miss} > 30 GeV}");
 }
 
 void setPars(const string& parFile) {

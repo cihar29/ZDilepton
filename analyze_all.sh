@@ -72,6 +72,8 @@ else
     "gluon_M-3000"
     "gluon_M-3500"
     "gluon_M-4000"
+    "gluon_M-4500"
+    "gluon_M-5000"
     "gluon_M-500"
     "gluon_M-750"
     "zprime_M-1000_W-10"
@@ -108,7 +110,7 @@ else
 
     lines=( "isMC           true"
             "${uncert}      ${type}"
-            "setDRCut       OFF"
+            "setSUMDRCut    OFF"
             "inName         ${dir}${file}.root"
             "outName        ${channel}/${file}_${channel}${underscore}${uncert}${type}.root"
             "channel        ${channel}"
@@ -131,6 +133,7 @@ else
       out="$out$line\n"
     done
 
+    #parFile="parsMC_${channel}.txt"
     echo -e "$out" | column -t > parsMC.txt
 
     analyze parsMC.txt mc_weights.txt

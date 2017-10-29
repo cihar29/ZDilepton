@@ -40,12 +40,8 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
 
     g_obs->SetPointError( i, 0, v_obs[i][2] );
   }
-  int pt=0;
   for (int i=0,n=v_theory.size(); i<n; i++) {
-    if (v_theory[i][sig] != 0) {
-      g_theory->SetPoint(pt, v_theory[i][0], v_theory[i][sig]);
-      pt++;
-    }
+    g_theory->SetPoint(i, v_theory[i][0], v_theory[i][sig]);
   }
 
   g_band0->SetFillColor(kYellow+1);

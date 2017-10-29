@@ -1,7 +1,7 @@
 isMC           true
-setDRCut       OFF
-inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/zprime_M-4500_W-450.root
-outName        mm/zprime_M-4500_W-450_mm.root
+setSUMDRCut    OFF
+inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/DYhigh.root
+outName        mm/DYhigh_mm.root
 channel        mm
 eras           Summer16_23Sep2016V4_MC
 res_era        Spring16_25nsV10_MC
@@ -11,6 +11,6 @@ muIdSfName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/
 muTrackSfName  /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/Tracking_EfficienciesAndSF_GH.root
 eTrigSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/electronTrigSF.root
 eRecoSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_Reco_efficiency.root
-eIdSfName      /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_MediumID_efficiency.root
+eIdSfName      /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_TightID_efficiency.root
 btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/btag_eff.root
 pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root

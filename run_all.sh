@@ -8,8 +8,11 @@ channels=( "mm" "em" "ee" )
 uncerts=( "topPtWeight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
 types=( "UP" "DOWN" )
 
+mkdir logs
+
 for chan in "${channels[@]}" ; do
   echo "Processing" $chan
+  mkdir $chan
   sh ./analyze_all.sh $chan > "logs/logMC_${chan}.txt"
 
   for uncert in "${uncerts[@]}" ; do

@@ -32,6 +32,8 @@ void pileup_weights() {
     "gluon_M-3000",
     "gluon_M-3500",
     "gluon_M-4000",
+    "gluon_M-4500",
+    "gluon_M-5000",
     "gluon_M-500",
     "gluon_M-750",
     "zprime_M-1000_W-10",

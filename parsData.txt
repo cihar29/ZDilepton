@@ -1,7 +1,7 @@
-ISMC       false
-setDRCut   OFF
-inName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/Muon.root
-outName    ./root_trees/SIGNAL/mm/Muon_mm.root
-channel    mm
-eras       Summer16_23Sep2016BCDV6_DATA Summer16_23Sep2016EFV6_DATA Summer16_23Sep2016GV6_DATA Summer16_23Sep2016HV6_DATA
-jet_type   AK4PFchs
+ISMC         false
+setSUMDRCut  OFF
+inName       /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/Muon.root
+outName      mm/Muon_mm.root
+channel      mm
+eras         Summer16_23Sep2016BCDV6_DATA Summer16_23Sep2016EFV6_DATA Summer16_23Sep2016GV6_DATA Summer16_23Sep2016HV6_DATA
+jet_type     AK4PFchs
