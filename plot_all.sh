@@ -12,7 +12,7 @@ if [ $# -eq 2 ] ; then
 
   channel=${args[0]}
   cut=${args[1]}
-  dir=""
+  dir="off/"
 
   if [[ $channel = "mm" ]] ; then
     dir="${dir}mm/"
@@ -32,6 +32,8 @@ if [ $# -eq 2 ] ; then
     subymin="-2"
   fi
 
+  fit=true
+
   hists=( "dilepmass" "jet0btag" "jet0eta" "jet0pt" "jet1btag" "jet1eta" "jet1pt" "jethT" "lep0eta" "lep0pt" "lep1eta" "lep1pt" "metcorrpt" "sT" "masslljjm"
           "lep0perp" "lep1perp" "lepept" "lepmpt" "metpt" "nGoodEle" "nGoodMuon" "nGoodJet" "minjet0pt" "minjet1pt" "cleanjet0pt" "cleanjet1pt" "nbtag"
           "rl0cleanj" "rl1cleanj" "rl0l1" "rmin0" "rmin1" "sumrmin" "rbl" "masslmin0" "masslmin1" "sT_met" "dphi_jet0met" "dphi_jet1met" "nPV" "lep0perp_in" "lep1perp_in" )
@@ -46,9 +48,14 @@ if [ $# -eq 2 ] ; then
 
   for ((i=0;i<${#hists[@]};++i)); do
 
-    #if [[ "${hists[i]}" != *"perp"* ]] ; then
-    #  continue
-    #fi
+    if [ "$fit" = true ] ; then
+      if [[ "${hists[i]}" != "jet"*"pt" && "${hists[i]}" != "lep0pt" && "${hists[i]}" != "lep1pt" && "${hists[i]}" != "sT_met" ]] ; then
+        continue
+      fi
+      if [[ $cut != 3 && $cut != 6 ]] ; then
+        continue
+      fi
+    fi
 
     logy="false"
     if [[ "${hists[i]}" == *"pt"* || "${hists[i]}" == "sT"* || "${hists[i]}" == "jethT" || "${hists[i]}" == "masslljjm" ]] ; then
@@ -95,6 +102,7 @@ if [ $# -eq 2 ] ; then
             "rebin          ${rebin}"
             "plotImpact     false"
             "theta          false" # zp1, zp10, zp30, or gkk
+            "fit            $fit"
           )
     out=""
 

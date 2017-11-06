@@ -32,7 +32,7 @@ string subplot, dataName;
 TString dataFileName, outName, theta;
 TString hname, leftText, rightText;
 float xmin, xmax, ymin, ymax, subymin, subymax;
-bool logx, logy, plotData, plotImpact;
+bool logx, logy, plotData, plotImpact, fit;
 
 int main(int argc, char* argv[]) {
 
@@ -472,6 +472,13 @@ int main(int argc, char* argv[]) {
 
   c->Print("./plots/" + outName + ".pdf");
 
+  if (fit) {
+    cout << hname << endl;
+    cout << "KS Test\t" << h_Data->KolmogorovTest(m_bkg[bkg]) << endl;
+    cout << "KS Test (with norm)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "N") << endl;
+    h_Data->Chi2Test(m_bkg[bkg], "UWP");
+  }
+
   TString outNames[]  = { "wjet", "vv", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
 
   if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {
@@ -726,6 +733,10 @@ void setPars(const string& parFile) {
     else if (var == "plotImpact") {
       if (line == "true") plotImpact = true;
       else plotImpact = false;
+    }
+    else if (var == "fit") {
+      if (line == "true") fit = true;
+      else fit = false;
     }
     else if (var == "subplot")   subplot = line;
   }
