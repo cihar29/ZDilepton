@@ -5,7 +5,7 @@ def get_model():
     # which also includes rate changes according to the alternate shapes.
     # For more info about this model and naming conventuion, see documentation
     # of build_model_from_rootfile.
-    model = build_model_from_rootfile('ll__gkk__sT_met.root', include_mc_uncertainties=True)
+    model = build_model_from_rootfile('ll__zp30__sT_met.root', include_mc_uncertainties=True)
  
     # If the prediction histogram is zero, but data is non-zero, the negative log-likelihood
     # is infinity which causes problems for some methods. Therefore, we set all histogram
@@ -14,8 +14,8 @@ def get_model():
  
     # define what the signal processes are. All other processes are assumed to make up the 
     # 'background-only' model.
-    #model.set_signal_processes('zp*')
-    model.set_signal_processes('gkk*')
+    model.set_signal_processes('zp*')
+    #model.set_signal_processes('gkk*')
  
     # Add some lognormal rate uncertainties. The first parameter is the name of the
     # uncertainty (which will also be the name of the nuisance parameter), the second
@@ -32,20 +32,42 @@ def get_model():
     for p2 in model.processes:
         model.add_lognormal_uncertainty('lumi',           0.025, p2)
 
-        model.add_lognormal_uncertainty('muon_trigger',   0.01,  p2, 'mm')
-        model.add_lognormal_uncertainty('muon_id',        0.02,  p2, 'mm')
-        model.add_lognormal_uncertainty('muon_isolation', 0.02,  p2, 'mm')
+        model.add_lognormal_uncertainty('muon_trigger',   0.01,  p2, 'mmbt')
+        model.add_lognormal_uncertainty('muon_id',        0.02,  p2, 'mmbt')
+        model.add_lognormal_uncertainty('muon_isolation', 0.02,  p2, 'mmbt')
+        model.add_lognormal_uncertainty('muon_trigger',   0.01,  p2, 'mmnb')
+        model.add_lognormal_uncertainty('muon_id',        0.02,  p2, 'mmnb')
+        model.add_lognormal_uncertainty('muon_isolation', 0.02,  p2, 'mmnb')
+        model.add_lognormal_uncertainty('muon_trigger',   0.01,  p2, 'mmrev')
+        model.add_lognormal_uncertainty('muon_id',        0.02,  p2, 'mmrev')
+        model.add_lognormal_uncertainty('muon_isolation', 0.02,  p2, 'mmrev')
 
-        model.add_lognormal_uncertainty('ele_trigger',    0.02,  p2, 'ee')
-        model.add_lognormal_uncertainty('ele_id',         0.02,  p2, 'ee')
-        model.add_lognormal_uncertainty('ele_isolation',  0.02,  p2, 'ee')
+        model.add_lognormal_uncertainty('ele_trigger',    0.02,  p2, 'eebt')
+        model.add_lognormal_uncertainty('ele_id',         0.02,  p2, 'eebt')
+        model.add_lognormal_uncertainty('ele_isolation',  0.02,  p2, 'eebt')
+        model.add_lognormal_uncertainty('ele_trigger',    0.02,  p2, 'eenb')
+        model.add_lognormal_uncertainty('ele_id',         0.02,  p2, 'eenb')
+        model.add_lognormal_uncertainty('ele_isolation',  0.02,  p2, 'eenb')
+        model.add_lognormal_uncertainty('ele_trigger',    0.02,  p2, 'eerev')
+        model.add_lognormal_uncertainty('ele_id',         0.02,  p2, 'eerev')
+        model.add_lognormal_uncertainty('ele_isolation',  0.02,  p2, 'eerev')
 
-        model.add_lognormal_uncertainty('muon_trigger',   0.005, p2, 'em')
-        model.add_lognormal_uncertainty('muon_id',        0.01,  p2, 'em')
-        model.add_lognormal_uncertainty('muon_isolation', 0.01,  p2, 'em')
-        model.add_lognormal_uncertainty('ele_id',         0.01,  p2, 'em')
-        model.add_lognormal_uncertainty('ele_isolation',  0.01,  p2, 'em')
- 
+        model.add_lognormal_uncertainty('muon_trigger',   0.005, p2, 'embt')
+        model.add_lognormal_uncertainty('muon_id',        0.01,  p2, 'embt')
+        model.add_lognormal_uncertainty('muon_isolation', 0.01,  p2, 'embt')
+        model.add_lognormal_uncertainty('ele_id',         0.01,  p2, 'embt')
+        model.add_lognormal_uncertainty('ele_isolation',  0.01,  p2, 'embt')
+        model.add_lognormal_uncertainty('muon_trigger',   0.005, p2, 'emnb')
+        model.add_lognormal_uncertainty('muon_id',        0.01,  p2, 'emnb')
+        model.add_lognormal_uncertainty('muon_isolation', 0.01,  p2, 'emnb')
+        model.add_lognormal_uncertainty('ele_id',         0.01,  p2, 'emnb')
+        model.add_lognormal_uncertainty('ele_isolation',  0.01,  p2, 'emnb')
+        model.add_lognormal_uncertainty('muon_trigger',   0.005, p2, 'emrev')
+        model.add_lognormal_uncertainty('muon_id',        0.01,  p2, 'emrev')
+        model.add_lognormal_uncertainty('muon_isolation', 0.01,  p2, 'emrev')
+        model.add_lognormal_uncertainty('ele_id',         0.01,  p2, 'emrev')
+        model.add_lognormal_uncertainty('ele_isolation',  0.01,  p2, 'emrev')
+
     return model
  
 model = get_model()
@@ -65,37 +87,6 @@ model_summary(model)
 
 plot_exp, plot_obs = bayesian_limits(model)
 
-options = Options()
-options.set('minimizer', 'strategy', 'newton_vanilla')
-#options.set('minimizer', 'strategy', 'robust')
-#options.set('minimizer', 'minuit_tolerance_factor', '100')
-
-nuisances = mle(model, input = 'data', n = 1, with_covariance = True, signal_process_groups = {'gkk3000':['gkk3000']}, options = options)
-
-spgs = model.signal_process_groups
-for sp in spgs:
-    if sp != 'gkk3000' : continue
-    nuifile = open('nuisances_' + sp + '.txt', 'w')
-    covfile = open('covariance_' + sp + '.txt', 'w')
-    covfile.write("# ")
-
-    pars = model.get_parameters(spgs[sp])
-    for p in pars :
-        if p not in ('beta_signal', 'q2signal') : covfile.write("%s  " % p)
-    covfile.write("\n")
-    nPars = len(pars)
-
-    for i in range(nPars) :
-        p = pars[i]
-        if p in ('beta_signal', 'q2signal') : continue
-        nuifile.write("%-20s%5.4f    %5.4f\n" % (p, nuisances[sp][p][0][0], nuisances[sp][p][0][1]))
-
-        covfile.write("%-20s" % p)
-        for j in range(nPars) :
-            if pars[j] in ('beta_signal', 'q2signal') : continue
-            covfile.write("%5.4f  " % nuisances[sp]['__cov'][0][i][j])
-        covfile.write("\n")
-
 # plot_exp and plot_obs are instances of plotutil.plotdata. they contain x/y values and
 # bands. You can do many things with these objects such as inspect the x/y/ban
 # data, pass then to plotutil.plot routine to make pdf plots, ...
@@ -103,6 +94,49 @@ for sp in spgs:
 # to apply your own plotting routines or present the result in a text Table.
 plot_exp.write_txt('bayesian_limits_expected.txt')
 plot_obs.write_txt('bayesian_limits_observed.txt')
+
+options = Options()
+options.set('minimizer', 'strategy', 'newton_vanilla')
+#options.set('minimizer', 'strategy', 'robust')
+#options.set('minimizer', 'minuit_tolerance_factor', '100')
+
+sig = 'zp4000_1200'
+nuisances = mle(model, input = 'data', n = 1, with_covariance = True, signal_process_groups = {sig:[sig]}, options = options)
+nuisances_asv = mle(model, input = 'toys-asimov:0', n = 1, with_covariance = True, signal_process_groups = {sig:[sig]}, options = options)
+
+spgs = model.signal_process_groups
+for sp in spgs:
+    if sp != sig : continue
+    nuifile = open('nuisances_' + sp + '.txt', 'w')
+    covfile = open('covariance_' + sp + '.txt', 'w')
+    covfile.write("# ")
+    nuifile_asv = open('nuisances_asv_' + sp + '.txt', 'w')
+    covfile_asv = open('covariance_asv_' + sp + '.txt', 'w')
+    covfile_asv.write("# ")
+
+    pars = model.get_parameters(spgs[sp])
+    for p in pars :
+        if p not in ('beta_signal', 'q2signal') :
+            covfile.write("%s  " % p)
+            covfile_asv.write("%s  " % p)
+    covfile.write("\n")
+    covfile_asv.write("\n")
+    nPars = len(pars)
+
+    for i in range(nPars) :
+        p = pars[i]
+        if p in ('beta_signal', 'q2signal') : continue
+        nuifile.write("%-20s%5.4f    %5.4f\n" % (p, nuisances[sp][p][0][0], nuisances[sp][p][0][1]))
+        nuifile_asv.write("%-20s%5.4f    %5.4f\n" % (p, nuisances_asv[sp][p][0][0], nuisances_asv[sp][p][0][1]))
+
+        covfile.write("%-20s" % p)
+        covfile_asv.write("%-20s" % p)
+        for j in range(nPars) :
+            if pars[j] in ('beta_signal', 'q2signal') : continue
+            covfile.write("%5.4f  " % nuisances[sp]['__cov'][0][i][j])
+            covfile_asv.write("%5.4f  " % nuisances_asv[sp]['__cov'][0][i][j])
+        covfile.write("\n")
+        covfile_asv.write("\n")
  
 # 2.b. CLs limits
 # calculate cls limit plots. The interface is very similar to bayesian_limits. However, there are a few

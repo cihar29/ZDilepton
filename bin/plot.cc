@@ -475,7 +475,7 @@ int main(int argc, char* argv[]) {
   if (fit) {
     cout << hname << endl;
     cout << "KS Test\t" << h_Data->KolmogorovTest(m_bkg[bkg]) << endl;
-    cout << "KS Test (with norm)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "N") << endl;
+    cout << "KS Test (with X)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "X") << endl;
     h_Data->Chi2Test(m_bkg[bkg], "UWP");
   }
 

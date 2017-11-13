@@ -5,10 +5,12 @@ void readFile(const string& dir, const string& parFile, vector< vector<string> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void nuisance( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/", string folder = "gkk_st") {
+void nuisance( string folder = "gkk_st", string filename = "gkk3000.txt", bool asimov = false ) {
+  string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/";
+  if (asimov) filename =  "asv_" + filename;
 
   vector< vector<string> > v_pars;
-  readFile( dir+folder+"/", "nuisances_gkk3000.txt", v_pars );
+  readFile( dir+folder+"/", "nuisances_"+filename, v_pars );
 
   setStyle();
 
@@ -67,12 +69,12 @@ void nuisance( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/the
 
   for (int i=0; i<nPars; i++) text.DrawLatex(0.01, 0.14+i/23.5, Form("#bf{%s}", v_pars[i][0].data()));
 
-  c->Print("nuisance.pdf");
+  c->Print( (folder + "_nuisance.pdf").data() );
 
   /// Correlation Matrix ///
 
   vector< vector<string> > v_cors;
-  readFile( dir+folder+"/", "covariance_gkk3000.txt", v_cors );
+  readFile( dir+folder+"/", "covariance_"+filename, v_cors );
 
   gStyle->SetPadRightMargin(0.1);
   gStyle->SetPadBottomMargin(0.13);
@@ -111,7 +113,7 @@ void nuisance( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/the
   text.SetTextFont(42);
   text.DrawLatex(1-rightText.Length()/85., 0.96, rightText);
 
-  c2->Print("correlation.pdf");
+  c2->Print( (folder + "_correlation.pdf").data() );
 }
 
 void readFile(const string& dir, const string& parFile, vector< vector<string> >& vec) {

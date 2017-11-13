@@ -5,7 +5,8 @@ void readFile(const string& dir, const string& parFile, vector< vector<double> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/nominal/", string folder = "zp10_st", bool plotObs=false) {
+void brazilian( string folder = "zp10_st", bool plotObs=false) {
+  string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/";
 
   vector< vector<double> > v_exp, v_obs, v_theory;
   readFile( dir+folder+"/", "bayesian_limits_expected.txt", v_exp );
@@ -107,7 +108,7 @@ void brazilian( string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/th
   //text.DrawLatex(0.2,0.87,"#bf{#geq 1 btag}");
   //text.DrawLatex(0.2,0.82,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
 
-  c->Print( (folder + ".pdf").data() );
+  c->Print(tfolder + ".pdf");
 }
 
 void readFile(const string& dir, const string& parFile, vector< vector<double> >& vec) {
