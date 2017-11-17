@@ -16,6 +16,9 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
 
 double delta(double delta1, double delta2, string pos_neg);
 
+string boldline = "====================================================================================================================================================================";
+string divider = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+
 int main(int argc, char* argv[]) {
 
   if (argc == 1 || argc == 2) { cout << "Please provide two log files and systematics (e.g. createLog logData.txt logMC.txt jec)." << endl; return -1; }
@@ -44,9 +47,9 @@ int main(int argc, char* argv[]) {
 
   ofstream file( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_cutflow.txt" );
 
-  file<<"===================================================================================================================================================================="<< "\n" ;
-  file<<"                                              Cut Flow Table: Summary\n" ;
-  file<<"===================================================================================================================================================================="<< "\n" ;
+  file << boldline << "\n";
+  file << "                                              Cut Flow Table: Summary\n" ;
+  file << boldline << "\n";
   file<< Form("                            |||           Data            |||         Background        |||  Data/Background  |||    %-20s   |||    %-20s", zprime.Data(), gluon.Data() ) << endl;
 
   for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
@@ -77,7 +80,7 @@ int main(int argc, char* argv[]) {
                 i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
 
     if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << "--------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
+      file << divider << endl;
   }
 
   file<<"\n===================================================================================================================================================================="<< "\n" ;
@@ -377,6 +380,7 @@ int main(int argc, char* argv[]) {
            100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
            ) << endl;
 
+    file << endl;
     file << "\\renewcommand{\\arraystretch}{2}\n";
     file << "\\begin{sidewaystable}\n";
     file << "\\resizebox{\\textheight}{!}{\n";
@@ -412,7 +416,7 @@ int main(int argc, char* argv[]) {
       ) << endl;
     }
 
-    file << Form(" %s & %.2f -%.2f  & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f \\\\\n",
+    file << Form(" %s & %.2f -%.2f  & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f \\\\\n \\hline",
     "Total Systematics",
            100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
            100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
@@ -423,11 +427,11 @@ int main(int argc, char* argv[]) {
            100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
            100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
            ) << endl; 
-    file << "  \\hline\n";
     file << "  \\end{tabular}}\n";
     file << "\\end{sidewaystable}" << endl;
   }
 
+  file << endl;
   file << " \\newpage " << endl;
   file << "\\begin{sidewaystable}\n";
   file << "\\resizebox{\\textheight}{!}{\n";
