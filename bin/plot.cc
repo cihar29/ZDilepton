@@ -473,7 +473,7 @@ int main(int argc, char* argv[]) {
   c->Print("./plots/" + outName + ".pdf");
 
   if (fit) {
-    cout << hname << endl;
+    cout << channel << " " << hname << endl;
     cout << "KS Test\t" << h_Data->KolmogorovTest(m_bkg[bkg]) << endl;
     cout << "KS Test (with X)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "X") << endl;
     h_Data->Chi2Test(m_bkg[bkg], "UWP");

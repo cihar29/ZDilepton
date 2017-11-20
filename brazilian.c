@@ -2,10 +2,11 @@
 
 void setStyle();
 void readFile(const string& dir, const string& parFile, vector< vector<double> >& vec);
+double intersection(const TGraph* g1, const TGraph* g2, double start, double end);
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string folder = "zp10_st", bool plotObs=false) {
+void brazilian( string folder = "mass_all_combined/gkk", bool plotObs=false) {
   string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/";
 
   vector< vector<double> > v_exp, v_obs, v_theory;
@@ -109,6 +110,31 @@ void brazilian( string folder = "zp10_st", bool plotObs=false) {
   //text.DrawLatex(0.2,0.82,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
 
   c->Print(tfolder + ".pdf");
+
+  double minx = g_exp->GetX()[0];
+  double maxx = g_exp->GetX()[g_exp->GetN()-1];
+
+  cout << "Expected: " << intersection(g_theory, g_exp, minx, maxx) << endl;
+  cout << "Observed: " << intersection(g_theory, g_obs, minx, maxx) << endl;
+}
+
+//linear intersection
+double intersection(const TGraph* g1, const TGraph* g2, double start, double end) {
+  int n = 500;
+  double width, min_diff = 10., intersect = 0.;
+
+  do {
+    width = (end-start)/n;
+    for (int i=0; i<n; i++) {
+      double x = start + i*width;
+      double diff = fabs(g1->Eval(x) - g2->Eval(x));
+
+      if (diff < min_diff) { min_diff = diff; intersect = x; }
+    }
+    start = intersect-10; end = intersect+10;
+  } while (width > 0.1);
+
+  return intersect;
 }
 
 void readFile(const string& dir, const string& parFile, vector< vector<double> >& vec) {

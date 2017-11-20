@@ -67,7 +67,7 @@ void nuisance( string folder = "gkk_st", string filename = "gkk3000.txt", bool a
   text.SetTextFont(42);
   text.DrawLatex(1-rightText.Length()/72., 0.96, rightText);
 
-  for (int i=0; i<nPars; i++) text.DrawLatex(0.01, 0.14+i/23.5, Form("#bf{%s}", v_pars[i][0].data()));
+  for (int i=0; i<nPars; i++) text.DrawLatex(0.01, 0.14+i*0.0025*nPars, Form("#bf{%s}", v_pars[i][0].data()));
 
   c->Print( (folder + "_nuisance.pdf").data() );
 
