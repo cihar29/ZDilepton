@@ -94,6 +94,7 @@ else
     "zprime_M-2500_W-25"
     "zprime_M-2500_W-250"
     "zprime_M-3000_W-30"
+    "zprime_M-3000_W-900"
     "zprime_M-3500_W-35"
     "zprime_M-3500_W-350"
     "zprime_M-4000_W-40"

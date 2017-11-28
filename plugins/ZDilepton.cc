@@ -93,7 +93,7 @@ class ZDilepton : public edm::EDAnalyzer {
       "Flag_globalTightHalo2016Filter"
     };
     vector<int> totalEvts, filter_failed, dilep_cut, leppt_cut, dilepmass_cut, jetpteta_cut, met_cut;
-    vector<double> topPtWeightNOM, topPtWeightDN, pdfUP, pdfDN, q2UP, q2DN;
+    vector<double> topPtWeightNOM, topPtWeightDN, pdfUP, pdfDN, q2UP, q2DN, pdfUP_noTPW, pdfDN_noTPW, q2UP_noTPW, q2DN_noTPW;
 
     string triggers[nTriggers] = {
       "HLT_Mu45_eta2p1_v",
@@ -162,6 +162,10 @@ class ZDilepton : public edm::EDAnalyzer {
     TH1D* mass_pdfDN = new TH1D("mass_pdfDN","mass_pdfDN",500,0,5000);
     TH1D* mass_q2UP = new TH1D("mass_q2UP","mass_q2UP",500,0,5000);
     TH1D* mass_q2DN = new TH1D("mass_q2DN","mass_q2DN",500,0,5000);
+    TH1D* mass_pdfUP_noTPW = new TH1D("mass_pdfUP_noTPW","mass_pdfUP_noTPW",500,0,5000);
+    TH1D* mass_pdfDN_noTPW = new TH1D("mass_pdfDN_noTPW","mass_pdfDN_noTPW",500,0,5000);
+    TH1D* mass_q2UP_noTPW = new TH1D("mass_q2UP_noTPW","mass_q2UP_noTPW",500,0,5000);
+    TH1D* mass_q2DN_noTPW = new TH1D("mass_q2DN_noTPW","mass_q2DN_noTPW",500,0,5000);
 
     TH1F* deltat_pt = new TH1F("deltat_pt","deltat_pt",100,-500,500);
     TH1F* deltaTbar_pt = new TH1F("deltaTbar_pt","deltaTbar_pt",100,-500,500);
@@ -262,6 +266,7 @@ void  ZDilepton::beginJob() {
   filter_failed.assign(nFilters+2, 0);
   totalEvts.assign(1, 0); dilep_cut.assign(1, 0); leppt_cut.assign(1, 0); jetpteta_cut.assign(1, 0); met_cut.assign(1, 0); dilepmass_cut.assign(1, 0);
   topPtWeightNOM.assign(1, 0.); topPtWeightDN.assign(1, 0.); pdfUP.assign(1, 0.); pdfDN.assign(1, 0.); q2UP.assign(1, 0.); q2DN.assign(1, 0.);
+  pdfUP_noTPW.assign(1, 0.); pdfDN_noTPW.assign(1, 0.); q2UP_noTPW.assign(1, 0.); q2DN_noTPW.assign(1, 0.);
 
   tree->Branch("trig_prescale", "std::vector<int>", &trig_prescale);
   tree->Branch("trig_passed", "std::vector<bool>", &trig_passed);
@@ -462,11 +467,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       double wgt_q2UP = TMath::MaxElement(wgt_env.size(), &wgt_env[0]);
       double wgt_q2DN = TMath::MinElement(wgt_env.size(), &wgt_env[0]);
 
-      q2UP[0] += wgt_q2UP * wgt_topPtWeightNOM;
-      q2DN[0] += wgt_q2DN * wgt_topPtWeightNOM;
+      q2UP[0] += wgt_q2UP * wgt_topPtWeightNOM;  q2UP_noTPW[0] += wgt_q2UP;
+      q2DN[0] += wgt_q2DN * wgt_topPtWeightNOM;  q2DN_noTPW[0] += wgt_q2DN;
 
-      mass_q2UP->Fill( mass_ttbar, wgt_q2UP * wgt_topPtWeightNOM );
-      mass_q2DN->Fill( mass_ttbar, wgt_q2DN * wgt_topPtWeightNOM );
+      mass_q2UP->Fill( mass_ttbar, wgt_q2UP * wgt_topPtWeightNOM );  mass_q2UP_noTPW->Fill( mass_ttbar, wgt_q2UP );
+      mass_q2DN->Fill( mass_ttbar, wgt_q2DN * wgt_topPtWeightNOM );  mass_q2DN_noTPW->Fill( mass_ttbar, wgt_q2DN );
 
       // push back 100 weight replicas
       for (int i=9, n=9+100; i<n; i++) wgt_rep.push_back( lheEvtProduct->weights()[i].wgt/wgt_denom );
@@ -481,11 +486,11 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       double wgt_pdfUP = 1. + rms_pm(pdf_plus);
       double wgt_pdfDN = 1. - rms_pm(pdf_minus);
 
-      pdfUP[0] += wgt_pdfUP * wgt_topPtWeightNOM;
-      pdfDN[0] += wgt_pdfDN * wgt_topPtWeightNOM;
+      pdfUP[0] += wgt_pdfUP * wgt_topPtWeightNOM;  pdfUP_noTPW[0] += wgt_pdfUP;
+      pdfDN[0] += wgt_pdfDN * wgt_topPtWeightNOM;  pdfDN_noTPW[0] += wgt_pdfDN;
 
-      mass_pdfUP->Fill( mass_ttbar, wgt_pdfUP * wgt_topPtWeightNOM );
-      mass_pdfDN->Fill( mass_ttbar, wgt_pdfDN * wgt_topPtWeightNOM );
+      mass_pdfUP->Fill( mass_ttbar, wgt_pdfUP * wgt_topPtWeightNOM );  mass_pdfUP_noTPW->Fill( mass_ttbar, wgt_pdfUP );
+      mass_pdfDN->Fill( mass_ttbar, wgt_pdfDN * wgt_topPtWeightNOM );  mass_pdfDN_noTPW->Fill( mass_ttbar, wgt_pdfDN );
     }
 
     edm::Handle< edm::View<PileupSummaryInfo> > pileups;
@@ -1000,6 +1005,10 @@ void ZDilepton::endJob() {
       mass_pdfDN->Write();
       mass_q2UP->Write();
       mass_q2DN->Write();
+      mass_pdfUP_noTPW->Write();
+      mass_pdfDN_noTPW->Write();
+      mass_q2UP_noTPW->Write();
+      mass_q2DN_noTPW->Write();
 
       ttbar_pt->Write();
       ttbar_pt2->Write();
@@ -1012,6 +1021,10 @@ void ZDilepton::endJob() {
       root_file->WriteObject(&pdfDN, "pdfDN");
       root_file->WriteObject(&q2UP, "q2UP");
       root_file->WriteObject(&q2DN, "q2DN");
+      root_file->WriteObject(&pdfUP_noTPW, "pdfUP_noTPW");
+      root_file->WriteObject(&pdfDN_noTPW, "pdfDN_noTPW");
+      root_file->WriteObject(&q2UP_noTPW, "q2UP_noTPW");
+      root_file->WriteObject(&q2DN_noTPW, "q2DN_noTPW");
     }
 
     root_file->WriteObject(&totalEvts, "totalEvts");

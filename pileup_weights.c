@@ -44,6 +44,7 @@ void pileup_weights() {
     "zprime_M-1500_W-15",
     "zprime_M-1500_W-150",
     "zprime_M-3000_W-300",
+    "zprime_M-3000_W-900",
     "zprime_M-500_W-5",
     "zprime_M-500_W-50",
     "zprime_M-750_W-7p5",

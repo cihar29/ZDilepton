@@ -5,7 +5,7 @@ void readFile(const string& dir, const string& parFile, vector< vector<string> >
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void nuisance( string folder = "gkk_st", string filename = "gkk3000.txt", bool asimov = false ) {
+void nuisance( string folder = "all_st/gkk", string filename = "gkk3000.txt", bool asimov = false ) {
   string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/";
   if (asimov) filename =  "asv_" + filename;
 
@@ -67,9 +67,9 @@ void nuisance( string folder = "gkk_st", string filename = "gkk3000.txt", bool a
   text.SetTextFont(42);
   text.DrawLatex(1-rightText.Length()/72., 0.96, rightText);
 
-  for (int i=0; i<nPars; i++) text.DrawLatex(0.01, 0.14+i*0.0025*nPars, Form("#bf{%s}", v_pars[i][0].data()));
+  for (int i=0; i<nPars; i++) text.DrawLatex(0.01, 0.14+i*0.00225*nPars, Form("#bf{%s}", v_pars[i][0].data()));
 
-  c->Print( (folder + "_nuisance.pdf").data() );
+  c->Print( ( folder + (asimov ? "/nuisance_asv.pdf" : "/nuisance.pdf") ).data() );
 
   /// Correlation Matrix ///
 
@@ -113,7 +113,7 @@ void nuisance( string folder = "gkk_st", string filename = "gkk3000.txt", bool a
   text.SetTextFont(42);
   text.DrawLatex(1-rightText.Length()/85., 0.96, rightText);
 
-  c2->Print( (folder + "_correlation.pdf").data() );
+  c2->Print( ( folder + (asimov ? "/correlation_asv.pdf" : "/correlation.pdf") ).data() );
 }
 
 void readFile(const string& dir, const string& parFile, vector< vector<string> >& vec) {

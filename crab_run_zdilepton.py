@@ -20,7 +20,7 @@ else:
   unitsPerJob = 100
 
 config.section_("General")
-config.General.requestName = 'ST_tAug2017'
+config.General.requestName = 'ttbarBackup_noTPW'
 config.General.workArea = 'crab_projects'
 config.General.transferLogs = True
 
@@ -32,7 +32,7 @@ config.JobType.inputFiles = inputFiles
 config.JobType.outputFiles = outputFiles
 
 config.section_("Data")
-config.Data.inputDataset = '/ST_t-channel_top_4f_inclusiveDecays_13TeV-powhegV2-madspin-pythia8_TuneCUETP8M1/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
+config.Data.inputDataset = '/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_backup_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
   #'/SingleMuon/Run2016B-03Feb2017_ver2-v2/MINIAOD'
   #'/SingleMuon/Run2016G-03Feb2017-v1/MINIAOD'
   #'/SingleMuon/Run2016H-03Feb2017_ver2-v1/MINIAOD'
@@ -44,12 +44,14 @@ config.Data.inputDataset = '/ST_t-channel_top_4f_inclusiveDecays_13TeV-powhegV2-
   #'/ST_t-channel_top_4f_inclusiveDecays_13TeV-powhegV2-madspin-pythia8_TuneCUETP8M1/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
   #'/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_backup_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
   #'/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
+  #'/TT_Mtt-700to1000_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/MINIAODSIM'
+  #'/TT_Mtt-1000toInf_TuneCUETP8M2T4_13TeV-powheg-pythia8/RunIISummer16MiniAODv2-PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v2/MINIAODSIM'
 
 config.Data.splitting = splitting
 config.Data.lumiMask = lumiMask
 
 config.Data.unitsPerJob = unitsPerJob
-config.Data.outLFNDirBase = '/store/user/charring/AnalysisAug2017'
+config.Data.outLFNDirBase = '/store/user/charring/AnalysisNov2017_noTPW'
 config.Data.publication = False
 #config.Data.ignoreLocality = True
 #config.Data.publishDataName = 'analysis_tree'

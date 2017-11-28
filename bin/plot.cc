@@ -9,6 +9,7 @@
 #include "TStyle.h"
 #include "TLegend.h"
 #include "TLatex.h"
+#include "TKey.h"
 
 #include <vector>
 #include <map>
@@ -29,7 +30,7 @@ vector<TString> mcFileNames, sigFileNames, systematics;
 vector<double> sigScales, rebin;
 map<TString, float> sys_norm;
 string subplot, dataName;
-TString dataFileName, outName, theta;
+TString dataFileName, outName, theta, postfilename, region;
 TString hname, leftText, rightText;
 float xmin, xmax, ymin, ymax, subymin, subymax;
 bool logx, logy, plotData, plotImpact, fit;
@@ -43,8 +44,13 @@ int main(int argc, char* argv[]) {
 
   setStyle();
 
-  enum SetEnum { wjet=0, vv, st, dy, ttbar, gluon, zprime, bkg, undefined };
-  TString labels[] = { "W+Jets", "VV", "Single-Top", "Z/#gamma*#rightarrowl^{+}l^{-}", "t#bar{t}", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
+  enum SetEnum { ttbar=0, dy, st, vv, wjet, gluon, zprime, bkg, undefined };
+  TString labels[] = { "t#bar{t}", "Z/#gamma*#rightarrowl^{+}l^{-}", "Single-Top", "VV", "W+Jets", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
+  TString outNames[]  = { "ttbar", "dy", "st", "vv", "wjet", "gluon", "zprime", "bkg", "undefined" };
+
+  TString channel = "em";
+  if      (dataFileName.Contains("mm", TString::kIgnoreCase)) channel = "mm";
+  else if (dataFileName.Contains("ee", TString::kIgnoreCase)) channel = "ee";
 
   TFile* dataFile = TFile::Open(dataFileName);
   TH1D* h_Data = (TH1D*) dataFile->FindObjectAny(hname);
@@ -83,7 +89,7 @@ int main(int argc, char* argv[]) {
     if ( m_bkg.find(bkg) == m_bkg.end() ) m_bkg[bkg] = (TH1D*) h_MC->Clone("h_bkg"); //second map to start with h_MC (needs new object)
     else m_bkg[bkg]->Add(h_MC);
 
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
+    for (unsigned int i_sys = 0; i_sys != systematics.size() && postfilename == ""; ++i_sys) {
       TString sys = systematics[i_sys];
       TFile* mcFileUP = TFile::Open( mcFileNames[i]( 0, mcFileNames[i].Index(".root") ) + "_" + sys + "UP.root" );
       TFile* mcFileDN = TFile::Open( mcFileNames[i]( 0, mcFileNames[i].Index(".root") ) + "_" + sys + "DOWN.root" );
@@ -128,6 +134,50 @@ int main(int argc, char* argv[]) {
 
     m_MCs[st]->SetLineColor(28);
     m_MCs[st]->SetFillColor(28);
+  }
+  if (postfilename != "") {
+    TFile* postfile = TFile::Open(postfilename);
+    sys_norm.clear(); systematics.clear();
+
+    TIter nextkey(postfile->GetListOfKeys());
+    TKey* key;
+    while ( (key = (TKey*)nextkey()) ) {
+      TString keyname = key->GetName();
+
+      if (keyname.Contains("UP")) {
+        int index = keyname.Index("__", 2, keyname.Index("__")+2, TString::kExact);  //index of second "__"
+        TString sys = keyname(index+2, keyname.Index("UP")-index-2);
+        unsigned int idx;
+        for (idx=0; idx<systematics.size(); idx++) { if (systematics[idx] == sys) break; }
+        if (idx == systematics.size()) systematics.push_back(sys);
+      }
+    }
+    for (auto const& sys : systematics) {
+      m_bkgUPs[make_pair(bkg, sys)] = (TH1D*) m_bkg[bkg]->Clone(sys+"UP");
+      m_bkgDNs[make_pair(bkg, sys)] = (TH1D*) m_bkg[bkg]->Clone(sys+"DN");
+    }
+    for (int i=1; i<=nBins; i++) {
+      double bkg_content = 0;
+
+      for (map<SetEnum, TH1D*>::iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+        TH1D* h = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first]);
+        i_MC->second->SetBinContent(i, h->GetBinContent(i));
+        bkg_content += h->GetBinContent(i);
+      }
+      m_bkg[bkg]->SetBinContent(i, bkg_content);
+
+      for (auto const& sys : systematics) {
+        double bkgUP_content=0, bkgDN_content=0;
+
+        for (map<SetEnum, TH1D*>::iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+          TH1D* hUP = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first] + "__" + sys + "UP");
+          TH1D* hDN = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first] + "__" + sys + "DN");
+          bkgUP_content += hUP->GetBinContent(i);  bkgDN_content += hDN->GetBinContent(i);
+        }
+        m_bkgUPs[make_pair(bkg, sys)]->SetBinContent(i, bkgUP_content);
+        m_bkgDNs[make_pair(bkg, sys)]->SetBinContent(i, bkgDN_content);
+      }
+    }
   }
 
   map<TString, TH1D*> m_sigs_theta;
@@ -175,7 +225,7 @@ int main(int argc, char* argv[]) {
     if (dataset != undefined) m_sigs[dataset] = h_sig;
     m_sigs_theta[dataset_theta] = h_sig;
 
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
+    for (unsigned int i_sys = 0; i_sys != systematics.size() && postfilename == ""; ++i_sys) {
       TString sys = systematics[i_sys];
       TFile* sigFileUP = TFile::Open( sigFileNames[i]( 0, sigFileNames[i].Index(".root") ) + "_" + sys + "UP.root" );
       TFile* sigFileDN = TFile::Open( sigFileNames[i]( 0, sigFileNames[i].Index(".root") ) + "_" + sys + "DOWN.root" );
@@ -211,10 +261,6 @@ int main(int argc, char* argv[]) {
     m_sigs[gluon]->SetLineStyle(2);
   }
 
-  TString channel = "em";
-  if      (dataFileName.Contains("mm", TString::kIgnoreCase)) channel = "mm";
-  else if (dataFileName.Contains("ee", TString::kIgnoreCase)) channel = "ee";
-
   //Combine sys_norm and systematics
   for (map<TString, float>::const_iterator it = sys_norm.begin(); it != sys_norm.end(); ++it) {
     TString sys = it->first;
@@ -232,6 +278,9 @@ int main(int argc, char* argv[]) {
   for (int pt=0; pt<nBins; pt++) {
     int bin = pt+1;
     double nom = m_bkg[bkg]->GetBinContent(bin), errorUP=0, errorDN=0;
+
+    background->SetPoint(pt, h_Data->GetBinCenter(bin), nom);
+    if (nom == 0) continue;
 
     for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
       TString sys = systematics[i_sys];
@@ -273,13 +322,10 @@ int main(int argc, char* argv[]) {
       errorUP += d1*d1;
       errorDN += d2*d2;
     }
-    background->SetPoint(pt, h_Data->GetBinCenter(bin), nom);
-    if (nom != 0) {
-      background->SetPointEYhigh(pt, sqrt(errorUP) );
-      background->SetPointEYlow(pt, sqrt(errorDN) );
-      background->SetPointEXhigh(pt, h_Data->GetBinWidth(bin)/2);
-      background->SetPointEXlow(pt, h_Data->GetBinWidth(bin)/2);
-    }
+    background->SetPointEXhigh( pt, h_Data->GetBinWidth(bin)/2 );
+    background->SetPointEXlow( pt, h_Data->GetBinWidth(bin)/2 );
+    background->SetPointEYhigh( pt, sqrt(errorUP) );
+    background->SetPointEYlow( pt, sqrt(errorDN) );
   }
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
@@ -352,7 +398,6 @@ int main(int argc, char* argv[]) {
   if (ymax == 0) ymax = mcStack->GetMaximum();
   if (logy) { ymax *= 100; ymin = 0.1; }
   else        ymax *= 1.5;
-
   hist->GetYaxis()->SetRangeUser(ymin, int(ymax) );
 
   hist->Draw();
@@ -372,7 +417,7 @@ int main(int argc, char* argv[]) {
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
 
-  for (map<SetEnum, TH1D*>::const_reverse_iterator i_MC=m_MCs.rbegin(); i_MC != m_MCs.rend(); ++i_MC)
+  for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
     leg->AddEntry(i_MC->second, labels[i_MC->first].Data(), "F");
   for (map<SetEnum, TH1D*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
     leg->AddEntry(i_sig->second, labels[i_sig->first].Data(), "L");
@@ -479,9 +524,8 @@ int main(int argc, char* argv[]) {
     h_Data->Chi2Test(m_bkg[bkg], "UWP");
   }
 
-  TString outNames[]  = { "wjet", "vv", "st", "dy", "ttbar", "gluon", "zprime", "bkg", "undefined" };
-
   if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {
+    channel += region;
     TFile* outFile = new TFile(channel + "__" + theta + "__" + hname( hname.Index('_')+1, hname.Length()-hname.Index('_')-1 ) + ".root","RECREATE");
     outFile->cd();
 
@@ -709,6 +753,8 @@ void setPars(const string& parFile) {
     }
     else if (var == "outName")   outName = line.data();
     else if (var == "theta")     theta = line.data();
+    else if (var == "postfilename")  postfilename = line.data();
+    else if (var == "region")    region = line.data();
     else if (var == "hname")     hname = line.data();
     else if (var == "leftText")  leftText = line.data();
     else if (var == "rightText") rightText = line.data();

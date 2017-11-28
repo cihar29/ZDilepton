@@ -6,7 +6,7 @@ double intersection(const TGraph* g1, const TGraph* g2, double start, double end
 
 TString rightText = "Run 2016 - 35.9 fb^{-1} (13 TeV)";
 
-void brazilian( string folder = "mass_all_combined/gkk", bool plotObs=false) {
+void brazilian( string folder = "all_st/gkk", bool plotObs=false) {
   string dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_1_0/src/theta/utils2/2017/";
 
   vector< vector<double> > v_exp, v_obs, v_theory;
@@ -109,7 +109,7 @@ void brazilian( string folder = "mass_all_combined/gkk", bool plotObs=false) {
   //text.DrawLatex(0.2,0.87,"#bf{#geq 1 btag}");
   //text.DrawLatex(0.2,0.82,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
 
-  c->Print(tfolder + ".pdf");
+  c->Print( tfolder + (plotObs ? "/brazilian_obs.pdf" : "/brazilian.pdf") );
 
   double minx = g_exp->GetX()[0];
   double maxx = g_exp->GetX()[g_exp->GetN()-1];
