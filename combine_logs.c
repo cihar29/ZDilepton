@@ -335,16 +335,16 @@ void combine_logs(string dir="off/") {
   outfile << "Data/Bkg &" << Form("$%.2f^{+%.2f}_{-%.2f}$ & $%.2f^{+%.2f}_{-%.2f}$ & $%.2f^{+%.2f}_{-%.2f}$ & $%.2f^{+%.2f}_{-%.2f}$ \\\\\n",
     m_nom["mm"]["data"][i]/m_nom["mm"]["bkgd"][i],
     m_nom["mm"]["data"][i]/m_nom["mm"]["bkgd"][i] * sqrt( 1/m_nom["mm"]["data"][i] + mm_bkgd_errorUP*mm_bkgd_errorUP/(m_nom["mm"]["bkgd"][i]*m_nom["mm"]["bkgd"][i]) ),
-    m_nom["mm"]["data"][i]/m_nom["mm"]["bkgd"][i] * sqrt( 1/m_nom["mm"]["data"][i] + mm_bkgd_errorDN*mm_bkgd_errorUP/(m_nom["mm"]["bkgd"][i]*m_nom["mm"]["bkgd"][i]) ),
+    m_nom["mm"]["data"][i]/m_nom["mm"]["bkgd"][i] * sqrt( 1/m_nom["mm"]["data"][i] + mm_bkgd_errorDN*mm_bkgd_errorDN/(m_nom["mm"]["bkgd"][i]*m_nom["mm"]["bkgd"][i]) ),
     m_nom["ee"]["data"][i]/m_nom["ee"]["bkgd"][i],
     m_nom["ee"]["data"][i]/m_nom["ee"]["bkgd"][i] * sqrt( 1/m_nom["ee"]["data"][i] + ee_bkgd_errorUP*ee_bkgd_errorUP/(m_nom["ee"]["bkgd"][i]*m_nom["ee"]["bkgd"][i]) ),
-    m_nom["ee"]["data"][i]/m_nom["ee"]["bkgd"][i] * sqrt( 1/m_nom["ee"]["data"][i] + ee_bkgd_errorDN*ee_bkgd_errorUP/(m_nom["ee"]["bkgd"][i]*m_nom["ee"]["bkgd"][i]) ),
+    m_nom["ee"]["data"][i]/m_nom["ee"]["bkgd"][i] * sqrt( 1/m_nom["ee"]["data"][i] + ee_bkgd_errorDN*ee_bkgd_errorDN/(m_nom["ee"]["bkgd"][i]*m_nom["ee"]["bkgd"][i]) ),
     m_nom["em"]["data"][i]/m_nom["em"]["bkgd"][i],
     m_nom["em"]["data"][i]/m_nom["em"]["bkgd"][i] * sqrt( 1/m_nom["em"]["data"][i] + em_bkgd_errorUP*em_bkgd_errorUP/(m_nom["em"]["bkgd"][i]*m_nom["em"]["bkgd"][i]) ),
-    m_nom["em"]["data"][i]/m_nom["em"]["bkgd"][i] * sqrt( 1/m_nom["em"]["data"][i] + em_bkgd_errorDN*em_bkgd_errorUP/(m_nom["em"]["bkgd"][i]*m_nom["em"]["bkgd"][i]) ),
+    m_nom["em"]["data"][i]/m_nom["em"]["bkgd"][i] * sqrt( 1/m_nom["em"]["data"][i] + em_bkgd_errorDN*em_bkgd_errorDN/(m_nom["em"]["bkgd"][i]*m_nom["em"]["bkgd"][i]) ),
     m_nom["ll"]["data"][i]/m_nom["ll"]["bkgd"][i],
     m_nom["ll"]["data"][i]/m_nom["ll"]["bkgd"][i] * sqrt( 1/m_nom["ll"]["data"][i] + ll_bkgd_errorUP*ll_bkgd_errorUP/(m_nom["ll"]["bkgd"][i]*m_nom["ll"]["bkgd"][i]) ),
-    m_nom["ll"]["data"][i]/m_nom["ll"]["bkgd"][i] * sqrt( 1/m_nom["ll"]["data"][i] + ll_bkgd_errorDN*ll_bkgd_errorUP/(m_nom["ll"]["bkgd"][i]*m_nom["ll"]["bkgd"][i]) )
+    m_nom["ll"]["data"][i]/m_nom["ll"]["bkgd"][i] * sqrt( 1/m_nom["ll"]["data"][i] + ll_bkgd_errorDN*ll_bkgd_errorDN/(m_nom["ll"]["bkgd"][i]*m_nom["ll"]["bkgd"][i]) )
   ) << endl;
   outfile << "\\hline\n";
 

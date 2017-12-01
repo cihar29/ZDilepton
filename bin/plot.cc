@@ -44,9 +44,9 @@ int main(int argc, char* argv[]) {
 
   setStyle();
 
-  enum SetEnum { ttbar=0, dy, st, vv, wjet, gluon, zprime, bkg, undefined };
-  TString labels[] = { "t#bar{t}", "Z/#gamma*#rightarrowl^{+}l^{-}", "Single-Top", "VV", "W+Jets", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Undefined" };
-  TString outNames[]  = { "ttbar", "dy", "st", "vv", "wjet", "gluon", "zprime", "bkg", "undefined" };
+  enum SetEnum { ttbar=0, dy, st, vv, wjet, gluon, zprime, bkg, bkg_sys, undefined };
+  TString labels[] = { "t#bar{t}", "Z/#gamma*#rightarrowl^{+}l^{-}", "Single-Top", "VV", "W+Jets", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Background with Systematics", "Undefined" };
+  TString outNames[]  = { "ttbar", "dy", "st", "vv", "wjet", "gluon", "zprime", "bkg", "bkg_sys", "undefined" };
 
   TString channel = "em";
   if      (dataFileName.Contains("mm", TString::kIgnoreCase)) channel = "mm";
@@ -271,13 +271,15 @@ int main(int argc, char* argv[]) {
     systematics.push_back(sys);
   }
 
+  m_bkg[bkg_sys] = (TH1D*) m_bkg[bkg]->Clone("h_bkg_sys"); //background with full systematics for fitting
+
   TGraphAsymmErrors* background = new TGraphAsymmErrors(); //graph for background uncertainty
   background->SetFillStyle(3013);
   background->SetFillColor(kBlack);
 
   for (int pt=0; pt<nBins; pt++) {
     int bin = pt+1;
-    double nom = m_bkg[bkg]->GetBinContent(bin), errorUP=0, errorDN=0;
+    double nom = m_bkg[bkg]->GetBinContent(bin), errorUP=0, errorDN=0, errorAVG=0;
 
     background->SetPoint(pt, h_Data->GetBinCenter(bin), nom);
     if (nom == 0) continue;
@@ -321,11 +323,15 @@ int main(int argc, char* argv[]) {
 
       errorUP += d1*d1;
       errorDN += d2*d2;
+
+      errorAVG+= 0.5*(fabs(d1)+fabs(d2)) * 0.5*(fabs(d1)+fabs(d2));
     }
     background->SetPointEXhigh( pt, h_Data->GetBinWidth(bin)/2 );
     background->SetPointEXlow( pt, h_Data->GetBinWidth(bin)/2 );
     background->SetPointEYhigh( pt, sqrt(errorUP) );
     background->SetPointEYlow( pt, sqrt(errorDN) );
+
+    m_bkg[bkg_sys]->SetBinError( bin, sqrt( errorAVG + m_bkg[bkg_sys]->GetBinError(bin)*m_bkg[bkg_sys]->GetBinError(bin) ) );
   }
 
   TCanvas* c = new TCanvas("c", "c", 600, 600);
@@ -519,9 +525,10 @@ int main(int argc, char* argv[]) {
 
   if (fit) {
     cout << channel << " " << hname << endl;
-    cout << "KS Test\t" << h_Data->KolmogorovTest(m_bkg[bkg]) << endl;
-    cout << "KS Test (with X)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "X") << endl;
+    cout << "KS Test\t\t"        << h_Data->KolmogorovTest(m_bkg[bkg])      << "\t" << h_Data->KolmogorovTest(m_bkg[bkg_sys])      << endl;
+    cout << "KS Test (with X)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "X") << "\t" << h_Data->KolmogorovTest(m_bkg[bkg_sys], "X") << endl;
     h_Data->Chi2Test(m_bkg[bkg], "UWP");
+    h_Data->Chi2Test(m_bkg[bkg_sys], "UWP");
   }
 
   if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {

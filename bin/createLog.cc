@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
   for (map<TString, pair<double, double> >::iterator i_set = m_total.begin(); i_set != m_total.end(); ++i_set) {
     TString dataset = i_set->first;
 
-    if (dataset.Contains("zprime_M-3000", TString::kIgnoreCase)) zprime = dataset;
+    if (dataset.Contains("zprime_M-3000_W-300", TString::kIgnoreCase)) zprime = dataset;
     else if (dataset.Contains("gluon_M-3000", TString::kIgnoreCase)) gluon = dataset;
   }
 
