@@ -2,12 +2,14 @@
 
 void setStyle();
 
-void btag_efficiency() {
+void btag_efficiency(TString dir = "off/") {
 
-  const int nBins = 15;
-  const double bins[nBins+1] = {0, 50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 1000, 1400, 2000};
+  vector<double> bins = {0, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 1000, 1400, 2000};
 
-  TString files[] = {
+  map<TString, TString> channels = { {"mm","#mu#mu"}, {"ee","ee"}, {"em","e#mu"} }; // channel, label
+  map<TString, float>   flavors  = { {"b",1.4}, {"c",1.4}, {"udsg",0.5} };          // flavor, ymax
+
+  vector <TString> files = {
     "DYhigh",
     "DYlow",
     "STschannel",
@@ -15,42 +17,24 @@ void btag_efficiency() {
     "STtchannel",
     "SaTtWchannel",
     "SaTtchannel",
-    "TTbar",
+    "TTbar0-700",
+    "TTbar700-1000",
+    "TTbar1000-inf",
     "WJets",
     "WW",
     "WZ",
     "ZZ",
-    "gluon_M-1000",
-    "gluon_M-1250",
-    "gluon_M-1500",
-    "gluon_M-2000",
-    "gluon_M-2500",
-    "gluon_M-3000",
-    "gluon_M-3500",
-    "gluon_M-4000",
-    "gluon_M-500",
-    "gluon_M-750",
-    "zprime_M-1000_W-10",
-    "zprime_M-1000_W-100",
-    "zprime_M-1000_W-300",
-    "zprime_M-1250_W-125",
-    "zprime_M-1250_W-12p5",
-    "zprime_M-1500_W-15",
-    "zprime_M-1500_W-150",
-    "zprime_M-3000_W-300"
   };
-  int file_size = sizeof(files)/sizeof(files[0]);
 
   setStyle();
   TCanvas* c = new TCanvas("c", "c", 600, 600);
   c->SetGrid();
-  TH1F* h = new TH1F("h", "h", nBins, bins);
+  TH1F* h = new TH1F("h", "h", bins.size()-1, &bins[0]);
 
   h->GetXaxis()->SetTitle("Jet p_{T} (GeV)");
   h->GetXaxis()->SetRangeUser(0, 1400);
   h->GetYaxis()->SetTitle("b-tagging #varepsilon");
   h->GetYaxis()->SetTitleOffset(1.2);
-  h->GetYaxis()->SetRangeUser(0, 1.4);
 
   TLegend* leg = new TLegend(.5,.9-2*0.04,.7,.9);
   leg->SetBorderSize(0);
@@ -63,63 +47,59 @@ void btag_efficiency() {
   text.SetNDC();
 
   map<TString, TH1F*> effs;
+  for (auto const& it_chan : channels) {
+    TString chan = it_chan.first, clabel = it_chan.second;
 
-  TString channels[] = {"mm", "em", "ee"}, flavors[] = {"b", "c", "udsg"};
-  int nChannels = sizeof(channels)/sizeof(channels[0]);
-  int nFlavors = sizeof(flavors)/sizeof(flavors[0]);
+    for (auto const& it_flav : flavors) {
+      TString flav = it_flav.first;  float ymax = it_flav.second;
 
-  TString clabels[] = {"#mu#mu", "e#mu", "ee"};
-  float ymax[] = {1.4, 1.4, 0.5};
+      TString LWP = flav + "_LWP_" + chan;
+      TString MWP = flav + "_MWP_" + chan;
 
-  for (int i=0; i<nChannels; i++) {
+      effs[LWP] = new TH1F(LWP, LWP, bins.size()-1, &bins[0]);
+      effs[LWP]->Sumw2();
+      effs[LWP]->SetBit(TH1::kIsAverage);
+      effs[MWP] = new TH1F(MWP, MWP, bins.size()-1, &bins[0]);
+      effs[MWP]->Sumw2();
+      effs[MWP]->SetBit(TH1::kIsAverage);
 
-    for (int j=0; j<nFlavors; j++) {
+      for (auto const& fname : files) {
+        TFile* file = TFile::Open( dir + chan + "/" + fname + "_" + chan + ".root" );
 
-      TString LWP_num = flavors[j] + "_LWP_" + channels[i];
-      effs[LWP_num] = new TH1F("LWP_num", "LWP_num", nBins, bins);
-      TString MWP_num = flavors[j] + "_MWP_" + channels[i];
-      effs[MWP_num] = new TH1F("MWP_num", "MWP_num", nBins, bins);
-      TString denom = flavors[j] + "_denom_" + channels[i];
-      effs[denom] = new TH1F("denom", "denom", nBins, bins);
+        TH1F* denom = (TH1F*) file->Get( "jetPt_" + flav );
+        denom->Sumw2();
+        denom->SetBit(TH1::kIsAverage);
+        denom = (TH1F*) denom->Rebin(bins.size()-1, "denom", &bins[0]);
 
-      for (int k=0; k<file_size; k++) {
+        TH1F* numL = (TH1F*) file->Get( "jetPt_bTagL_" + flav );
+        numL->Sumw2();
+        numL->SetBit(TH1::kIsAverage);
+        numL = (TH1F*) numL->Rebin(bins.size()-1, "numL", &bins[0]);
+        numL->Divide(denom);
+        effs[LWP]->Add(numL);
 
-        if ( files[k].Contains("zprime") || files[k].Contains("gluon") ) continue;
-        TFile* file = TFile::Open( channels[i] + "/" + files[k] + "_" + channels[i] + ".root" );
-
-        TH1F* hist = (TH1F*) file->Get( "jetPt_" + flavors[j] );
-        hist->Sumw2();
-        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
-        effs[denom]->Add(hist);
-
-        hist = (TH1F*) file->Get( "jetPt_bTagL_" + flavors[j] );
-        hist->Sumw2();
-        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
-        effs[LWP_num]->Add(hist);
-
-        hist = (TH1F*) file->Get( "jetPt_bTagM_" + flavors[j] );
-        hist->Sumw2();
-        hist = (TH1F*) hist->Rebin(nBins, "hist", bins);
-        effs[MWP_num]->Add(hist);
+        TH1F* numM = (TH1F*) file->Get( "jetPt_bTagM_" + flav );
+        numM->Sumw2();
+        numM->SetBit(TH1::kIsAverage);
+        numM = (TH1F*) numM->Rebin(bins.size()-1, "numM", &bins[0]);
+        numM->Divide(denom);
+        effs[MWP]->Add(numM);
       }
-      effs[LWP_num]->Divide(effs[denom]);
-      effs[MWP_num]->Divide(effs[denom]);
-
-      h->GetYaxis()->SetRangeUser(0, ymax[j]);
+      h->GetYaxis()->SetRangeUser(0, ymax);
       h->Draw();
 
-      effs[LWP_num]->SetMarkerStyle(20);
-      effs[LWP_num]->SetMarkerColor(1);
-      effs[LWP_num]->SetLineColor(1);
-      effs[LWP_num]->Draw("pesame");
+      effs[LWP]->SetMarkerStyle(20);
+      effs[LWP]->SetMarkerColor(1);
+      effs[LWP]->SetLineColor(1);
+      effs[LWP]->Draw("pesame");
 
-      effs[MWP_num]->SetMarkerStyle(24);
-      effs[MWP_num]->SetMarkerColor(1);
-      effs[MWP_num]->SetLineColor(1);
-      effs[MWP_num]->Draw("pesame");
+      effs[MWP]->SetMarkerStyle(24);
+      effs[MWP]->SetMarkerColor(1);
+      effs[MWP]->SetLineColor(1);
+      effs[MWP]->Draw("pesame");
 
-      leg->AddEntry(effs[LWP_num], "CSVL", "PL");
-      leg->AddEntry(effs[MWP_num], "CSVM", "PL");
+      leg->AddEntry(effs[LWP], "CSVL", "PL");
+      leg->AddEntry(effs[MWP], "CSVM", "PL");
       leg->Draw();
 
       text.SetTextSize(0.05);  text.SetTextFont(61); text.DrawLatex(0.18, 0.96, "CMS");
@@ -127,10 +107,10 @@ void btag_efficiency() {
       text.SetTextSize(0.035); text.SetTextFont(42); text.DrawLatex(0.85, 0.96, "(13 TeV)");
 
       text.SetTextSize(0.04);  text.SetTextFont(62);
-      text.DrawLatex(0.2, 0.87, flavors[j] + "-Jets");
-      text.DrawLatex(0.2, 0.83, clabels[i] + " channel");
+      text.DrawLatex(0.2, 0.87, flav + "-Jets");
+      text.DrawLatex(0.2, 0.83, clabel + " channel");
 
-      c->Print("plots/btag_eff_" + flavors[j] + "_" + channels[i] + ".pdf");
+      c->Print("plots/btag_eff_" + flav + "_" + chan + ".pdf");
       leg->Clear();
       c->Clear();
     }
@@ -139,16 +119,15 @@ void btag_efficiency() {
   TFile* outFile = new TFile("btag_eff.root","RECREATE");
   outFile->cd();
 
-  for (int i=0; i<nChannels; i++) outFile->mkdir( channels[i] + "/" );
+  for (auto const& it_chan : channels) outFile->mkdir( it_chan.first + "/" );
 
-  for (map<TString, TH1F*>::iterator it = effs.begin(); it != effs.end(); it++) {
+  for (auto const& it_eff : effs) {
     outFile->cd();
-    TString name = it->first;
+    TString name = it_eff.first;
     TString postfix = name(name.Last('_')+1, 2);
 
     outFile->cd("btag_eff.root:/" + postfix);
-
-    if (!name.Contains("_denom_")) it->second->Write(name);
+    it_eff.second->Write(name);
   }
 
   outFile->Write();
@@ -159,67 +138,100 @@ void btag_efficiency() {
   //Plot individual efficiencies on same histogram//
   //////////////////////////////////////////////////
 
-  TString filesToPlot[] = { "TTbar", "zprime_M-3000_W-300" };
-  file_size = sizeof(filesToPlot)/sizeof(filesToPlot[0]);
+  vector <TString> filesToPlot = { "TTbar0-700", "TTbar700-1000", "TTbar1000-inf", "zprime_M-3000_W-300" };
+  leg->SetY1NDC(.9-4*0.04);
 
-  TString channel = "mm", flavor = "b";
+  for (auto const& it_chan : channels) {
+    TString chan = it_chan.first, clabel = it_chan.second;
 
-  h->GetYaxis()->SetRangeUser(0, 1.4);
-  h->Draw();
+    for (auto const& it_flav : flavors) {
+      TString flav = it_flav.first;  float ymax = it_flav.second;
 
-  leg = new TLegend(.5,.9-2*file_size*0.04,.7,.9);
-  leg->SetBorderSize(0);
-  leg->SetFillColor(0);
-  leg->SetFillStyle(0);
-  leg->SetTextSize(0.035);
-  leg->SetTextFont(42);
+      TH1F* h_LWP = new TH1F("LWP", "LWP", bins.size()-1, &bins[0]);
+      h_LWP->Sumw2();
+      h_LWP->SetBit(TH1::kIsAverage);
+      TH1F* h_MWP = new TH1F("MWP", "MWP", bins.size()-1, &bins[0]);
+      h_MWP->Sumw2();
+      h_MWP->SetBit(TH1::kIsAverage);
 
-  text.SetTextSize(0.05);  text.SetTextFont(61); text.DrawLatex(0.18, 0.96, "CMS");
-  text.SetTextSize(0.04);  text.SetTextFont(52); text.DrawLatex(0.29, 0.96, "Simulation");
-  text.SetTextSize(0.035); text.SetTextFont(42); text.DrawLatex(0.85, 0.96, "(13 TeV)");
+      TH1F* h_sigLWP = new TH1F("sigLWP", "sigLWP", bins.size()-1, &bins[0]);
+      h_sigLWP->Sumw2();
+      h_sigLWP->SetBit(TH1::kIsAverage);
+      TH1F* h_sigMWP = new TH1F("sigMWP", "sigMWP", bins.size()-1, &bins[0]);
+      h_sigMWP->Sumw2();
+      h_sigMWP->SetBit(TH1::kIsAverage);
 
-  text.SetTextSize(0.04);  text.SetTextFont(62);
-  text.DrawLatex(0.2, 0.87, flavor + "-Jets");
-  text.DrawLatex(0.2, 0.83, clabels[0] + " channel");
+      for (auto const& fname : filesToPlot) {
+        TFile* file = TFile::Open( dir + chan + "/" + fname + "_" + chan + ".root" );
 
-  map<TString, TH1F*> hists;
-  for (int i=0; i<file_size; i++) {
+        TH1F* denom = (TH1F*) file->Get( "jetPt_" + flav );
+        denom->Sumw2();
+        denom->SetBit(TH1::kIsAverage);
+        denom = (TH1F*) denom->Rebin(bins.size()-1, "denom", &bins[0]);
 
-    TString dataset = filesToPlot[i];
+        TH1F* numL = (TH1F*) file->Get( "jetPt_bTagL_" + flav );
+        numL->Sumw2();
+        numL->SetBit(TH1::kIsAverage);
+        numL = (TH1F*) numL->Rebin(bins.size()-1, "numL", &bins[0]);
+        numL->Divide(denom);
 
-    TFile* file = TFile::Open( channel + "/" + dataset + "_" + channel + ".root" );
-    TH1F* jetPt = (TH1F*) file->Get( "jetPt_" + flavor );
-    jetPt->Sumw2();
-    jetPt = (TH1F*) jetPt->Rebin(nBins, "jetPt", bins);
+        TH1F* numM = (TH1F*) file->Get( "jetPt_bTagM_" + flav );
+        numM->Sumw2();
+        numM->SetBit(TH1::kIsAverage);
+        numM = (TH1F*) numM->Rebin(bins.size()-1, "numM", &bins[0]);
+        numM->Divide(denom);
 
-    TString name = "CSVL,  " + dataset;
-    hists[name] = (TH1F*) file->Get( "jetPt_bTagL_" + flavor );
-    hists[name]->Sumw2();
-    hists[name] = (TH1F*) hists[name]->Rebin(nBins, name, bins);
-    hists[name]->Divide(jetPt);
+        if ( fname.Contains("zprime", TString::kIgnoreCase) ) {
+          h_sigLWP->Add(numL);
+          h_sigMWP->Add(numM);
+        }
+        else {
+          h_LWP->Add(numL);
+          h_MWP->Add(numM);
+        }
+      }
+      h->GetYaxis()->SetRangeUser(0, ymax);
+      h->Draw();
 
-    hists[name]->SetMarkerStyle(i+20);
-    hists[name]->SetMarkerColor(i+1);
-    hists[name]->SetLineColor(i+1);
-    hists[name]->Draw("pesame");
+      h_LWP->SetMarkerStyle(20);
+      h_LWP->SetMarkerColor(kBlack);
+      h_LWP->SetLineColor(kBlack);
+      h_LWP->Draw("pesame");
 
-    leg->AddEntry(hists[name], name, "PL");
+      h_MWP->SetMarkerStyle(24);
+      h_MWP->SetMarkerColor(kBlack);
+      h_MWP->SetLineColor(kBlack);
+      h_MWP->Draw("pesame");
 
-    name = "CSVM, " + dataset;
-    hists[name] = (TH1F*) file->Get( "jetPt_bTagM_" + flavor );
-    hists[name]->Sumw2();
-    hists[name] = (TH1F*) hists[name]->Rebin(nBins, name, bins);
-    hists[name]->Divide(jetPt);
+      h_sigLWP->SetMarkerStyle(21);
+      h_sigLWP->SetMarkerColor(kRed);
+      h_sigLWP->SetLineColor(kRed);
+      h_sigLWP->Draw("pesame");
 
-    hists[name]->SetMarkerStyle(i+24);
-    hists[name]->SetMarkerColor(i+1);
-    hists[name]->SetLineColor(i+1);
-    hists[name]->Draw("pesame");
+      h_sigMWP->SetMarkerStyle(25);
+      h_sigMWP->SetMarkerColor(kRed);
+      h_sigMWP->SetLineColor(kRed);
+      h_sigMWP->Draw("pesame");
 
-    leg->AddEntry(hists[name], name, "PL");
+      leg->AddEntry(h_LWP, "CSVL,  ttbar", "PL");
+      leg->AddEntry(h_MWP, "CSVM, ttbar", "PL");
+      leg->AddEntry(h_sigLWP, "CSVL,  Z' (10%, 3 Tev)", "PL");
+      leg->AddEntry(h_sigMWP, "CSVM, Z' (10%, 3 Tev)", "PL");
+      leg->Draw();
+
+      text.SetTextSize(0.05);  text.SetTextFont(61); text.DrawLatex(0.18, 0.96, "CMS");
+      text.SetTextSize(0.04);  text.SetTextFont(52); text.DrawLatex(0.29, 0.96, "Simulation");
+      text.SetTextSize(0.035); text.SetTextFont(42); text.DrawLatex(0.85, 0.96, "(13 TeV)");
+
+      text.SetTextSize(0.04);  text.SetTextFont(62);
+      text.DrawLatex(0.2, 0.87, flav + "-Jets");
+      text.DrawLatex(0.2, 0.83, clabel + " channel");
+
+      c->Print("plots/btag_eff_" + flav + "_" + chan + "_individual.pdf");
+      leg->Clear();
+      c->Clear();
+    }
   }
-  leg->Draw();
-  c->Print("plots/btag_eff_" + flavor + "_" + channel + "_individual.pdf");
 }
 
 void setStyle(){

@@ -1,4 +1,6 @@
-//createLog logData_mm.txt logMC_mm.txt 23 lumi sig_st sig_db mutrig muid muiso eltrig elid eliso jec jer btagSF mistagSF pileup topPtWeight pdf q2ttbar q2dy q2st q2signal
+//Only statistical error:    createLog dir
+//Systematic and stat error: createLog dir cutname {systematics, ...}
+//Example: createLog logs/ \>=_2_Jets,\_\>=_1_btag lumi sig_st sig_db mutrig muid muiso eltrig elid eliso jec jer btagSF mistagSF pileup topPtWeight pdf q2ttbar q2dy q2st q2signal
 
 #include <iostream>
 #include <fstream>
@@ -12,544 +14,627 @@
 
 using namespace std;
 
-void readFile(const string& fileName, vector<pair<string, map<TString, pair<double, double> > > >& cuts, string& channel);
-
+void readFile(const string& fileName, map<string, map<string, pair<double, double> > >& cuts);
 double delta(double delta1, double delta2, string pos_neg);
 
-string boldline = "====================================================================================================================================================================";
-string divider = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+string boldline   = "====================================================================================================================================================================";
+string singleline = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+
+string zprime = "zprime_M-3000_W-300", gluon = "gluon_M-3000";   //specify which signals to use in cutflow summary
+double xs_zprime = 0.272788, xs_gluon = 0.16757;
+
+//use vector to define order of samples in output tables
+vector< pair<string, string> > set_labels = { {"ttbar","ttbar"}, {"dy","Drell-Yan"}, {"st","Single-Top"}, {"vv","Diboson"}, {"wjet","W+Jets"},
+                                              {"bkg","Background"}, {zprime,zprime}, {gluon,gluon} };
+
+vector< pair<string, string> > set_latex = { {"ttbar","t$\\bar{\\textrm{t}}$"}, {"dy","Z/$\\gamma^{*}\\rightarrow l^{+}l^{-}$"}, {"st","Single-Top"}, {"vv","VV"}, {"wjet","W+Jets"},
+                                             {"bkg","Total Bkg"}, {zprime,"Z$'$ (10\\%, 3 TeV)"}, {gluon,"$\\textrm{g}_{\\textrm{kk}}$ (3 TeV)"} };
+
+map<string, string> sys_labels = { {"lumi","luminosity"}, {"sig_st","\u03C3(single-top)"}, {"sig_db","\u03C3(diboson)"},
+                                   {"mutrig","\u03BC trigger"}, {"muid","\u03BC ID"}, {"muiso","\u03BC Isolation"}, {"eltrig","e trigger"}, {"elid","e ID"}, {"eliso","e Isolation"},
+                                   {"jec","JEC"}, {"jer","JER"}, {"btagSF","b-tagging"}, {"mistagSF","mis-tagging"}, {"pileup","pileup"},
+                                   {"topPtWeight","top pT modeling"}, {"pdf","PDF"},
+                                   {"q2ttbar","Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-Top"}, {"q2signal","Q2 Signal"} };
+
+map<string, string> sys_latex = { {"lumi","luminosity"}, {"sig_st","$\\sigma(single-top)$"}, {"sig_db","$\\sigma(diboson)$"},
+                                  {"mutrig","$\\mu$ trigger"}, {"muid","$\\mu$ ID"}, {"muiso","$\\mu$ Isolation"}, {"eltrig","e trigger"}, {"elid","e ID"}, {"eliso","e Isolation"},
+                                  {"jec","JEC"}, {"jer","JER"}, {"btagSF","b-tagging"}, {"mistagSF","mis-tagging"}, {"pileup","pileup"},
+                                  {"topPtWeight","top $p_{T}$ modeling"}, {"pdf","PDF"},
+                                  {"q2ttbar","Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-Top"}, {"q2signal","Q2 Signal"} };
+
+// Normalization-only systematics
+map<string, double> sys_norm = { {"lumi",0.025}, {"sig_st",0.16}, {"sig_db",0.15}, {"mutrig",0.005}, {"muid",0.01}, {"muiso",0.01}, {"eltrig",0.01}, {"elid",0.01}, {"eliso",0.01} };
 
 int main(int argc, char* argv[]) {
 
-  if (argc == 1 || argc == 2) { cout << "Please provide two log files and systematics (e.g. createLog logData.txt logMC.txt jec)." << endl; return -1; }
+  if      (argc == 1) { cout << "Please provide a directory." << endl; return -1; }
+  else if (argc == 3) { cout << "Please provide a cut name (using '_' in place of spaces) followed by systematics." << endl; return -1; }
 
-  string dataFile = argv[1];
-  string mcFile = argv[2];
-  int cut_systematic = stoi(argv[3]); //cut to show systematic summary at the end
-  string channel = "";
+  string dir = argv[1];
 
-  //use vector to preserve order of cuts
-  //vector(cut_name, map(dataset, (N, error) ) )
-  vector<pair<string, map<TString, pair<double, double> > > > cuts;
+  TString summary_cutname;
+  vector<string> systematics;
+  if (argc > 3) {
+    summary_cutname = argv[2];  summary_cutname.ReplaceAll("_", " ");
 
-  //read data first to initialize mc
-  readFile(dataFile, cuts, channel);
-  readFile(mcFile, cuts, channel);
-
-  TString zprime="", gluon="";
-  map<TString, pair<double, double> >& m_total = cuts[0].second;
-  for (map<TString, pair<double, double> >::iterator i_set = m_total.begin(); i_set != m_total.end(); ++i_set) {
-    TString dataset = i_set->first;
-
-    if (dataset.Contains("zprime_M-3000_W-300", TString::kIgnoreCase)) zprime = dataset;
-    else if (dataset.Contains("gluon_M-3000", TString::kIgnoreCase)) gluon = dataset;
+    //shape and norm systematics: Read from command line
+    for (int i=3; i<argc; i++) systematics.push_back( argv[i] );
   }
 
-  ofstream file( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_cutflow.txt" );
+  //map(channel, map(cut, map(dataset, (N, stat error) ) ) )          map(channel, map(cut, map(dataset, (sysUP, sysDN) ) ) )
+  map<string, map<string, map<string, pair<double, double> > > > nom, totalSys;
 
-  file << boldline << "\n";
-  file << "                                              Cut Flow Table: Summary\n" ;
-  file << boldline << "\n";
-  file<< Form("                            |||           Data            |||         Background        |||  Data/Background  |||    %-20s   |||    %-20s", zprime.Data(), gluon.Data() ) << endl;
+  //map(channel, map(sys, map(cut, map(dataset, (N, stat error) ) ) ) )
+  map<string, map<string, map<string, map<string, pair<double, double> > > > > delUP, delDN;
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
-    string cutname = i_cut->first;
-    file<< Form("%-27s |||  %12.0f (%1.6f)  |||  %12.1f (%1.6f)  |||       %1.3f       |||  %12.1f (%1.6f)  |||  %12.1f (%1.6f)",
-                cutname.data(), i_cut->second["data"].first, i_cut->second["data"].first/m_total["data"].first,
-                i_cut->second["background"].first, i_cut->second["background"].first/m_total["background"].first,
-                i_cut->second["data"].first / i_cut->second["background"].first,
-                i_cut->second[zprime].first, i_cut->second[zprime].first/m_total[zprime].first,
-                i_cut->second[gluon].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
+  vector<string> channels = { "mm", "ee", "em", "ll" };
 
-    if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << "--------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
-  }
+  //read in event yields
+  for (auto const& chan : channels) {
+    if (chan == "ll") continue;
 
-  file<<"\n===================================================================================================================================================================="<< "\n" ;
-  file<<"                                              Cut Flow Table: Background\n" ;
-  file<<"===================================================================================================================================================================="<< "\n" ;
-  file<<"                            |||          ttbar            |||         Drell-Yan         |||         Single-Top        |||           Diboson         |||       W+Jets" << endl;
+    readFile(dir + "logData_" + chan + ".txt", nom[chan]);
+    readFile(dir + "logMC_"   + chan + ".txt", nom[chan]);
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
-    string cutname = i_cut->first;
-    file<< Form("%-27s |||  %12.1f (%1.6f)  |||  %12.1f (%1.6f)  |||  %12.1f (%1.6f)  |||  %12.1f (%1.6f)  |||  %12.1f (%1.6f)",
-                cutname.data(), i_cut->second["ttbar"].first, i_cut->second["ttbar"].first/m_total["ttbar"].first,
-                i_cut->second["Drell-Yan"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
-                i_cut->second["Single-Top"].first, i_cut->second["Single-Top"].first/m_total["Single-Top"].first,
-                i_cut->second["Diboson"].first, i_cut->second["Diboson"].first/m_total["Diboson"].first,
-                i_cut->second["W+Jets"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first ) << endl;
+    for (auto const& sys : systematics) {
+      if ( chan == "mm" && (sys == "eltrig" || sys == "elid" || sys == "eliso") ) continue;
+      if ( chan == "ee" && (sys == "mutrig" || sys == "muid" || sys == "muiso") ) continue;
+      if ( chan == "em" &&  sys == "eltrig" )                                     continue;
 
-    if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << divider << endl;
-  }
+      if (sys_norm.find(sys) == sys_norm.end()) {  // shape systematics
+        readFile(dir + "logMC_" + chan + "_" + sys + "UP.txt",   delUP[chan][sys]);
+        readFile(dir + "logMC_" + chan + "_" + sys + "DOWN.txt", delDN[chan][sys]);
+      }
+      for (auto const& it_cut : nom[chan]) {
+        string cut = it_cut.first;
 
-  file<<"\n===================================================================================================================================================================="<< "\n" ;
-  file<<"                                              Cut Flow Table: Statistical Error\n" ;
-  file<<"===================================================================================================================================================================="<< "\n" ;
-  file<<Form("                           |||    ttbar    |||  Drell-Yan  ||| Single-Top  |||   Diboson   |||   W+Jets    ||| background  ||| %-13s||| %-13s",
-  zprime.Data(), gluon.Data() ) << endl;
+        for (auto const& it_set : nom[chan][cut]) {
+          string set = it_set.first;
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
-    string cutname = i_cut->first;
-    file<< Form("%-27s|||  %9.2f  |||  %9.2f  |||  %9.2f  |||  %9.2f  |||  %9.2f  |||  %9.2f  |||  %9.2f  |||  %9.2f",
-             cutname.data(), i_cut->second["ttbar"].second, i_cut->second["Drell-Yan"].second, i_cut->second["Single-Top"].second, i_cut->second["Diboson"].second,
-             i_cut->second["W+Jets"].second, i_cut->second["background"].second, i_cut->second[zprime].second, i_cut->second[gluon].second) << endl;
+          if (sys_norm.find(sys) == sys_norm.end()) {  // shape systematics
+            delUP[chan][sys][cut][set].first -= nom[chan][cut][set].first;
+            delDN[chan][sys][cut][set].first -= nom[chan][cut][set].first;
+          }
+          else {                                       // normalization-only systematics
+            double perEvent_sys = sys_norm[sys];
 
-    if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << "--------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
-  }
+            if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
+              if (chan == "mm") perEvent_sys *= 2.;
+              perEvent_sys *= nom[chan][cut][set].first;
+            }
+            else if (sys == "eltrig" || sys == "elid" || sys == "eliso") {
+              if (chan == "ee") perEvent_sys *= 2.;
+              perEvent_sys *= nom[chan][cut][set].first;
+            }
+            else if (sys == "lumi")
+              perEvent_sys *= nom[chan][cut][set].first;
+            else if ( sys=="sig_st" && (set == "st" || set == "bkg") )
+              perEvent_sys *= nom[chan][cut]["st"].first;
+            else if ( sys=="sig_db" && (set == "vv" || set == "bkg") )
+              perEvent_sys *= nom[chan][cut]["vv"].first;
+            else perEvent_sys = 0.;
 
-  //SYSTEMATICS//
-
-  // Normalization-only systematics
-  map<string, double> sys_norm ;
-  sys_norm["lumi"]   = 0.025;  // Luminosity uncertainty in CMS
-
-  sys_norm["sig_tt"] = 0.15;   // sigma(ttbar)      uncertainty
-  sys_norm["sig_dy"] = 0.30;   // sigma(Drell-Yan)  uncertainty
-  sys_norm["sig_st"] = 0.16;   // sigma(Single-Top) uncertainty
-  sys_norm["sig_db"] = 0.15;   // sigma(Diboson)    uncertainty
-
-  sys_norm["mutrig"] = 0.005; // muon trigger uncertainty. Only applicable in mumu and emu channels.
-  sys_norm["muid"]   = 0.01;  // muon ID uncertainty per muon.
-  sys_norm["muiso"]  = 0.01;  // muon ptrel efficiency uncertainty per muon.
-  sys_norm["eltrig"] = 0.01;  // electron trigger uncertainty. Only applicable in ee.
-  sys_norm["elid"]   = 0.01;  // electron ID uncertainty per electron.
-  sys_norm["eliso"]  = 0.01;  // electron ptrel efficiency uncertainty per muon.
-
-  //which systematics sources to consider: read from command line
-  vector<string> systematics ;
-  for (int i=4; i < argc; i++){
-    string sys = argv[i] ;
-    // channel specific systematics
-    if(  channel == "mm" && (sys == "eltrig" || sys == "elid" || sys == "eliso") ) continue ;
-    if(  channel == "ee" && (sys == "mutrig" || sys == "muid" || sys == "muiso") ) continue ;
-    if( (channel == "em" || channel == "me")  && sys == "eltrig" )                 continue ;
-    systematics.push_back(sys);
-  }
-
-   map <string,string> sys_latex = { {"lumi","luminosity"} , {"sig_st","$\\sigma(single-top)$"} ,{"sig_db","$\\sigma(diboson)$"}
-				      , {"mutrig","$\\mu$ trigger"} ,{"muid","$\\mu$ ID"} , {"muiso","$\\mu$ Isolation"} , {"eltrig","e trigger"}
-				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b$\\_$tagging"}
-                          	      , {"mistagSF","mis$\\_$tagging"} , {"pileup","pileup"} , {"topPtWeight","$top \\hspace{0.5mm} p_{T}$ modeling"}
-				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
-
-
-   map <string,string> sys_labels = { {"lumi","luminosity"} , {"sig_st","\u03C3(single-top)"} ,{"sig_db","\u03C3(diboson)"}
-				      , {"mutrig","\u03BC trigger"} ,{"muid","\u03BC ID"} , {"muiso","\u03BC Isolation"} , {"eltrig","e trigger"}
-				      , {"elid","e ID"} , {"eliso","e Isolation"} , {"jec","JEC"} ,{"jer","JER"} , {"btagSF","b-tagging"}
-                          	      , {"mistagSF","mis-tagging"} , {"pileup","pileup"} , {"topPtWeight","top pT modeling"}
-				      , {"q2ttbar", "Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-top"}, {"q2signal","Q2 signal"} , {"pdf","PDF"} } ;
-
-  //use maps that holds vector for each systematics sources. Two maps for UP and DOWN variation for a given sys. source.
-  //map(systematics_source, vector(cut_name, map(dataset, (N, error) ) )
-  map <string, vector<pair<string, map<TString, pair<double, double> > > > >  m_cutsUP;
-  map <string, vector<pair<string, map<TString, pair<double, double> > > > >  m_cutsDOWN;
-  for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
-    string sys = systematics[i_sys];
-
-    //must have the form log_channel_sysUP.txt
-    string mcFile_sysUP = mcFile.substr(0, mcFile.find(".txt"))+"_"+sys+"UP.txt" ;
-    vector<pair<string, map<TString, pair<double, double> > > > cutsUP;
-
-    readFile(dataFile, cutsUP, channel);
-    readFile(mcFile_sysUP, cutsUP, channel);
-    m_cutsUP[sys] = cutsUP ;
-
-    //must have the form log_channel_sysDOWN.txt
-    string mcFile_sysDOWN = mcFile.substr(0, mcFile.find(".txt"))+"_"+sys+"DOWN.txt" ;
-    vector<pair<string, map<TString, pair<double, double> > > > cutsDOWN;
-
-    readFile(dataFile, cutsDOWN, channel);
-    readFile(mcFile_sysDOWN, cutsDOWN, channel);
-    m_cutsDOWN[sys] = cutsDOWN ;
-  }
-
-  //use vector that will hold total systematics (from all sources added in quadrature)
-  //vector(cut_name, map(dataset, (+delta_total, -delta_total ) )
-  vector<pair<string, map<TString, pair<double, double> > > > cuts_TotalSysPlusMinus = cuts;
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts_TotalSysPlusMinus.begin(); i_cut != cuts_TotalSysPlusMinus.end(); ++i_cut) {
-
-    map<TString, pair<double, double> > &m = i_cut->second;
-    for (map<TString, pair<double, double> >::iterator i_set = m.begin(); i_set != m.end(); ++i_set) {
-
-      TString dataset = i_set->first;
-      m[dataset].first = 0. ;  // initialize to zero
-      m[dataset].second = 0. ; // initialize to zero
+            delUP[chan][sys][cut][set].first = perEvent_sys;
+            delDN[chan][sys][cut][set].first = perEvent_sys==0 ? 0 : -1 * perEvent_sys;
+          }
+        }
+      }
     }
   }
 
-  for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) { // Loop over systematics sources
-    string sys = systematics[i_sys];
+  //fill combined channel
+  for (auto const& it_cut : nom["mm"]) {
+    string cut = it_cut.first;
 
-    file<<"\n==================================================================================================================================================================================="<< "\n" ;
-    file<<"                                    Systematics: " << sys_labels[systematics[i_sys]]<<  "       [absolute UP DOWN on first line and relative UP DOWN in \% on second line] \n" ;
-    file<<"==================================================================================================================================================================================="<< "\n" ;
-    file<<Form("                           ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||       W+Jets        ||      background     || %-20s|| %-20s",
-    zprime.Data(), gluon.Data() ) << endl;
+    for (auto const& it_set : nom["mm"][cut]) {
+      string set = it_set.first;
 
-    vector<pair<string, map<TString, pair<double, double> > > > &cutsUP   = m_cutsUP[sys];
-    vector<pair<string, map<TString, pair<double, double> > > > &cutsDOWN = m_cutsDOWN[sys];
+      if (cut <= "FMET Filters") {
+        if (set == "data") {
+          nom["ll"][cut][set].first =  nom["mm"][cut][set].first + nom["ee"][cut][set].first;
+          nom["ll"][cut][set].second = sqrt( nom["mm"][cut][set].second*nom["mm"][cut][set].second + nom["ee"][cut][set].second*nom["ee"][cut][set].second );
+        }
+        else {
+          nom["ll"][cut][set].first =  nom["mm"][cut][set].first;
+          nom["ll"][cut][set].second = nom["mm"][cut][set].second;
+        }
+      }
+      else {
+        nom["ll"][cut][set].first =  nom["mm"][cut][set].first + nom["ee"][cut][set].first + nom["em"][cut][set].first;
+        nom["ll"][cut][set].second = sqrt( nom["mm"][cut][set].second*nom["mm"][cut][set].second + nom["ee"][cut][set].second*nom["ee"][cut][set].second +
+                                           nom["em"][cut][set].second*nom["em"][cut][set].second );
+      }
+      for (auto const& sys : systematics) {
 
-    for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
-      string cutname = cuts[i_cut].first;
-
-      map<TString, pair<double, double> > NM = cuts[i_cut].second ;      // nominal settings
-      map<TString, pair<double, double> > &UP = cutsUP[i_cut].second ;    // UP variation for a given sys source
-      map<TString, pair<double, double> > &DN = cutsDOWN[i_cut].second ;  // DOWN variation for a given sys source
-
-      // ... Now add up deltas in quadrature for total systematics
-      // ... delta function correctly returns + and - variations
-      map<TString, pair<double, double> > &m = cuts_TotalSysPlusMinus[i_cut].second;
-      for (map<TString, pair<double, double> >::iterator i_set = m.begin(); i_set != m.end(); ++i_set) {
-
-        TString dataset = i_set->first;
-
-        if (sys_norm.find(sys) != sys_norm.end()) {  // normalization-only systematics
-          double perEvent_sys = sys_norm[sys] ; // per event systematics
-
-          if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
-            if (channel == "mm") perEvent_sys *= 2.;
-            perEvent_sys *= NM[dataset].first ;
+        if (cut <= "FMET Filters") {
+          if ( sys == "eltrig" || sys == "elid" || sys == "eliso" ) {
+            delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first;
           }
-          else if (sys == "eltrig" || sys == "elid" || sys == "eliso") {
-            if (channel == "ee") perEvent_sys *= 2.;
-            perEvent_sys *= NM[dataset].first ;
+          else {
+            delUP["ll"][sys][cut][set].first = delUP["mm"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first; 
           }
-          else if (sys == "lumi")
-            perEvent_sys *= NM[dataset].first ;
+        }
+        else {
+          if      ( sys == "eltrig" ) {
+            delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first;
+          }
+          else if ( sys == "elid" || sys == "eliso" ) {
+            delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first + delUP["em"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first + delDN["em"][sys][cut][set].first;
+          }
+          else if ( sys == "mutrig" || sys == "muid" || sys == "muiso" ) {
+            delUP["ll"][sys][cut][set].first = delUP["mm"][sys][cut][set].first + delUP["em"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first + delDN["em"][sys][cut][set].first;
+          }
+          else {
+            delUP["ll"][sys][cut][set].first = delUP["mm"][sys][cut][set].first + delUP["ee"][sys][cut][set].first + delUP["em"][sys][cut][set].first;
+            delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first + delDN["ee"][sys][cut][set].first + delDN["em"][sys][cut][set].first;
+          }
+        }
+      }
+    }
+  }
+  string cut_initial = nom["mm"].begin()->first, cut_end = (--nom["mm"].end())->first;
 
-          else if ( sys=="sig_tt" && (dataset == "ttbar" || dataset == "background") )
-            perEvent_sys *= NM["ttbar"].first ;
+  // create cutflow tables
+  for (auto const& chan : channels) {
+    ofstream file(dir + chan + "_cutflow.txt");
 
-          else if ( sys=="sig_dy" && (dataset == "Drell-Yan" || dataset == "background") )
-            perEvent_sys *= NM["Drell-Yan"].first ;
+    /// SUMMARY TABLE ///
+    file << boldline << endl;
+    file << "                                              Cut Flow Table: Summary\n" ;
+    file << boldline << endl << Form("%27s", "");
 
-          else if ( sys=="sig_st" && (dataset == "Single-Top" || dataset == "background") )
-            perEvent_sys *= NM["Single-Top"].first ;
+    for (auto const& p : set_labels) {
+      string set = p.first;
+      const char* label = p.second.data();  int len = strlen(label);
 
-          else if ( sys=="sig_db" && (dataset == "Diboson" || dataset == "background") )
-            perEvent_sys *= NM["Diboson"].first ;
+      if      (set == "bkg")                  file << "|||            Data           |||         Background        |||      Data/Background      ";
+      else if (set == zprime || set == gluon) file << Form("|||%*s%*s",14+len/2,label,13-len/2,"");
+    }
+    for (auto const& it_cut : nom[chan]) {
+      string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);
 
-          else perEvent_sys = 0.;
+      file << endl << Form("%-27s", cutname.data());
+      for (auto const& p : set_labels) {
+        string set = p.first;
 
-          UP[dataset].first = perEvent_sys + NM[dataset].first;
-          DN[dataset].first = NM[dataset].first - perEvent_sys;
+        if      (set == "bkg")
+          file << Form("|||  %12.0f (%1.6f)  |||  %12.1f (%1.6f)  |||           %1.3f           ",
+                        nom[chan][cut]["data"].first,  nom[chan][cut]["data"].first / nom[chan][cut_initial]["data"].first,
+                        nom[chan][cut]["bkg"].first,   nom[chan][cut]["bkg"].first  / nom[chan][cut_initial]["bkg"].first,
+                        nom[chan][cut]["data"].first / nom[chan][cut]["bkg"].first);
+        else if (set == zprime || set == gluon)
+          file << Form("|||  %12.1f (%1.6f)  ", nom[chan][cut][set].first, nom[chan][cut][set].first / nom[chan][cut_initial][set].first);
+      }
+      if (cutname == "MET Filters" || cutname == ">= 1 jet") file << endl << singleline;
+    } // end cut loop 1 (Summary table)
+
+    /// BACKGROUND TABLE ///
+    file << endl << endl << boldline << endl;
+    file << "                                              Cut Flow Table: Background\n" ;
+    file << boldline << endl << Form("%27s", "");
+
+    for (auto const& p : set_labels) {
+      string set = p.first;
+      if (set == "bkg" || set == zprime || set == gluon) continue;
+      const char* label = p.second.data();  int len = strlen(label);
+
+      file << Form("|||%*s%*s",14+len/2,label,13-len/2,"");
+    }
+    for (auto const& it_cut : nom[chan]) {
+      string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);
+
+      file << endl << Form("%-27s", cutname.data());
+      for (auto const& p : set_labels) {
+        string set = p.first;
+        if (set == "bkg" || set == zprime || set == gluon) continue;
+
+        file << Form("|||  %12.1f (%1.6f)  ", nom[chan][cut][set].first, nom[chan][cut][set].first / nom[chan][cut_initial][set].first);
+      }
+      if (cutname == "MET Filters" || cutname == ">= 1 jet") file << endl << singleline;
+    } // end cut loop 2 (Background table)
+
+    /// INDIVIDUAL SYSTEMATICS ///
+    for (auto const& sys : systematics) {
+      if ( delUP[chan].find(sys) == delUP[chan].end() ) continue;
+
+      file << endl << endl << boldline << endl;
+      file << "                                    Systematics: " << sys_labels[sys] <<  "       [absolute UP DOWN on first line and relative UP DOWN in \% on second line]\n";
+      file << boldline << endl << Form("%27s", "");
+
+      for (auto const& p : set_labels) {
+        const char* label = p.second.data();  int len = strlen(label);
+        file << Form("||%*s%*s",11+len/2,label,10-len/2,"");
+      }
+
+      /// CALCULATE TOTAL SYS ///
+      for (auto const& it_cut : nom[chan]) {
+        string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);
+
+        for (auto const& it_set : nom[chan][cut]) {
+          string set = it_set.first;
+
+          double d1 = delta( delUP[chan][sys][cut][set].first, delDN[chan][sys][cut][set].first, "+" );
+          double d2 = delta( delUP[chan][sys][cut][set].first, delDN[chan][sys][cut][set].first, "-" );
+
+          totalSys[chan][cut][set].first  += d1*d1;
+          totalSys[chan][cut][set].second += d2*d2;
         }
 
-        double deltaUP = UP[dataset].first - NM[dataset].first ;
-        double deltaDN = DN[dataset].first - NM[dataset].first ;
+        file << endl << Form("%-27s", cutname.data());
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", delUP[chan][sys][cut][set].first, delDN[chan][sys][cut][set].first);
+        }
+        file << endl << Form("%-27s", "");
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", 100*delUP[chan][sys][cut][set].first/nom[chan][cut][set].first, 100*delDN[chan][sys][cut][set].first/nom[chan][cut][set].first);
+        }
+        if (cutname == "MET Filters" || cutname == ">= 1 jet") file << endl << singleline;
+      }  // end cut loop 3
+    } // end systematics loop 1 (Individual systematics)
 
-        double d1 = delta(deltaUP, deltaDN, "+") ;
-        double d2 = delta(deltaUP, deltaDN, "-") ;
+    if (systematics.size() > 0) {
+      string cutkey;
 
-        m[dataset].first  += d1*d1 ;
-        m[dataset].second += d2*d2 ;
+      /// TOTAL SYSTEMATICS CUTFLOW ///
+      file << endl << endl << boldline << endl;
+      file << "                                    Total Systematics:        [absolute +- on first line and relative +- in \% on second line]\n";
+      file << boldline << endl << Form("%27s", "");
 
-      } //end dataset loop
+      for (auto const& p : set_labels) {
+        const char* label = p.second.data();  int len = strlen(label);
+        file << Form("||%*s%*s",11+len/2,label,10-len/2,"");
+      }
+      for (auto const& it_cut : nom[chan]) {
+        string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);
+        if (summary_cutname == cutname) cutkey = cut;
 
-      file<< Form("%-27s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-      cutname.data(),
-      UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
-      UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
-      UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
-      UP["Diboson"].first   -NM["Diboson"].first   ,           DN["Diboson"].first   -NM["Diboson"].first,
-      UP["W+Jets"].first    -NM["W+Jets"].first    ,           DN["W+Jets"].first    -NM["W+Jets"].first,
-      UP["background"].first-NM["background"].first,           DN["background"].first-NM["background"].first,
-      UP[zprime].first      -NM[zprime].first      ,           DN[zprime].first      -NM[zprime].first,
-      UP[gluon].first       -NM[gluon].first       ,           DN[gluon].first       -NM[gluon].first
-      ) << endl;
+        file << endl << Form("%-27s", cutname.data());
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", sqrt( totalSys[chan][cut][set].first ), sqrt( totalSys[chan][cut][set].second ) );
+        }
+        file << endl << Form("%-27s", "");
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", 100*sqrt(totalSys[chan][cut][set].first)/nom[chan][cut][set].first, 100*sqrt(totalSys[chan][cut][set].second)/nom[chan][cut][set].first);
+        }
+        if (cutname == "MET Filters" || cutname == ">= 1 jet") file << endl << singleline;
+      } // end cut loop 4 (Total Systematics)
 
-      file<< Form("                           || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-      100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
-      100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
-      100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
-      100.*(UP["Diboson"].first   /NM["Diboson"].first    - 1.)    ,      100.*(DN["Diboson"].first   /NM["Diboson"].first    - 1.),
-      100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
-      100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
-      100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
-      100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
-      ) << endl;
+      /// TOTAL SYSTEMATICS SUMMARY ///
+      string cutname = cutkey;  cutname.erase(0, 1);
+      file << endl << endl << boldline << endl;
+      file << "           Total Systematics: " + cutname + "        [absolute +- on first line and relative +- in \% on second line]\n";
+      file << boldline << endl << Form("%27s", "");
 
-      if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      file << "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
+      for (auto const& p : set_labels) {
+        const char* label = p.second.data();  int len = strlen(label);
+        file << Form("||%*s%*s",11+len/2,label,10-len/2,"");
+      }
 
-    } //end cut loop
-  } //end systematics loop
+      for (auto const& sys : systematics) {
+        if ( delUP[chan].find(sys) == delUP[chan].end() ) continue;
 
-  TString zprime_tex = zprime; zprime_tex.ReplaceAll("_", "\\_");
-  TString gluon_tex = gluon;   gluon_tex.ReplaceAll("_", "\\_");
-  if (systematics.size() > 0) {
+        file << endl << Form("%-27s", sys_labels[sys].data());
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", delUP[chan][sys][cutkey][set].first, delDN[chan][sys][cutkey][set].first);
+        }
+        file << endl << Form("%-27s", "");
+        for (auto const& p : set_labels) {
+          string set = p.first;
+          file << Form("|| %9.2f %9.2f ", 100*delUP[chan][sys][cutkey][set].first/nom[chan][cutkey][set].first, 100*delDN[chan][sys][cutkey][set].first/nom[chan][cutkey][set].first);
+        }
+      } // end systematics loop 2 (Summary of systematics)
 
-    file<<"\n==================================================================================================================================================================================="<< "\n" ;
-    file<<"                                    Total Systematics:        [absolute +- on first line and relative +- in \% on second line] \n"    ;
-    file<<"==================================================================================================================================================================================="<< "\n" ;
-    file<<Form("                           ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||       W+Jets        ||       background     || %-20s|| %-20s",
-    zprime.Data(), gluon.Data() ) << endl;
+      file << endl << Form("%-27s", "Total Sys");
+      for (auto const& p : set_labels) {
+        string set = p.first;
+        file << Form("|| %9.2f %9.2f ", sqrt( totalSys[chan][cutkey][set].first ), sqrt( totalSys[chan][cutkey][set].second ) );
+      }
+      file << endl << Form("%-27s", "");
+      for (auto const& p : set_labels) {
+        string set = p.first;
+        file << Form("|| %9.2f %9.2f ", 100*sqrt(totalSys[chan][cutkey][set].first)/nom[chan][cutkey][set].first, 100*sqrt(totalSys[chan][cutkey][set].second)/nom[chan][cutkey][set].first);
+      }
 
-    for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
-      string cutname = cuts[i_cut].first;
-      map<TString, pair<double, double> > &NM = cuts[i_cut].second ;
-      map<TString, pair<double, double> > &TS = cuts_TotalSysPlusMinus[i_cut].second ;
+      /// LATEX TOTAL SYSTEMATICS ///
+      TString cut_latex = cutname;  cut_latex.ReplaceAll(">=", "$\\geq$");
 
-      file<< Form("%-27s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-             cutname.data(),
-             sqrt(TS["ttbar"].first)     ,     sqrt(TS["ttbar"].second),
-             sqrt(TS["Drell-Yan"].first) ,     sqrt(TS["Drell-Yan"].second),
-             sqrt(TS["Single-Top"].first),     sqrt(TS["Single-Top"].second),
-             sqrt(TS["Diboson"].first)   ,     sqrt(TS["Diboson"].second ),
-             sqrt(TS["W+Jets"].first)    ,     sqrt(TS["W+Jets"].second ),
-             sqrt(TS["background"].first),     sqrt(TS["background"].second),
-             sqrt(TS[zprime].first)      ,     sqrt(TS[zprime].second),
-             sqrt(TS[gluon].first)       ,     sqrt(TS[gluon].second)
-             ) << endl;
+      file << endl << endl << "\\renewcommand{\\arraystretch}{2}\n";
+      file << "\\begin{sidewaystable}\n";
+      file << "\\resizebox{\\textheight}{!}{\n";
+      file << "\\setlength\\tabcolsep{2pt}\n";
+      file << "\\fontsize{3mm}{3mm} \\selectfont \n";
+      file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
+      file << " \\multicolumn{9}{c}{channel : $" + chan + "$} \\\\\n";
+      file << "  \\multicolumn{9}{c}{" + cut_latex + "} \\\\\n";
+      file << "  \\hline\n";
+      file << " Systematic";
+      for (auto const& p : set_latex) file << " & " + p.second;
+      file << " \\\\\n  \\hline\\hline\n";
 
-      file<< Form("                           || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-             100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
-             100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
-             100.*sqrt(TS["Single-Top"].first)/NM["Single-Top"].first,    100.*sqrt(TS["Single-Top"].second)/NM["Single-Top"].first,
-             100.*sqrt(TS["Diboson"].first)   /NM["Diboson"].first   ,    100.*sqrt(TS["Diboson"].second)   /NM["Diboson"].first,
-             100.*sqrt(TS["W+Jets"].first)    /NM["W+Jets"].first    ,    100.*sqrt(TS["W+Jets"].second)    /NM["W+Jets"].first,
-             100.*sqrt(TS["background"].first)/NM["background"].first,    100.*sqrt(TS["background"].second)/NM["background"].first,
-             100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
-             100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
-             ) << endl;
+      for (auto const& sys : systematics) {
+        if ( delUP[chan].find(sys) == delUP[chan].end() ) continue;
 
-      if (cutname == "MET Filters" || cutname == ">= 1 jet")
-        file << "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
+        file << " " + sys_latex[sys];
+        for (auto const& p : set_latex) {
+          string set = p.first;
+          file << Form(" & %.2f %.2f", 100*delUP[chan][sys][cutkey][set].first/nom[chan][cutkey][set].first, 100*delDN[chan][sys][cutkey][set].first/nom[chan][cutkey][set].first);
+        }
+        file << " \\\\\n \\hline\n";
+      } // end systematics loop 3 (Summary of systematics latex)
+
+      file << " Total Systematics";
+      for (auto const& p : set_labels) {
+        string set = p.first;
+        file << Form(" & %.2f -%.2f", 100*sqrt(totalSys[chan][cutkey][set].first)/nom[chan][cutkey][set].first, 100*sqrt(totalSys[chan][cutkey][set].second)/nom[chan][cutkey][set].first);
+      }
+      file << " \\\\\n \\hline\n";
+      file << "  \\end{tabular}}\n";
+      file << "\\end{sidewaystable}" << endl;
     }
-    file<<"\n==================================================================================================================================================================================="<< "\n" ;
-    file<<"           Total Systematics: " << cuts[cut_systematic].first << "        [absolute +- on first line and relative +- in \% on second line] \n";
-    file<<"==================================================================================================================================================================================="<< "\n";
-    file<<Form("                           ||        ttbar        ||      Drell-Yan      ||     Single-Top      ||       Diboson       ||       W+Jets        ||      background     || %-20s|| %-20s",
-    zprime.Data(), gluon.Data() ) << endl;
 
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) { // Loop over systematics sources
-      string sys = systematics[i_sys];
-
-      map<TString, pair<double, double> > &NM = cuts[cut_systematic].second;
-      map<TString, pair<double, double> > &UP = m_cutsUP[sys][cut_systematic].second;
-      map<TString, pair<double, double> > &DN = m_cutsDOWN[sys][cut_systematic].second;
-
-      file<< Form("%-27s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-      sys_labels[systematics[i_sys]].data(),
-      UP["ttbar"].first     -NM["ttbar"].first     ,           DN["ttbar"].first     -NM["ttbar"].first,
-      UP["Drell-Yan"].first -NM["Drell-Yan"].first ,           DN["Drell-Yan"].first -NM["Drell-Yan"].first,
-      UP["Single-Top"].first-NM["Single-Top"].first,           DN["Single-Top"].first-NM["Single-Top"].first,
-      UP["Diboson"].first   -NM["Diboson"].first   ,           DN["Diboson"].first   -NM["Diboson"].first,
-      UP["W+Jets"].first    -NM["W+Jets"].first    ,           DN["W+Jets"].first    -NM["W+Jets"].first,
-      UP["background"].first-NM["background"].first,           DN["background"].first-NM["background"].first,
-      UP[zprime].first      -NM[zprime].first      ,           DN[zprime].first      -NM[zprime].first,
-      UP[gluon].first       -NM[gluon].first       ,           DN[gluon].first       -NM[gluon].first
-      ) << endl;
-
-      file<< Form("                           || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-      100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
-      100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
-      100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
-      100.*(UP["Diboson"].first   /NM["Diboson"].first    - 1.)    ,      100.*(DN["Diboson"].first   /NM["Diboson"].first    - 1.),
-      100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
-      100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
-      100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
-      100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
-      ) << endl;
-    }
-    map<TString, pair<double, double> > &NM = cuts[cut_systematic].second;
-    map<TString, pair<double, double> > &TS = cuts_TotalSysPlusMinus[cut_systematic].second;
-
-    file<< Form("%-27s|| %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-    "Total Sys",
-           sqrt(TS["ttbar"].first)     ,     sqrt(TS["ttbar"].second),
-           sqrt(TS["Drell-Yan"].first) ,     sqrt(TS["Drell-Yan"].second),
-           sqrt(TS["Single-Top"].first),     sqrt(TS["Single-Top"].second),
-           sqrt(TS["Diboson"].first)   ,     sqrt(TS["Diboson"].second),
-           sqrt(TS["W+Jets"].first )   ,     sqrt(TS["W+Jets"].second),
-           sqrt(TS["background"].first),     sqrt(TS["background"].second),
-           sqrt(TS[zprime].first)      ,     sqrt(TS[zprime].second),
-           sqrt(TS[gluon].first)       ,     sqrt(TS[gluon].second)
-           ) << endl;
-
-    file<< Form("                           || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f || %9.2f %9.2f",
-           100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
-           100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
-           100.*sqrt(TS["Single-Top"].first)/NM["Single-Top"].first,    100.*sqrt(TS["Single-Top"].second)/NM["Single-Top"].first,
-           100.*sqrt(TS["Diboson"].first)   /NM["Diboson"].first   ,    100.*sqrt(TS["Diboson"].second)   /NM["Diboson"].first,
-           100.*sqrt(TS["W+Jets"].first)    /NM["W+Jets"].first    ,    100.*sqrt(TS["W+Jets"].second)    /NM["W+Jets"].first,
-           100.*sqrt(TS["background"].first)/NM["background"].first,    100.*sqrt(TS["background"].second)/NM["background"].first,
-           100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
-           100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
-           ) << endl;
-
-    file << endl;
-    file << "\\renewcommand{\\arraystretch}{2}\n";
+    /// LATEX FINAL EVENT CUTFLOW ///
+    file << endl << " \\newpage " << endl;
     file << "\\begin{sidewaystable}\n";
     file << "\\resizebox{\\textheight}{!}{\n";
     file << "\\setlength\\tabcolsep{2pt}\n";
     file << "\\fontsize{3mm}{3mm} \\selectfont \n";
-
-    //file << "  \\begin{tabular}{ |p{4cm}||p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}| }\n";
-    file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c| }\n";
-
-    file << " \\multicolumn{9}{c}{channel : $" + channel + "$} \\\\\n";
-    file << "  \\multicolumn{9}{c}{$" + cuts[cut_systematic].first + "$} \\\\\n";
+    file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c|c|c| }\n";
+    file << " \\multicolumn{11}{c}{channel : $" + chan + "$} \\\\\n";
     file << "  \\hline\n";
-    file << Form(" Systematic & ttbar & Drell-Yan & Single-Top & Diboson & W+Jets & Background & %s & %s \\\\", zprime_tex.Data(), gluon_tex.Data() ) << endl;
-    file << "  \\hline\\hline\n";
-
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) { // Loop over systematics sources
-      string sys = systematics[i_sys];
-
-      map<TString, pair<double, double> > &NM = cuts[cut_systematic].second;
-      map<TString, pair<double, double> > &UP = m_cutsUP[sys][cut_systematic].second;
-      map<TString, pair<double, double> > &DN = m_cutsDOWN[sys][cut_systematic].second;
-
-      file << Form(" %s & %.2f %.2f & %.2f %.2f &  %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f & %.2f %.2f \\\\\n \\hline",
-      sys_latex[systematics[i_sys]].data(),
-      100.*(UP["ttbar"].first     /NM["ttbar"].first      - 1.)    ,      100.*(DN["ttbar"].first     /NM["ttbar"].first      - 1.),
-      100.*(UP["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.)    ,      100.*(DN["Drell-Yan"].first /NM["Drell-Yan"].first  - 1.),
-      100.*(UP["Single-Top"].first/NM["Single-Top"].first - 1.)    ,      100.*(DN["Single-Top"].first/NM["Single-Top"].first - 1.),
-      100.*(UP["Diboson"].first   /NM["Diboson"].first    - 1.)    ,      100.*(DN["Diboson"].first   /NM["Diboson"].first    - 1.),
-      100.*(UP["W+Jets"].first    /NM["W+Jets"].first     - 1.)    ,      100.*(DN["W+Jets"].first    /NM["W+Jets"].first     - 1.),
-      100.*(UP["background"].first/NM["background"].first - 1.)    ,      100.*(DN["background"].first/NM["background"].first - 1.),
-      100.*(UP[zprime].first      /NM[zprime].first       - 1.)    ,      100.*(DN[zprime].first      /NM[zprime].first       - 1.),
-      100.*(UP[gluon].first       /NM[gluon].first        - 1.)    ,      100.*(DN[gluon].first       /NM[gluon].first        - 1.)
-      ) << endl;
+    file << " Cut";
+    for (auto const& p : set_latex) {
+      file << " & " + p.second;
+      if (p.first == "bkg") file << " & Data & Data/Bkg";
     }
+    file << " \\\\\n  \\hline\\hline\n";
 
-    file << Form(" %s & %.2f -%.2f  & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f & %.2f -%.2f \\\\\n \\hline",
-    "Total Systematics",
-           100.*sqrt(TS["ttbar"].first)     /NM["ttbar"].first     ,    100.*sqrt(TS["ttbar"].second)     /NM["ttbar"].first,
-           100.*sqrt(TS["Drell-Yan"].first) /NM["Drell-Yan"].first ,    100.*sqrt(TS["Drell-Yan"].second) /NM["Drell-Yan"].first,
-           100.*sqrt(TS["Single-Top"].first)/NM["Single-Top"].first,    100.*sqrt(TS["Single-Top"].second)/NM["Single-Top"].first,
-           100.*sqrt(TS["Diboson"].first)   /NM["Diboson"].first   ,    100.*sqrt(TS["Diboson"].second)   /NM["Diboson"].first,
-           100.*sqrt(TS["W+Jets"].first)    /NM["W+Jets"].first    ,    100.*sqrt(TS["W+Jets"].second)    /NM["W+Jets"].first,
-           100.*sqrt(TS["background"].first)/NM["background"].first,    100.*sqrt(TS["background"].second)/NM["background"].first,
-           100.*sqrt(TS[zprime].first)      /NM[zprime].first      ,    100.*sqrt(TS[zprime].second)      /NM[zprime].first,
-           100.*sqrt(TS[gluon].first)       /NM[gluon].first       ,    100.*sqrt(TS[gluon].second)       /NM[gluon].first
-           ) << endl; 
+    for (auto const& it_cut : nom[chan]) {
+      string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);  TString cut_latex = cutname;  cut_latex.ReplaceAll(">=", "$\\geq$");
+
+      double ratio = nom[chan][cut]["data"].first/nom[chan][cut]["bkg"].first;
+      double bkgUP = sqrt( nom[chan][cut]["bkg"].second*nom[chan][cut]["bkg"].second + totalSys[chan][cut]["bkg"].first );
+      double bkgDN = sqrt( nom[chan][cut]["bkg"].second*nom[chan][cut]["bkg"].second + totalSys[chan][cut]["bkg"].second );
+
+      file << " " + cut_latex;
+      for (auto const& p : set_latex) {
+        string set = p.first;
+
+        if (systematics.size() > 0) {
+          file << Form(" & $%.1f^{+%.1f}_{-%.1f}$", nom[chan][cut][set].first,
+                                                    sqrt( nom[chan][cut][set].second*nom[chan][cut][set].second + totalSys[chan][cut][set].first ),
+                                                    sqrt( nom[chan][cut][set].second*nom[chan][cut][set].second + totalSys[chan][cut][set].second ) );
+          if (set == "bkg")
+            file << Form(" & $%.0f \\pm %.1f$ & $%.2f^{+%.2f}_{-%.2f}$", nom[chan][cut]["data"].first, nom[chan][cut]["data"].second,
+                          ratio, ratio * sqrt( 1/nom[chan][cut]["data"].first + bkgUP*bkgUP/nom[chan][cut]["bkg"].first/nom[chan][cut]["bkg"].first ),
+                                 ratio * sqrt( 1/nom[chan][cut]["data"].first + bkgDN*bkgDN/nom[chan][cut]["bkg"].first/nom[chan][cut]["bkg"].first ) );
+        }
+        else {
+          file << Form(" & %.1f $\\pm$ %.1f", nom[chan][cut][set].first, nom[chan][cut][set].second);
+          if (set == "bkg")
+            file << Form(" & %.0f $\\pm$ %.1f & %.2f $\\pm$ %.2f", nom[chan][cut]["data"].first, nom[chan][cut]["data"].second,
+                          ratio, ratio * sqrt( 1/nom[chan][cut]["data"].first + nom[chan][cut]["bkg"].second*nom[chan][cut]["bkg"].second
+                                                                              / nom[chan][cut]["bkg"].first/nom[chan][cut]["bkg"].first ) );
+        }
+      }
+      file << " \\\\\n \\hline\n";
+      if (cutname == "MET Filters" || cutname == ">= 1 jet") file << " \\hline\n";
+    } // end cut loop 5 (Final Summary Latex)
+
     file << "  \\end{tabular}}\n";
     file << "\\end{sidewaystable}" << endl;
-  }
 
-  file << endl;
-  file << " \\newpage " << endl;
-  file << "\\begin{sidewaystable}\n";
-  file << "\\resizebox{\\textheight}{!}{\n";
-  file << "\\setlength\\tabcolsep{2pt}\n";
-  file << "\\fontsize{3mm}{3mm} \\selectfont \n";
-  file << "  \\begin{tabular}{ |c||c|c|c|c|c|c|c|c|c|c| }\n";
-  file << " \\multicolumn{11}{c}{channel : $" + channel + "$} \\\\\n";
-  file << "  \\hline\n";
-  file << Form(" Cut & ttbar & Drell-Yan & Single-Top & Diboson & W+Jets & Background & Data & Data/Bkgd & %s & %s \\\\", zprime_tex.Data(), gluon_tex.Data() ) << endl;
-  file << "  \\hline\\hline\n";
+    file.close();
 
-  for (unsigned int i_cut = 0; i_cut != cuts.size(); ++i_cut) {
-    TString cutname = cuts[i_cut].first;
-    cutname.ReplaceAll(">=", "$\\geq$");
-    map<TString, pair<double, double> > NM = cuts[i_cut].second ;
+    if (chan == "ll") continue;
+    // Efficiency File //
+    ofstream efile(dir + chan + "_efficiencies.txt");
 
-    if (systematics.size() > 0) {
-      map<TString, pair<double, double> > TS = cuts_TotalSysPlusMinus[i_cut].second ;
+    ifstream datafile(dir + "logData_" + chan + ".txt");
+    ifstream mcfile  (dir + "logMC_"   + chan + ".txt");
 
-      double bkgUP = sqrt( NM["background"].second*NM["background"].second + TS["background"].first );
-      double bkgDN = sqrt( NM["background"].second*NM["background"].second + TS["background"].second );
-      double ratio = NM["data"].first/NM["background"].first;
+    efile << datafile.rdbuf();  datafile.close();
+    efile << mcfile.rdbuf();    mcfile.close();
 
-      file << Form(" %s & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.0f \\pm %.1f$ & $%.2f^{+%.2f}_{-%.2f}$ & $%.1f^{+%.1f}_{-%.1f}$ & $%.1f^{+%.1f}_{-%.1f}$ \\\\\n  \\hline",
+    efile << endl << boldline << endl;
+    efile << "                                              Cut Flow Table: Summary\n";
+    efile << boldline << endl << Form("%27s", "");
+    for (auto const& p : set_labels) {
+      if (p.first == "bkg") continue;
+      const char* label = p.second.data();  int len = strlen(label);
 
-                  cutname.Data(),
-                  NM["ttbar"].first, sqrt( NM["ttbar"].second*NM["ttbar"].second + TS["ttbar"].first ), sqrt( NM["ttbar"].second*NM["ttbar"].second + TS["ttbar"].second ),
-                  NM["Drell-Yan"].first, sqrt( NM["Drell-Yan"].second*NM["Drell-Yan"].second + TS["Drell-Yan"].first ), sqrt( NM["Drell-Yan"].second*NM["Drell-Yan"].second + TS["Drell-Yan"].second ),
-                  NM["Single-Top"].first, sqrt( NM["Single-Top"].second*NM["Single-Top"].second + TS["Single-Top"].first ), sqrt( NM["Single-Top"].second*NM["Single-Top"].second + TS["Single-Top"].second ),
-                  NM["Diboson"].first, sqrt( NM["Diboson"].second*NM["Diboson"].second + TS["Diboson"].first ), sqrt( NM["Diboson"].second*NM["Diboson"].second + TS["Diboson"].second ),
-                  NM["W+Jets"].first, sqrt( NM["W+Jets"].second*NM["W+Jets"].second + TS["W+Jets"].first ), sqrt( NM["W+Jets"].second*NM["W+Jets"].second + TS["W+Jets"].second ),
-                  NM["background"].first, bkgUP, bkgDN, NM["data"].first, NM["data"].second, ratio, bkgUP/NM["background"].first*ratio, bkgDN/NM["background"].first*ratio,
-                  NM[zprime].first, sqrt( NM[zprime].second*NM[zprime].second + TS[zprime].first ), sqrt( NM[zprime].second*NM[zprime].second + TS[zprime].second ),
-                  NM[gluon].first, sqrt( NM[gluon].second*NM[gluon].second + TS[gluon].first ), sqrt( NM[gluon].second*NM[gluon].second + TS[gluon].second ) ) << endl;
+      efile << Form("|||%*s%*s",9+len/2,label,9-len/2,"");
     }
-    else {
-      file << Form("  %s & %.0f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f & %.1f $\\pm$ %.1f \\\\\n  \\hline",
-                  cutname.Data(), NM["data"].first, NM["data"].second, NM["ttbar"].first, NM["ttbar"].second, NM["Drell-Yan"].first, NM["Drell-Yan"].second,
-                  NM["Single-Top"].first, NM["Single-Top"].second, NM["Diboson"].first, NM["Diboson"].second, NM["W+Jets"].first, NM["W+Jets"].second,
-                  NM["background"].first, NM["background"].second, NM["data"].first/NM["background"].first, NM["data"].first/NM["background"].first*NM["background"].second/NM["background"].first,
-                  NM[zprime].first, NM[zprime].second, NM[gluon].first, NM[gluon].second) << endl;
+    for (auto const& it_cut : nom[chan]) {
+      string cut = it_cut.first, cutname = it_cut.first;  cutname.erase(0, 1);
+
+      efile << endl << Form("%-27s", cutname.data());
+      for (auto const& p : set_labels) {
+        string set = p.first;
+        if (set == "bkg") continue;
+
+        efile << Form("|||     %1.6f     ", nom[chan][cut][set].first / nom[chan][cut_initial][set].first);
+      }
+      if (cutname == "MET Filters" || cutname == ">= 1 jet") efile << endl << singleline;
+    } // end cut loop 6 (Efficiency Summary)
+
+    TString cut_latex = cut_end;  cut_latex.Remove(0, 1);  cut_latex.ReplaceAll(">=", "$\\geq$");
+
+    efile << "\n\n\\begin{center}\n";
+    efile << "  \\begin{tabular}{ |c|c| }\n";
+    efile << "  \\multicolumn{2}{c}{channel "<< chan << " } \\\\\n";
+    efile << "  \\multicolumn{2}{c}{" + cut_latex + "} \\\\\n";
+    efile << "  \\hline\n";
+    efile << "  Process & Efficiency \\\\\n";
+    efile << "  \\hline\\hline\n";
+
+    for (auto const& p : set_latex) {
+      string set = p.first;
+      if (set == "bkg") continue;
+
+      efile << Form("  %s & %1.6f \\\\\n  \\hline", p.second.data(),  nom[chan][cut_end][set].first / nom[chan][cut_initial][set].first) << endl;
     }
-    if (cutname == "MET Filters" || cutname == "$\\geq$ 1 jet")
-      file << "  \\hline\n";
+    efile << "  \\end{tabular}\n";
+    efile << "\\end{center}" << endl;
+
+    efile.close();
+  } // end channel loop
+
+  // Combination Table Event Yields and Signal Efficiencies //
+  ofstream combofile(dir + "combination_tables.txt");
+  combofile << "//////////////////////////" << endl;
+  combofile << "////// EVENT YIELDS //////" << endl;
+  combofile << "//////////////////////////" << endl << endl;
+  combofile << "\\renewcommand{\\arraystretch}{2}\n";
+
+  // use correct cross section for signals
+  for (auto const& chan : channels) {
+    for (auto const& it_cut : nom[chan]) {
+      string cut = it_cut.first;
+
+      nom[chan][cut][zprime].first      *= xs_zprime;  nom[chan][cut][zprime].second      *= xs_zprime;
+      totalSys[chan][cut][zprime].first *= xs_zprime;  totalSys[chan][cut][zprime].second *= xs_zprime;
+      nom[chan][cut][gluon].first       *= xs_gluon;   nom[chan][cut][gluon].second       *= xs_gluon;
+      totalSys[chan][cut][gluon].first  *= xs_gluon;   totalSys[chan][cut][gluon].second  *= xs_gluon;
+    }
   }
 
-  file << "  \\end{tabular}}\n";
-  file << "\\end{sidewaystable}" << endl;
+  // re-arrange order of set vectors (move signals to beginning)
+  set_labels.insert( set_labels.begin(), *(--set_labels.end()) );  set_labels.pop_back();
+  set_labels.insert( set_labels.begin(), *(--set_labels.end()) );  set_labels.pop_back();
+  set_latex. insert( set_latex.begin(),  *(--set_latex.end()) );   set_latex. pop_back();
+  set_latex. insert( set_latex.begin(),  *(--set_latex.end()) );   set_latex. pop_back();
 
-  file.close();
+  for (auto const& it_cut : nom["mm"]) {
+    string cut = it_cut.first;
 
-  ofstream e_outfile( mcFile.substr(0, mcFile.find_last_of('/')+1) + channel + "_efficiencies.txt" );
+    if (cut < "Q= 1 Jet, = 0 btags, metR") continue;
+    TString cutname = cut;  cutname.Remove(0, 1);  cutname.ReplaceAll(">=", "$\\geq$");
 
-  ifstream data_infile(dataFile);
-  ifstream mc_infile(mcFile);
+    combofile << "\\begin{tabular}{ |c|c|c|c|c| }\n";
+    combofile << "\\multicolumn{5}{c}{" + cutname + "} \\\\\n";
+    combofile << "\\hline\n";
+    combofile << "Sample & $\\mu\\mu$ Channel & ee Channel & e$\\mu$ Channel & Combined \\\\\n";
+    combofile << "\\hline\n";
 
-  e_outfile << data_infile.rdbuf();
-  data_infile.close();
-  e_outfile << mc_infile.rdbuf();
-  mc_infile.close();
+    for (auto const& p : set_latex) {
+      string set = p.first;
+      combofile << p.second;
+      for (auto const& chan : channels)
+        combofile << Form(" & $%.1f^{+%.1f}_{-%.1f}$", nom[chan][cut][set].first, sqrt( nom[chan][cut][set].second*nom[chan][cut][set].second + totalSys[chan][cut][set].first ),
+                                                                                  sqrt( nom[chan][cut][set].second*nom[chan][cut][set].second + totalSys[chan][cut][set].second ) );
+      combofile << " \\\\\n" << endl;
+      if (set == gluon || set == "wjet") combofile << "\\hline\n";
+    }
+    combofile << "Data";
+    for (auto const& chan : channels)
+      combofile << Form(" & $%.0f \\pm %.1f$", nom[chan][cut]["data"].first, nom[chan][cut]["data"].second);
+    combofile << " \\\\\n" << endl;
 
-  e_outfile << "\n===================================================================================================================================================================="<< "\n" ;
-  e_outfile << "                                              Cut Flow Table: Summary\n" ;
-  e_outfile << "===================================================================================================================================================================="<< "\n" ;
-  e_outfile << Form("                            |||    ttbar   |||  Drell-Yan ||| Single-Top |||   Diboson  |||   W+Jets   ||| %-20s ||| %-20s", zprime.Data(), gluon.Data() ) << endl;
+    combofile << "Data/Bkg";
+    for (auto const& chan : channels) {
+      double ratio = nom[chan][cut]["data"].first / nom[chan][cut]["bkg"].first;
+      double bkgUP = sqrt( nom[chan][cut]["bkg"].second*nom[chan][cut]["bkg"].second + totalSys[chan][cut]["bkg"].first );
+      double bkgDN = sqrt( nom[chan][cut]["bkg"].second*nom[chan][cut]["bkg"].second + totalSys[chan][cut]["bkg"].second );
 
-  for (vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut = cuts.begin(); i_cut != cuts.end(); ++i_cut) {
-    string cutname = i_cut->first;
-    e_outfile << Form("%-27s |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f  |||  %1.6f",
-                cutname.data(), i_cut->second["ttbar"].first/m_total["ttbar"].first, i_cut->second["Drell-Yan"].first/m_total["Drell-Yan"].first,
-                i_cut->second["Single-Top"].first/m_total["Single-Top"].first, i_cut->second["Diboson"].first/m_total["Diboson"].first, i_cut->second["W+Jets"].first/m_total["W+Jets"].first,
-                i_cut->second[zprime].first/m_total[zprime].first, i_cut->second[gluon].first/m_total[gluon].first ) << endl;
+      combofile << Form(" & $%.2f^{+%.2f}_{-%.2f}$", ratio,
+                         ratio * sqrt( 1/nom[chan][cut]["data"].first + bkgUP*bkgUP/nom[chan][cut]["bkg"].first/nom[chan][cut]["bkg"].first ),
+                         ratio * sqrt( 1/nom[chan][cut]["data"].first + bkgDN*bkgDN/nom[chan][cut]["bkg"].first/nom[chan][cut]["bkg"].first ) );
+    }
+    combofile << " \\\\\n" << endl;
+    combofile << "\\hline\n";
 
-    if (cutname == "MET Filters" || cutname == ">= 1 jet")
-      e_outfile << "--------------------------------------------------------------------------------------------------------------------------------------------------------------------" << endl;
+    combofile << "S(Z$'$)/Bkg";
+    for (auto const& chan : channels)
+      combofile << Form(" & %.5f", nom[chan][cut][zprime].first / nom[chan][cut]["bkg"].first);
+    combofile << " \\\\\n" << endl;
+
+    combofile << "S($\\textrm{g}_{\\textrm{kk}}$)/Bkg";
+    for (auto const& chan : channels)
+      combofile << Form(" & %.5f", nom[chan][cut][gluon].first / nom[chan][cut]["bkg"].first);
+    combofile << " \\\\\n" << endl;
+    combofile << "\\hline\n";
+
+    combofile << "S(Z$'$)/$\\sqrt{\\textrm{S(Z$'$) + Bkg}}$";
+    for (auto const& chan : channels)
+      combofile << Form(" & %.3f", nom[chan][cut][zprime].first / sqrt( nom[chan][cut][zprime].first + nom[chan][cut]["bkg"].first ) );
+    combofile << " \\\\\n" << endl;
+
+    combofile << "S($\\textrm{g}_{\\textrm{kk}})/\\sqrt{\\textrm{S(g}_{\\textrm{kk}}\\textrm{) + Bkg}}$";
+    for (auto const& chan : channels)
+      combofile << Form(" & %.3f", nom[chan][cut][gluon].first / sqrt( nom[chan][cut][gluon].first + nom[chan][cut]["bkg"].first ) );
+    combofile << " \\\\\n" << endl;
+    combofile << "\\hline\n";
+
+    combofile << "\\end{tabular}\n" << endl;
+  } //end cut loop
+
+  combofile << "/////////////////////////////////" << endl;
+  combofile << "////// SIGNAL EFFICIENCIES //////" << endl;
+  combofile << "/////////////////////////////////" << endl << endl;
+
+  vector<string> v_gkk = { "gluon_M-500",  "gluon_M-750",  "gluon_M-1000", "gluon_M-1250", "gluon_M-1500", "gluon_M-2000",
+                            "gluon_M-2500", "gluon_M-3000", "gluon_M-3500", "gluon_M-4000", "gluon_M-4500", "gluon_M-5000" };
+
+  vector<string> v_zp1 = { "zprime_M-500_W-5",   "zprime_M-750_W-7p5", "zprime_M-1000_W-10", "zprime_M-1250_W-12p5", "zprime_M-1500_W-15", "zprime_M-2000_W-20",
+                            "zprime_M-2500_W-25", "zprime_M-3000_W-30", "zprime_M-3500_W-35", "zprime_M-4000_W-40",   "zprime_M-4500_W-45", "zprime_M-5000_W-50" };
+
+  vector<string> v_zp10 = { "zprime_M-500_W-50",   "zprime_M-750_W-75",   "zprime_M-1000_W-100", "zprime_M-1250_W-125", "zprime_M-1500_W-150", "zprime_M-2000_W-200",
+                             "zprime_M-2500_W-250", "zprime_M-3000_W-300", "zprime_M-3500_W-350", "zprime_M-4000_W-400", "zprime_M-4500_W-450", "zprime_M-5000_W-500" };
+
+  vector<string> v_zp30 = { "zprime_M-1000_W-300", "zprime_M-2000_W-600", "zprime_M-3000_W-900", "zprime_M-4000_W-1200", "zprime_M-5000_W-1500" };
+
+  map<string, vector<string> > m_sigs = { {"$\\textrm{g}_{\\textrm{kk}}$", v_gkk}, {"Z$'$ (1\\%)", v_zp1}, {"Z$'$ (10\\%)", v_zp10}, {"Z$'$ (30\\%)", v_zp30} };
+
+  combofile << "\\begin{tabular}{ |c|c|c|c|c|c| }\n";
+  combofile << "\\hline\n";
+  combofile << "\\multicolumn{2}{|c|}{Signal} & $\\mu\\mu$ Channel & ee Channel & e$\\mu$ Channel & Combined \\\\\n";
+  combofile << "\\hline\n";
+
+  for (auto const& i_sig : m_sigs) {
+    combofile << Form("\\multirow{%i}{*}{%s} ", int(i_sig.second.size()), i_sig.first.data());
+    for (auto const& sig : i_sig.second) {
+
+      TString tsig = sig;
+      int index = tsig.Contains("gluon") ? tsig.Length() : tsig.Last('_');
+      TString mass = tsig(tsig.Index("M-")+2, index-tsig.Index("M-")-2);
+
+      double mm_eff = nom["mm"][cut_end][sig].first / nom["mm"][cut_initial][sig].first * 100;
+      double ee_eff = nom["ee"][cut_end][sig].first / nom["ee"][cut_initial][sig].first * 100;
+      double em_eff = nom["em"][cut_end][sig].first / nom["em"][cut_initial][sig].first * 100;
+
+      combofile << Form("& %s & %.4f & %.4f & %.4f & %.4f \\\\", mass.Data(), mm_eff, ee_eff, em_eff, mm_eff+ee_eff+em_eff) << endl;
+    }
+    combofile << "\\hline\n";
   }
+  combofile << "\\end{tabular}\n" << endl;
 
-  e_outfile << "\\newpage" << endl;
-  e_outfile << "\n\\begin{center}\n";
-  e_outfile << "  \\begin{tabular}{ |c|c| }\n";
-  e_outfile << "  \\multicolumn{2}{c}{channel "<< channel << " } \\\\\n";
-  e_outfile << "  \\multicolumn{2}{c}{$\\geq$ 2 Jets, = 1 btag} \\\\\n";
-  e_outfile << "  \\hline\n";
-  e_outfile << "  Process & Efficiency \\\\\n";
-  e_outfile << "  \\hline\\hline\n";
-
-  map<TString, pair<double, double> >& m_last = cuts.back().second;
-
-  e_outfile << Form("  ttbar & %1.6f \\\\\n  \\hline", m_last["ttbar"].first/m_total["ttbar"].first) << endl;
-  e_outfile << Form("  Drell-Yan & %1.6f \\\\\n  \\hline", m_last["Drell-Yan"].first/m_total["Drell-Yan"].first) << endl;
-  e_outfile << Form("  Single-Top & %1.6f \\\\\n  \\hline", m_last["Single-Top"].first/m_total["Single-Top"].first) << endl;
-  e_outfile << Form("  Diboson & %1.6f \\\\\n  \\hline", m_last["Diboson"].first/m_total["Diboson"].first) << endl;
-  e_outfile << Form("  W+Jets & %1.6f \\\\\n  \\hline", m_last["W+Jets"].first/m_total["W+Jets"].first) << endl;
-  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", zprime_tex.Data(), m_last[zprime].first/m_total[zprime].first) << endl;
-  e_outfile << Form("  %-20s & %1.6f \\\\\n  \\hline", gluon_tex.Data(), m_last[gluon].first/m_total[gluon].first) << endl;
-
-  e_outfile << "  \\end{tabular}\n";
-  e_outfile << "\\end{center}" << endl;
-
-  e_outfile.close();
+  combofile.close();
 }
 
-//vector(cut_name, map(dataset, (N, error) ) )
-void readFile(const string& fileName, vector<pair<string, map<TString, pair<double, double> > > >& cuts, string& channel) {
+//map(cut, map(dataset, (N, stat error) ) )
+void readFile(const string& fileName, map<string, map<string, pair<double, double> > >& cuts) {
 
   ifstream file(fileName);
+  if ( !file.is_open() ) cout << fileName + " not found!" << endl;
+  //cout << " =====> Reading file:  " << fileName << endl ;
+
   string line;
   TString dataset;
   double weight=-1;
-  vector<pair<string, map<TString, pair<double, double> > > >::iterator i_cut;
+  char cut_order = 'A';  //cheesy way to keep cut order in map
+  while (getline(file, line)) {
 
-  cout << " =====> Reading file:  " << fileName << endl ;
-
-  while (getline(file, line)){
-
-    if (line.length() > 0){
-      while (line.at(0) == ' ') line.erase(0, 1);
-    }
+    if (line.length() > 0) { while (line.at(0) == ' ') line.erase(0, 1); }
 
     int delim_pos = line.find(' ');
     if (delim_pos == -1) continue;
@@ -561,16 +646,6 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
 
       line.erase(0, delim_pos+1);
       weight = stod(line);
-
-      //begin cut interator
-      i_cut = cuts.begin();
-    }
-    else if (str == "Channel:") {
-      delim_pos = line.length()-1;
-      while (line.at(delim_pos) != ' ') delim_pos--;
-
-      line.erase(0, delim_pos+1);
-      channel = line;
     }
     else if (str == "Cut") {
       delim_pos = line.length()-1;
@@ -578,7 +653,8 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
 
       line.erase(0, delim_pos+1);
       dataset = line.data();
-      cout << "Filling " << dataset << " using weight " << weight << endl;
+      //cout << "Filling " << dataset << " using weight " << weight << endl;
+      cut_order = 'A';  //reset cut order
     }
     else {
       delim_pos = line.find("|||");
@@ -588,7 +664,8 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       if (str == "") continue;
 
       while (str.at(str.length()-1) == ' ') str.erase(str.length()-1, str.length());
-      string cut_name = str;
+      string cut = str;
+      cut = cut_order + cut;  cut_order++;
 
       line.erase(0, delim_pos + 3);
       while (line.at(0) == ' ') line.erase(0, 1);
@@ -599,43 +676,38 @@ void readFile(const string& fileName, vector<pair<string, map<TString, pair<doub
       double N = stod(str);
 
       //data
-      if ( dataset.Contains("Muon", TString::kIgnoreCase) || dataset.Contains("Ele", TString::kIgnoreCase) ) {
-        cuts.push_back( make_pair(cut_name, map<TString, pair<double, double> >()) );
-        map<TString, pair<double, double> >& m = cuts.back().second;
-        m["data"] = make_pair( N, sqrt(N) );
-      }
+      if ( dataset.Contains("Muon", TString::kIgnoreCase) || dataset.Contains("Ele", TString::kIgnoreCase) )
+        cuts[cut]["data"] = make_pair( N, sqrt(N) );
 
       //signal or background
       else {
-        TString key;
-        map<TString, pair<double, double> >& m = i_cut->second;
+        string key;
 
-        if ( dataset.Contains("ttbar", TString::kIgnoreCase) )     key = "ttbar";
-        else if ( dataset.Contains("dy", TString::kIgnoreCase) )   key = "Drell-Yan";
-        else if ( dataset.Contains("wjet", TString::kIgnoreCase) ) key = "W+Jets";
+        if      ( dataset.Contains("ttbar", TString::kIgnoreCase) ) key = "ttbar";
+        else if ( dataset.Contains("dy", TString::kIgnoreCase) )    key = "dy";
+        else if ( dataset.Contains("wjet", TString::kIgnoreCase) )  key = "wjet";
         else if ( dataset.Contains("st", TString::kIgnoreCase)
-               || dataset.Contains("sat", TString::kIgnoreCase) )  key = "Single-Top";
+               || dataset.Contains("sat", TString::kIgnoreCase) )   key = "st";
         else if ( dataset.Contains("ww", TString::kIgnoreCase)
                || dataset.Contains("wz", TString::kIgnoreCase)
-               || dataset.Contains("zz", TString::kIgnoreCase) )   key = "Diboson";
-        else                                                       key = dataset;
+               || dataset.Contains("zz", TString::kIgnoreCase) )    key = "vv";
+        else                                                        key = dataset.Data();
 
-        if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );
+        if ( cuts[cut].find(key) == cuts[cut].end() ) cuts[cut][key] = make_pair( N, weight * sqrt(N/weight) );
         else {
-          m[key].first += N;
-          m[key].second = sqrt( m[key].second*m[key].second + weight*N );
+          cuts[cut][key].first += N;
+          cuts[cut][key].second = sqrt( cuts[cut][key].second*cuts[cut][key].second + weight*N );
         }
 
         //total background
         if ( !dataset.Contains("zprime", TString::kIgnoreCase) && !dataset.Contains("gluon", TString::kIgnoreCase) ) {
-          key = "background";
-          if ( m.find(key) == m.end() ) m[key] = make_pair( N, weight * sqrt(N/weight) );
+          key = "bkg";
+          if ( cuts[cut].find(key) == cuts[cut].end() ) cuts[cut][key] = make_pair( N, weight * sqrt(N/weight) );
           else {
-            m[key].first += N;
-            m[key].second = sqrt( m[key].second*m[key].second + weight*N );
+            cuts[cut][key].first += N;
+            cuts[cut][key].second = sqrt( cuts[cut][key].second*cuts[cut][key].second + weight*N );
           }
         }
-        ++i_cut;
       }
     }
   }
@@ -656,4 +728,3 @@ double delta(double delta1, double delta2, string plus_minus) {
   }
   return del;
 }
-
