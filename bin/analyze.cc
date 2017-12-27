@@ -29,21 +29,15 @@
 using namespace std;
 
 void FillHist1D(const TString& histName, const Double_t& value, const double& weight);
+void FillHist2D(const TString& histName, const Double_t& value1, const Double_t& value2, const double& weight);
 void setPars(const string& parFile); 
 void setWeight(const string& parFile); 
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
 bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
 double rms_pm(const vector<float>& vec);
-void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
-               const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
-               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
-               const TLorentzVector& jet0, const TLorentzVector& jet1, const float& jet0btag, const float& jet1btag, const int& nbtag,
-               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
-               const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
-               const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet,
-               const float& dphi_jet0met, const float& dphi_jet1met, const int& nPV);
 
 map<TString, TH1*> m_Histos1D;
+map<TString, TH2*> m_Histos2D;
 
 //parameters- edit in pars.txt
 bool isMC;
@@ -211,7 +205,6 @@ int main(int argc, char* argv[]){
   v_cuts[zerobtagCut1jet]=make_pair("= 1 Jet, = 0 btags",0.);  v_cuts[onebtagCut1jet]=make_pair("= 1 Jet, >= 1 btag",0.);
   v_cuts[zerobtagCut2jets]=make_pair(">= 2 Jets, = 0 btags",0.); v_cuts[morethan0btagCut2jets]=make_pair(">= 2 Jets, >= 1 btag",0.);
 
-
   TIter nextkey(inFile->GetListOfKeys());
   TKey* key;
   while ( (key = (TKey*)nextkey()) ) {
@@ -226,6 +219,9 @@ int main(int argc, char* argv[]){
     //else if (keyname=="filter_failed")
   }
   if ( (int) (v_cuts[countMet].second + 0.5) != (int) (weight0 * nEntries + 0.5) ) { cout << "hadd added incorrectly." << endl; return -1; }
+
+  vector<pair<string, double> > v_llcuts = v_cuts, v_ljcuts = v_cuts, v_jjcuts = v_cuts;
+  vector<pair<string, double> >* v_cuts_ptr = &v_llcuts;
 
   //ttbar reweighting
   if ( inName.Contains("ttbar", TString::kIgnoreCase) && topPtWeight!="UP" ) {
@@ -429,6 +425,44 @@ int main(int argc, char* argv[]){
   hname = "jetPt_bTagM_udsg";
   m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
 
+  hname = "jetEta_b";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_c";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_udsg";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagL_b";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagL_c";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagL_udsg";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagM_b";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagM_c";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+  hname = "jetEta_bTagM_udsg";
+  m_Histos1D[hname] = new TH1D(hname,hname,100,-5,5);
+
+  hname = "jetPtDR_b";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_c";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_udsg";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagL_b";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagL_c";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagL_udsg";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagM_b";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagM_c";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+  hname = "jetPtDR_bTagM_udsg";
+  m_Histos2D[hname] = new TH2D(hname,hname,100,0,5,200,0,2000);
+
   hname = "t_pt";
   m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
   hname = "tbar_pt";
@@ -465,10 +499,10 @@ int main(int argc, char* argv[]){
   //T->SetBranchAddress("trig_prescale", &trig_prescale);
   //T->SetBranchAddress("trig_name", &trig_name);
 
-  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen], gen_index[nGen];
+  int nGen=MAXGEN, gen_status[nGen], gen_PID[nGen]; //, gen_index[nGen], gen_mother0[nGen], gen_mother1[nGen];
   float gen_pt[nGen], gen_mass[nGen], gen_eta[nGen], gen_phi[nGen];
 
-  if (inName.Contains("ttbar", TString::kIgnoreCase)) {
+  if (inName.Contains("ttbar", TString::kIgnoreCase)) { //|| inName.Contains("zprime", TString::kIgnoreCase) || inName.Contains("gluon", TString::kIgnoreCase)) {
     T->SetBranchAddress("nGen", &nGen);
     T->SetBranchAddress("gen_status", gen_status);
     T->SetBranchAddress("gen_PID", gen_PID);
@@ -476,7 +510,9 @@ int main(int argc, char* argv[]){
     T->SetBranchAddress("gen_mass", gen_mass);
     T->SetBranchAddress("gen_eta", gen_eta);
     T->SetBranchAddress("gen_phi", gen_phi);
-    T->SetBranchAddress("gen_index",  gen_index);
+//    T->SetBranchAddress("gen_index",  gen_index);
+//    T->SetBranchAddress("gen_mother0",  gen_mother0);
+//    T->SetBranchAddress("gen_mother1",  gen_mother1);
   }
 
   char lep0flavor, lep1flavor;
@@ -598,11 +634,25 @@ int main(int argc, char* argv[]){
         if      (q2 == "UP")   weight *= TMath::MaxElement(wgt_env->size(), &wgt_env->at(0));
         else if (q2 == "DOWN") weight *= TMath::MinElement(wgt_env->size(), &wgt_env->at(0));
       }
+/*
+      //leptonic, semi-leptonic, or hadronic channel from gen information
+      if (inName.Contains("ttbar", TString::kIgnoreCase) || inName.Contains("gluon", TString::kIgnoreCase) || inName.Contains("zprime", TString::kIgnoreCase)) {
+        TString w_indices = "";
+        for (int i=0; i<nGen; i++) { if (abs(gen_PID[i]) == 24) w_indices += to_string(gen_index[i]) + ", "; }
+        int num_wl=0;
+        for (int i=0; i<nGen; i++) {
+          if ( w_indices.Contains( to_string(gen_mother0[i]) + "," ) &&
+             ( (abs(gen_PID[i]) == 11 || abs(gen_PID[i]) == 13 || abs(gen_PID[i]) == 15) ) ) num_wl++;
+        }
+        if      (num_wl == 2) v_cuts_ptr = &v_llcuts;
+        else if (num_wl == 1) v_cuts_ptr = &v_ljcuts;
+        else                  v_cuts_ptr = &v_jjcuts;
+      }
+*/
     }
-
     if (channel == "mm") {
       if (lep0flavor == 'm' && lep1flavor == 'm') {
-        v_cuts[channelCut].second += weight;
+        v_cuts[channelCut].second += weight;  v_cuts_ptr->at(channelCut).second += weight;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
@@ -621,7 +671,7 @@ int main(int argc, char* argv[]){
           FillHist1D("muTrigSf", muTrigSf, 1.);
           FillHist1D("muTrackSf", muTrackSf, 1.);
         }
-        v_cuts[trigCut].second += weight;
+        v_cuts[trigCut].second += weight;  v_cuts_ptr->at(trigCut).second += weight;
 
         if ( !muon_IsTightID[0] || !muon_IsTightID[1] ) continue;
         if ( muon_pt[0] < 53 || muon_pt[1] < 25 ) continue;
@@ -634,14 +684,14 @@ int main(int argc, char* argv[]){
           weight *= muIdSf;
           FillHist1D("muIdSf", muIdSf, 1.);
         }
-        v_cuts[lepkinCut].second += weight;
+        v_cuts[lepkinCut].second += weight;  v_cuts_ptr->at(lepkinCut).second += weight;
 
         if (muon_charge[0]*muon_charge[1] > 0) continue;
-        v_cuts[signCut].second += weight;
+        v_cuts[signCut].second += weight;  v_cuts_ptr->at(signCut).second += weight;
 
         //use these events for em channel
         if ( nEle>0 && ele_TightID[0] && ele_pt[0]>25 && fabs(ele_eta[0])<2.5 ) continue;
-        v_cuts[thirdLepCut].second += weight;
+        v_cuts[thirdLepCut].second += weight;  v_cuts_ptr->at(thirdLepCut).second += weight;
 
         lep0.SetPtEtaPhiM(muon_pt[0], muon_eta[0], muon_phi[0], MUONMASS);
         lep1.SetPtEtaPhiM(muon_pt[1], muon_eta[1], muon_phi[1], MUONMASS);
@@ -652,7 +702,7 @@ int main(int argc, char* argv[]){
     }
     else if (channel == "ee") {
       if (lep0flavor == 'e' && lep1flavor == 'e') {
-        v_cuts[channelCut].second += weight;
+        v_cuts[channelCut].second += weight;  v_cuts_ptr->at(channelCut).second += weight;
 
         //HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_ trigger
         if ( !(*trig_passed)[7] ) continue;
@@ -669,7 +719,7 @@ int main(int argc, char* argv[]){
           FillHist1D("eTrigSf", eTrigSf0*eTrigSf1, 1.);
           FillHist1D("eRecoSf", eRecoSf, 1.);
         }
-        v_cuts[trigCut].second += weight;
+        v_cuts[trigCut].second += weight;  v_cuts_ptr->at(trigCut).second += weight;
 
         if ( !ele_TightID[0] || !ele_TightID[1] ) continue;
         if ( ele_pt[0] < 45 || ele_pt[1] < 36 ) continue;
@@ -682,14 +732,14 @@ int main(int argc, char* argv[]){
           weight *= eIdSf;
           FillHist1D("eIdSf", eIdSf, 1.);
         }
-        v_cuts[lepkinCut].second += weight;
+        v_cuts[lepkinCut].second += weight;  v_cuts_ptr->at(lepkinCut).second += weight;
 
         if (ele_charge[0]*ele_charge[1] > 0) continue;
-        v_cuts[signCut].second += weight;
+        v_cuts[signCut].second += weight;  v_cuts_ptr->at(signCut).second += weight;
 
         //use these events for em channel
         if ( nMuon>0 && muon_IsTightID[0] && muon_pt[0]>53 && fabs(muon_eta[0])<2.4 ) continue;
-        v_cuts[thirdLepCut].second += weight;
+        v_cuts[thirdLepCut].second += weight;  v_cuts_ptr->at(thirdLepCut).second += weight;
 
         lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
         lep1.SetPtEtaPhiM(ele_pt[1], ele_eta[1], ele_phi[1], ELEMASS);
@@ -700,7 +750,7 @@ int main(int argc, char* argv[]){
     }
     else {
       if (lep0flavor != lep1flavor) {
-        v_cuts[channelCut].second += weight;
+        v_cuts[channelCut].second += weight;  v_cuts_ptr->at(channelCut).second += weight;
 
         //HLT_Mu50 or HLT_TkMu50 triggers
         if ( !(*trig_passed)[1] && !(*trig_passed)[2] ) continue;
@@ -716,7 +766,7 @@ int main(int argc, char* argv[]){
           FillHist1D("muTrigSf", muTrigSf, 1.);
           FillHist1D("muTrackSf", muTrackSf, 1.);
         }
-        v_cuts[trigCut].second += weight;
+        v_cuts[trigCut].second += weight;  v_cuts_ptr->at(trigCut).second += weight;
 
         if ( !muon_IsTightID[0] || !ele_TightID[0] ) continue;
         if ( muon_pt[0] < 53 || ele_pt[0] < 25 ) continue;
@@ -734,12 +784,12 @@ int main(int argc, char* argv[]){
           FillHist1D("eIdSf", eIdSf, 1.);
         }
 
-        v_cuts[lepkinCut].second += weight;
+        v_cuts[lepkinCut].second += weight;  v_cuts_ptr->at(lepkinCut).second += weight;
 
         if (ele_charge[0]*muon_charge[0] > 0) continue;
-        v_cuts[signCut].second += weight;
+        v_cuts[signCut].second += weight;  v_cuts_ptr->at(signCut).second += weight;
 
-        v_cuts[thirdLepCut].second += weight;
+        v_cuts[thirdLepCut].second += weight;  v_cuts_ptr->at(thirdLepCut).second += weight;
 
         if (lep0flavor=='e') {
           lep0.SetPtEtaPhiM(ele_pt[0], ele_eta[0], ele_phi[0], ELEMASS);
@@ -752,11 +802,11 @@ int main(int argc, char* argv[]){
       }
       else continue;
     }
-    v_cuts[dilepmassCut].second += weight;
+    v_cuts[dilepmassCut].second += weight;  v_cuts_ptr->at(dilepmassCut).second += weight;
     double dilepmass = (lep0+lep1).M();
 
     if ( lep0flavor==lep1flavor && (76<dilepmass && dilepmass<106) ) continue;
-    v_cuts[dilepVetoCut].second += weight;
+    v_cuts[dilepVetoCut].second += weight;  v_cuts_ptr->at(dilepVetoCut).second += weight;
 
     string era = eras[0];
     for( map<string, pair<int, int> >::const_iterator it = m_IOV.begin(); it != m_IOV.end(); ++it ) {
@@ -767,6 +817,7 @@ int main(int argc, char* argv[]){
     vector<pair<int, double> > jet_index_corrpt;
     TLorentzVector minjet0, minjet1;
     double rmin0=99, rmin1=99;
+    int minjet0idx=-1, minjet1idx=-1;
     double ctype1_x=0, ctype1_y=0;
     double rl0cleanj=-1, rl1cleanj=-1, cleanjet0pt=-1, cleanjet1pt=-1;
 
@@ -863,10 +914,12 @@ int main(int argc, char* argv[]){
         if (lep0.DeltaR(jet) < rmin0) {
           rmin0 = lep0.DeltaR(jet);
           minjet0 = jet;
+          minjet0idx = i;
         }
         if (lep1.DeltaR(jet) < rmin1) {
           rmin1 = lep1.DeltaR(jet);
           minjet1 = jet;
+          minjet1idx = i;
         }
         if (jet_clean[i] == 'l' || jet_clean[i] == 'b') { rl0cleanj = lep0.DeltaR(jet); cleanjet0pt = jet.Pt(); }
         if (jet_clean[i] == 's' || jet_clean[i] == 'b') { rl1cleanj = lep1.DeltaR(jet); cleanjet1pt = jet.Pt(); }
@@ -885,7 +938,7 @@ int main(int argc, char* argv[]){
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
     if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue;
-    v_cuts[ptrelCut].second += weight;
+    v_cuts[ptrelCut].second += weight;  v_cuts_ptr->at(ptrelCut).second += weight;
 
     if (setSUMDRCut.Contains("ON",TString::kIgnoreCase) ) {
       if (rmin0+rmin1 >= 2.) continue;
@@ -893,15 +946,15 @@ int main(int argc, char* argv[]){
       if (setSUMDRCut=="ONnb") { if (rmin0+rmin1 < 1.)  continue; }
     }
     else if (setSUMDRCut=="REVERSE") { if (rmin0+rmin1 < 2.) continue; }
-    v_cuts[dRCut].second += weight;
+    v_cuts[dRCut].second += weight;  v_cuts_ptr->at(dRCut).second += weight;
 
     sort(jet_index_corrpt.begin(), jet_index_corrpt.end(), sortJetPt);
     int jet0index = jet_index_corrpt[0].first, jet1index = jet_index_corrpt[1].first;
     double jet0pt = jet_index_corrpt[0].second, jet1pt = jet_index_corrpt[1].second;
 
     //at least one jet 
-    if ( jet0pt < 100 || fabs(jet_eta[jet0index]) > 2.4 ) continue;
-    v_cuts[jetCut].second += weight;
+    if (jet0pt < 100) continue;
+    v_cuts[jetCut].second += weight;  v_cuts_ptr->at(jetCut).second += weight;
 
     double met_corrpx = met_px - ctype1_x;
     double met_corrpy = met_py - ctype1_y;
@@ -913,36 +966,14 @@ int main(int argc, char* argv[]){
     jet0.SetPtEtaPhiM(jet0pt, jet_eta[jet0index], jet_phi[jet0index], jet0pt / jet_pt[jet0index] * jet_mass[jet0index]);
     jet1.SetPtEtaPhiM(jet1pt, jet_eta[jet1index], jet_phi[jet1index], jet1pt / jet_pt[jet1index] * jet_mass[jet1index]);
 
-    double minjet0pt = minjet0.Pt();
-    double minjet1pt = minjet1.Pt();
-    double masslmin0 = (lep0+minjet0).M();
-    double masslmin1 = (lep1+minjet1).M();
-
-    double deta_lep = lep0.Eta() - lep1.Eta();
-    double deta_lepJet = (lep0+minjet0).Eta() - (lep1+minjet1).Eta();
-
-    double dphi_jet0met = fabs( deltaPhi( jet0.Phi(), met.Phi() ) );
-    double dphi_jet1met = fabs( deltaPhi( jet1.Phi(), met.Phi() ) );
-
-    double masslljjm = (lep0+lep1+jet0+jet1+met).M();
-    if (masslljjm>=5000) masslljjm = 4999.9;
-
     int nGoodMuon=0;
-    for (int i=0; i<nMuon; i++) {
-      if (muon_IsTightID[i]) nGoodMuon++;
-    }
+    for (int i=0; i<nMuon; i++) { if (muon_IsTightID[i]) nGoodMuon++; }
 
     int nGoodEle=0;
-    for (int i=0; i<nEle; i++) {
-      if (ele_TightID[i]) nGoodEle++;
-    }
+    for (int i=0; i<nEle; i++) { if (ele_TightID[i]) nGoodEle++; }
 
-    double sT = hT+lep0.Pt()+lep1.Pt();
-    double sT_met = sT + met_corrpt;
-    if (sT_met>=5000) sT_met = 4999.9;
-
-    bool jet0btag = jet_btag[jet0index] > btagWP_L && fabs(jet_eta[jet0index]) < 2.4;
-    bool jet1btag = jet_btag[jet1index] > btagWP_L && fabs(jet_eta[jet1index]) < 2.4;
+    bool jet0btag = jet_btag[jet0index] > btagWP_L;
+    bool jet1btag = jet_btag[jet1index] > btagWP_L;
 
     int jetflavor0=-25, jetflavor1=-25;
     if (isMC) {
@@ -950,52 +981,59 @@ int main(int argc, char* argv[]){
       jetflavor1 = jet_hadflavor[jet1index];
 
       //btag eff for two jets
-      if ( jet1pt > 50 && fabs(jet_eta[jet1index]) < 2.4 ) {
+      if (jet1pt > 50) {
 
         bool jet0btagM = jet_btag[jet0index] > btagWP_M;
         bool jet1btagM = jet_btag[jet1index] > btagWP_M;
 
-        //jet0
-        if ( abs(jetflavor0) == 4 ) {
-          FillHist1D("jetPt_c", jet0pt, 1.);
+        TString jetflavor0str, jetflavor1str;
+        if      ( abs(jetflavor0) == 4 ) jetflavor0str = "c";
+        else if ( abs(jetflavor0) == 5 ) jetflavor0str = "b";
+        else                             jetflavor0str = "udsg";
 
-          if (jet0btag)  FillHist1D("jetPt_bTagL_c", jet0pt, 1.);
-          if (jet0btagM) FillHist1D("jetPt_bTagM_c", jet0pt, 1.);
+        if      ( abs(jetflavor1) == 4 ) jetflavor1str = "c";
+        else if ( abs(jetflavor1) == 5 ) jetflavor1str = "b";
+        else                             jetflavor1str = "udsg";
+
+        FillHist1D("jetPt_" +jetflavor0str, jet0pt, 1.);
+        FillHist1D("jetEta_"+jetflavor0str, jet0.Eta(), 1.);
+        FillHist1D("jetPt_" +jetflavor1str, jet1pt, 1.);
+        FillHist1D("jetEta_"+jetflavor1str, jet1.Eta(), 1.);
+
+        if (jet0btag) {
+          FillHist1D("jetPt_bTagL_" +jetflavor0str, jet0pt, 1.);
+          FillHist1D("jetEta_bTagL_"+jetflavor0str, jet0.Eta(), 1.);
         }
-        else if ( abs(jetflavor0) == 5 ) {
-          FillHist1D("jetPt_b", jet0pt, 1.);
-
-          if (jet0btag)  FillHist1D("jetPt_bTagL_b", jet0pt, 1.);
-          if (jet0btagM) FillHist1D("jetPt_bTagM_b", jet0pt, 1.);
+        if (jet0btagM) {
+          FillHist1D("jetPt_bTagM_" +jetflavor0str, jet0pt, 1.);
+          FillHist1D("jetEta_bTagM_"+jetflavor0str, jet0.Eta(), 1.);
         }
-        else {
-          FillHist1D("jetPt_udsg", jet0pt, 1.);
-
-          if (jet0btag)  FillHist1D("jetPt_bTagL_udsg", jet0pt, 1.);
-          if (jet0btagM) FillHist1D("jetPt_bTagM_udsg", jet0pt, 1.);
+        if (jet1btag) {
+          FillHist1D("jetPt_bTagL_" +jetflavor1str, jet1pt, 1.);
+          FillHist1D("jetEta_bTagL_"+jetflavor1str, jet1.Eta(), 1.);
+        }
+        if (jet1btagM) {
+          FillHist1D("jetPt_bTagM_" +jetflavor1str, jet1pt, 1.);
+          FillHist1D("jetEta_bTagM_"+jetflavor1str, jet1.Eta(), 1.);           
         }
 
-        //jet1
-        if ( abs(jetflavor1) == 4 ) {
-          FillHist1D("jetPt_c", jet1pt, 1.);
+        double jet0dr=-1, jet1dr=-1;
+        if      (jet0index == minjet0idx) jet0dr = rmin0;
+        else if (jet0index == minjet1idx) jet0dr = rmin1;
+        if      (jet1index == minjet0idx) jet1dr = rmin0;
+        else if (jet1index == minjet1idx) jet1dr = rmin1;
 
-          if (jet1btag)  FillHist1D("jetPt_bTagL_c", jet1pt, 1.);
-          if (jet1btagM) FillHist1D("jetPt_bTagM_c", jet1pt, 1.);
+        if (jet0dr != -1) {
+          FillHist2D("jetPtDR_"+jetflavor0str, jet0dr, jet0pt, 1.);
+          if (jet0btag)  FillHist2D("jetPtDR_bTagL_"+jetflavor0str, jet0dr, jet0pt, 1.);
+          if (jet0btagM) FillHist2D("jetPtDR_bTagM_"+jetflavor0str, jet0dr, jet0pt, 1.);
         }
-        else if ( abs(jetflavor1) == 5 ) {
-          FillHist1D("jetPt_b", jet1pt, 1.);
-
-          if (jet1btag)  FillHist1D("jetPt_bTagL_b", jet1pt, 1.);
-          if (jet1btagM) FillHist1D("jetPt_bTagM_b", jet1pt, 1.);
-        }
-        else {
-          FillHist1D("jetPt_udsg", jet1pt, 1.);
-
-          if (jet1btag)  FillHist1D("jetPt_bTagL_udsg", jet1pt, 1.);
-          if (jet1btagM) FillHist1D("jetPt_bTagM_udsg", jet1pt, 1.);
+        if (jet1dr != -1) {
+          FillHist2D("jetPtDR_"+jetflavor1str, jet1dr, jet1pt, 1.);
+          if (jet1btag)  FillHist2D("jetPtDR_bTagL_"+jetflavor1str, jet1dr, jet1pt, 1.);
+          if (jet1btagM) FillHist2D("jetPtDR_bTagM_"+jetflavor1str, jet1dr, jet1pt, 1.);
         }
       }
-
       TString variation0 = btagSF, variation1 = btagSF;
       TH1F* eff0, *eff1;
       if ( abs(jetflavor0) == 4 ) eff0 = btag_eff_c;
@@ -1036,111 +1074,34 @@ int main(int argc, char* argv[]){
       if (gab.Pt() != 0 && glep.Pt() != 0) rabl = gab.DeltaR(glep);
     }
 
-    int prefix;
+    TString prefix;
 
     //exactly one jet
-    if ( jet1pt < 50 || fabs(jet_eta[jet1index]) > 2.4 ) {
+    if (jet1pt < 50) {
       //zero btags
       if (!jet0btag) {
-        if (met_corrpt < 30) { v_cuts[zerobtagCut1jet_metR].second += weight; prefix=0; }
-        else                 { v_cuts[zerobtagCut1jet].second += weight; prefix=4; }
+        if (met_corrpt < 30) { v_cuts[zerobtagCut1jet_metR].second += weight; v_cuts_ptr->at(zerobtagCut1jet_metR).second += weight; prefix="0_"; }
+        else                 { v_cuts[zerobtagCut1jet].second += weight;      v_cuts_ptr->at(zerobtagCut1jet).second += weight;      prefix="4_"; }
       }
       //at least one btag
       else {
-        if (met_corrpt < 30) { v_cuts[onebtagCut1jet_metR].second += weight; prefix=1; }
-        else                 { v_cuts[onebtagCut1jet].second += weight; prefix=5; }
+        if (met_corrpt < 30) { v_cuts[onebtagCut1jet_metR].second += weight; v_cuts_ptr->at(onebtagCut1jet_metR).second += weight; prefix="1_"; }
+        else                 { v_cuts[onebtagCut1jet].second += weight;      v_cuts_ptr->at(onebtagCut1jet).second += weight;      prefix="5_"; }
       }
     }
     //at least two jets
     else {
       //exactly zero btags
       if ( !jet0btag && !jet1btag ) {
-        if (met_corrpt < 30) { v_cuts[zerobtagCut2jets_metR].second += weight; prefix=2; }
-        else                 { v_cuts[zerobtagCut2jets].second += weight; prefix=6; }
+        if (met_corrpt < 30) { v_cuts[zerobtagCut2jets_metR].second += weight; v_cuts_ptr->at(zerobtagCut2jets_metR).second += weight; prefix="2_"; }
+        else                 { v_cuts[zerobtagCut2jets].second += weight;      v_cuts_ptr->at(zerobtagCut2jets).second += weight;      prefix="6_"; }
       }
       //at least one btag
       else {
-        if (met_corrpt < 30) { v_cuts[morethan0btagCut2jets_metR].second += weight; prefix=3; }
-        else                 { v_cuts[morethan0btagCut2jets].second += weight; prefix=7; }
+        if (met_corrpt < 30) { v_cuts[morethan0btagCut2jets_metR].second += weight; v_cuts_ptr->at(morethan0btagCut2jets_metR).second += weight; prefix="3_"; }
+        else                 { v_cuts[morethan0btagCut2jets].second += weight;      v_cuts_ptr->at(morethan0btagCut2jets).second += weight;      prefix="7_"; }
       }
     }
-    FillHists(to_string(prefix)+"_", nEle, nGoodEle, nMuon, nGoodMuon, nJet, nGoodJet, lep0, lep1, dilepmass, lepept, lepmpt,
-              rmin0, rmin1, rl0l1, rl0cleanj, rl1cleanj, lep0perp, lep1perp, jet0, jet1, jet_btag[jet0index], jet_btag[jet1index], int(jet0btag)+int(jet1btag),
-              hT, met_pt, met_corrpt, sT, sT_met, jetflavor0, jetflavor1, rbal, rabl, minjet0pt, minjet1pt, cleanjet0pt, cleanjet1pt, masslmin0, masslmin1, masslljjm,
-              deta_lep, deta_lepJet, dphi_jet0met, dphi_jet1met, nPV);
-  }
-  cout << difftime(time(NULL), start) << " s" << endl;
-  cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
-
-  TH1D* cuts = new TH1D("cuts","cuts",numCuts,-0.5,float(numCuts)-0.5);
-
-  //Cutflow Table//
-  cout<<"===================================================================================================\n";
-  cout<<"                                     Cut Flow Table: " + inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 ) + "\n";
-  cout<<"===================================================================================================\n";
-
-  cout<<      "                               |||          Nevent          |||     Efficiency (Relative Efficiency)\n";
-
-  for (int i=0; i<numCuts; i++) {
-    if (i == 0)
-      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
-                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[0].second) << endl;
-
-    else if (i > jetCut)
-      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
-                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[jetCut].second) << endl;
-
-    else
-      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
-                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[i-1].second) << endl;
-
-    if (i==countMet || i==jetCut)
-      cout << "---------------------------------------------------------------------------------------------------" << endl;
-
-    cuts->SetBinContent(i+1, v_cuts[i].second);
-    cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1));
-  }
-  cout << endl;
-
-  //Write Histograms//
-
-  TFile* outFile = new TFile(outName,"RECREATE");
-  outFile->cd();
-
-  cuts->Write();
-
-  for (int i=0; i<nDirs; i++) outFile->mkdir( Form("%i/", i) );
-
-  for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++) {
-    outFile->cd();
-    TString prefix = hid->first(0, 1);
-
-    if ( prefix.IsDigit() ) outFile->cd(outName + ":/" + prefix);
-
-    hid->second->Write();
-  }
-
-  outFile->Write();
-  delete outFile;
-  outFile = 0;
-}
-
-void FillHist1D(const TString& histName, const Double_t& value, const double& weight) {
-  map<TString, TH1*>::iterator hid=m_Histos1D.find(histName);
-  if (hid==m_Histos1D.end())
-    cout << "%FillHist1D -- Could not find histogram with name: " << histName << endl;
-  else
-    hid->second->Fill(value, weight);
-}
-
-void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, const int& nMuon, const int& nGoodMuon, const int& nJet, const int& nGoodJet,
-               const TLorentzVector& lep0, const TLorentzVector& lep1, const float& dilepmass, const float& lepept, const float& lepmpt,
-               const float& rmin0, const float& rmin1, const float& rl0l1, const float& rl0cleanj, const float& rl1cleanj, const float& lep0perp, const float& lep1perp,
-               const TLorentzVector& jet0, const TLorentzVector& jet1, const float& jet0btag, const float& jet1btag, const int& nbtag,
-               const float& hT, const float& met_pt, const float& met_corrpt, const float& sT, const float& sT_met, const int& jetflavor0, const int& jetflavor1,
-               const float& rbal, const float& rabl, const float& minjet0pt, const float& minjet1pt, const float& cleanjet0pt, const float& cleanjet1pt,
-               const float& masslmin0, const float& masslmin1, const float& masslljjm, const float& deta_lep, const float& deta_lepJet,
-               const float& dphi_jet0met, const float& dphi_jet1met, const int& nPV) {
 
     FillHist1D(prefix+"nEleDiff", nEle-nGoodEle, weight);
     FillHist1D(prefix+"nMuonDiff", nMuon-nGoodMuon, weight);
@@ -1177,38 +1138,131 @@ void FillHists(const TString& prefix, const int& nEle, const int& nGoodEle, cons
     FillHist1D(prefix+"jet0pt", jet0.Pt(), weight);
     FillHist1D(prefix+"jet0eta", jet0.Eta(), weight);
     FillHist1D(prefix+"jet0phi", jet0.Phi(), weight);
-    FillHist1D(prefix+"jet0btag", jet0btag, weight);
+    FillHist1D(prefix+"jet0btag", jet_btag[jet0index], weight);
+    FillHist1D(prefix+"jetflavor", jetflavor0, weight);
     FillHist1D(prefix+"jet1pt", jet1.Pt(), weight);
     FillHist1D(prefix+"jet1eta", jet1.Eta(), weight);
     FillHist1D(prefix+"jet1phi", jet1.Phi(), weight);
-    FillHist1D(prefix+"jet1btag", jet1btag, weight);
-    FillHist1D(prefix+"nbtag", nbtag, weight);
-    FillHist1D(prefix+"jethT", hT, weight);
+    FillHist1D(prefix+"jet1btag", jet_btag[jet1index], weight);
+    FillHist1D(prefix+"jetflavor", jetflavor1, weight);
+    FillHist1D(prefix+"nbtag", int(jet0btag)+int(jet1btag), weight);
 
+    FillHist1D(prefix+"jethT", hT, weight);
     FillHist1D(prefix+"metpt", met_pt, weight);
     FillHist1D(prefix+"metcorrpt", met_corrpt, weight);
+
+    double sT = hT+lep0.Pt()+lep1.Pt();
+    double sT_met = sT + met_corrpt;
+    double masslljjm = (lep0+lep1+jet0+jet1+met).M();
+
     FillHist1D(prefix+"sT", sT, weight);
-    FillHist1D(prefix+"sT_met", sT_met, weight);
-    FillHist1D(prefix+"jetflavor", jetflavor0, weight);
-    FillHist1D(prefix+"jetflavor", jetflavor1, weight);
+    FillHist1D(prefix+"sT_met", sT_met>=5000 ? 4999.9 : sT_met, weight);
+    FillHist1D(prefix+"masslljjm", masslljjm>=5000 ? 4999.9 : masslljjm, weight);
 
     if (rbal != -1) FillHist1D(prefix+"rbl", rbal, weight);
     if (rabl != -1) FillHist1D(prefix+"rbl", rabl, weight);
 
-    FillHist1D(prefix+"minjet0pt", minjet0pt, weight);
-    FillHist1D(prefix+"minjet1pt", minjet1pt, weight);
+    FillHist1D(prefix+"minjet0pt", minjet0.Pt(), weight);
+    FillHist1D(prefix+"minjet1pt", minjet1.Pt(), weight);
     FillHist1D(prefix+"cleanjet0pt", cleanjet0pt, weight);
     FillHist1D(prefix+"cleanjet1pt", cleanjet1pt, weight);
-    FillHist1D(prefix+"masslmin0", masslmin0, weight);
-    FillHist1D(prefix+"masslmin1", masslmin1, weight);
-    FillHist1D(prefix+"masslljjm", masslljjm, weight);
+    FillHist1D(prefix+"masslmin0", (lep0+minjet0).M(), weight);
+    FillHist1D(prefix+"masslmin1", (lep1+minjet1).M(), weight);
 
-    FillHist1D(prefix+"deta_lep", deta_lep, weight);
-    FillHist1D(prefix+"deta_lepJet", deta_lepJet, weight);
-    FillHist1D(prefix+"dphi_jet0met", dphi_jet0met, weight);
-    FillHist1D(prefix+"dphi_jet1met", dphi_jet1met, weight);
+    FillHist1D(prefix+"deta_lep", lep0.Eta() - lep1.Eta(), weight);
+    FillHist1D(prefix+"deta_lepJet", (lep0+minjet0).Eta() - (lep1+minjet1).Eta(), weight);
+    FillHist1D(prefix+"dphi_jet0met", fabs( deltaPhi( jet0.Phi(), met.Phi() ) ), weight);
+    FillHist1D(prefix+"dphi_jet1met", fabs( deltaPhi( jet1.Phi(), met.Phi() ) ), weight);
 
     FillHist1D(prefix+"nPV", nPV, weight);
+  }
+  cout << difftime(time(NULL), start) << " s" << endl;
+  cout << "Min_jet0 = Min_jet1: " << sameRlepjet << endl;
+
+  TH1D* cuts = new TH1D("cuts","cuts",numCuts,-0.5,float(numCuts)-0.5);
+  TH1D* ll_cuts = new TH1D("ll_cuts","ll_cuts",numCuts,-0.5,float(numCuts)-0.5);
+  TH1D* lj_cuts = new TH1D("lj_cuts","lj_cuts",numCuts,-0.5,float(numCuts)-0.5);
+  TH1D* jj_cuts = new TH1D("jj_cuts","jj_cuts",numCuts,-0.5,float(numCuts)-0.5);
+
+  //Cutflow Table//
+  cout<<"===================================================================================================\n";
+  cout<<"                                     Cut Flow Table: " + inName( inName.Last('/')+1, inName.Index('.')-inName.Last('/')-1 ) + "\n";
+  cout<<"===================================================================================================\n";
+
+  cout<<      "                               |||          Nevent          |||     Efficiency (Relative Efficiency)";
+
+//  if (inName.Contains("ttbar", TString::kIgnoreCase) || inName.Contains("zprime", TString::kIgnoreCase) || inName.Contains("gluon", TString::kIgnoreCase))
+//    cout << "   Nllgen   |||      Nljgen   |||     Njjgen\n";
+//  else
+    cout << "\n";
+
+  for (int i=0; i<numCuts; i++) {
+    if (i == 0)
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
+                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[0].second);
+
+    else if (i > jetCut)
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
+                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[jetCut].second);
+
+    else
+      cout << Form("%-30s |||       %12.1f       |||       %1.6f (%1.4f)",
+                   v_cuts[i].first.data(), v_cuts[i].second, v_cuts[i].second/v_cuts[0].second, v_cuts[i].second/v_cuts[i-1].second);
+
+//    if (inName.Contains("ttbar", TString::kIgnoreCase) || inName.Contains("zprime", TString::kIgnoreCase) || inName.Contains("gluon", TString::kIgnoreCase))
+//      cout << Form("       |||   %9.1f   |||   %9.1f   |||   %9.1f", v_llcuts[i].second, v_ljcuts[i].second, v_jjcuts[i].second) << endl;
+//    else
+      cout << endl;
+
+    if (i==countMet || i==jetCut)
+      cout << "---------------------------------------------------------------------------------------------------" << endl;
+
+    cuts->SetBinContent(i+1, v_cuts[i].second);        ll_cuts->SetBinContent(i+1, v_llcuts[i].second);      lj_cuts->SetBinContent(i+1, v_ljcuts[i].second);      jj_cuts->SetBinContent(i+1, v_jjcuts[i].second);
+    cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1)); ll_cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1)); lj_cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1)); jj_cuts->GetXaxis()->SetBinLabel(i+1,Form("%i",i+1));
+  }
+  cout << endl;
+
+  //Write Histograms//
+
+  TFile* outFile = new TFile(outName,"RECREATE");
+  outFile->cd();
+
+  cuts->Write(); ll_cuts->Write(); lj_cuts->Write(); jj_cuts->Write();
+
+  for (int i=0; i<nDirs; i++) outFile->mkdir( Form("%i/", i) );
+
+  for (map<TString, TH1*>::iterator hid = m_Histos1D.begin(); hid != m_Histos1D.end(); hid++) {
+    outFile->cd();
+    TString prefix = hid->first(0, 1);
+
+    if ( prefix.IsDigit() ) outFile->cd(outName + ":/" + prefix);
+
+    hid->second->Write();
+  }
+  for (map<TString, TH2*>::iterator hid = m_Histos2D.begin(); hid != m_Histos2D.end(); hid++) {
+    outFile->cd();
+    hid->second->Write();
+  }
+
+  outFile->Write();
+  delete outFile;
+  outFile = 0;
+}
+
+void FillHist1D(const TString& histName, const Double_t& value, const double& weight) {
+  map<TString, TH1*>::iterator hid=m_Histos1D.find(histName);
+  if (hid==m_Histos1D.end())
+    cout << "%FillHist1D -- Could not find histogram with name: " << histName << endl;
+  else
+    hid->second->Fill(value, weight);
+}
+
+void FillHist2D(const TString& histName, const Double_t& value1, const Double_t& value2, const double& weight) {
+  map<TString, TH2*>::iterator hid=m_Histos2D.find(histName);
+  if (hid==m_Histos2D.end())
+    cout << "%FillHist2D -- Could not find histogram with name: " << histName << endl;
+  else
+    hid->second->Fill(value1, value2, weight);
 }
 
 void setWeight(const string& wFile) {
