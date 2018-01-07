@@ -33,7 +33,7 @@ void FillHist2D(const TString& histName, const Double_t& value1, const Double_t&
 void setPars(const string& parFile); 
 void setWeight(const string& parFile); 
 bool sortJetPt(const pair<int, float>& jet1, const pair<int, float>& jet2){ return jet1.second > jet2.second; }
-bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation );
+bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TGraphAsymmErrors& g_eff, const TString& variation );
 double rms_pm(const vector<float>& vec);
 
 map<TString, TH1*> m_Histos1D;
@@ -133,11 +133,11 @@ int main(int argc, char* argv[]){
 
   //Reweighting and SF Files//
 
-  TH1F* pileup_weights=0, *btag_eff_b=0, *btag_eff_c=0, *btag_eff_udsg=0;
+  TH1F* pileup_weights=0;
   TH2F* muTrigSfHist=0, *muIdSfHist=0, *eTrigSfHist=0, *eRecoSfHist=0, *eIdSfHist=0;
-  TGraphAsymmErrors* muTrackSfGraph=0;
+  TGraphAsymmErrors* muTrackSfGraph=0, *btag_eff_b=0, *btag_eff_c=0, *btag_eff_udsg=0;
   
-  int muTrig_pT=0, muId_pT=0, eTrig_pT=95, eReco_pT=0, eId_pT=0;
+  int muTrig_pT=0, muId_pT=0, eTrig_pT=95, eReco_pT=0, eId_pT=0, btag_pT=1200;
 
   if (isMC) {
     TFile* muTrigSfFile = TFile::Open(muTrigSfName);
@@ -165,9 +165,9 @@ int main(int argc, char* argv[]){
     eId_pT = eIdSfHist->GetYaxis()->GetBinCenter(eIdSfHist->GetYaxis()->GetNbins());
 
     TFile* btagFile = TFile::Open(btagName);
-    btag_eff_b = (TH1F*) btagFile->Get( Form("%s/b_LWP_%s", channel.data(), channel.data()) );
-    btag_eff_c = (TH1F*) btagFile->Get( Form("%s/c_LWP_%s", channel.data(), channel.data()) );
-    btag_eff_udsg = (TH1F*) btagFile->Get( Form("%s/udsg_LWP_%s", channel.data(), channel.data()) );
+    btag_eff_b = (TGraphAsymmErrors*) btagFile->Get( Form("%s/b_LWP_%s", channel.data(), channel.data()) );
+    btag_eff_c = (TGraphAsymmErrors*) btagFile->Get( Form("%s/c_LWP_%s", channel.data(), channel.data()) );
+    btag_eff_udsg = (TGraphAsymmErrors*) btagFile->Get( Form("%s/udsg_LWP_%s", channel.data(), channel.data()) );
 
     TFile* pileupFile = TFile::Open(pileupName);
 
@@ -1035,7 +1035,7 @@ int main(int argc, char* argv[]){
         }
       }
       TString variation0 = btagSF, variation1 = btagSF;
-      TH1F* eff0, *eff1;
+      TGraphAsymmErrors* eff0, *eff1;
       if ( abs(jetflavor0) == 4 ) eff0 = btag_eff_c;
       else if ( abs(jetflavor0) == 5 ) eff0 = btag_eff_b;
       else { eff0 = btag_eff_udsg; variation0 = mistagSF; }
@@ -1378,7 +1378,7 @@ double rms_pm(const vector<float>& vec) {
   return sqrt(sum / size);
 }
 
-bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TH1F& eff_hist, const TString& variation ) {
+bool newBTag( const float& coin, const float& pT, const int& flavor, const bool& oldBTag, TGraphAsymmErrors& g_eff, const TString& variation ) {
   double sf=0;
 
   //b or c jet
@@ -1431,7 +1431,7 @@ bool newBTag( const float& coin, const float& pT, const int& flavor, const bool&
 
     if( !oldBTag ) {
 
-      float eff = eff_hist.GetBinContent( eff_hist.FindBin( pT>1200?1200:pT ) );
+      float eff = g_eff.Eval( pT>btag_pT?btag_pT:pT );
 
       //fraction of jets that need to be upgraded
       float mistagPercent = (1.0 - sf) / (1.0 - (1.0/eff) );

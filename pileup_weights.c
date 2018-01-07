@@ -64,7 +64,27 @@ void pileup_weights() {
     "zprime_M-4500_W-450",
     "zprime_M-5000_W-50",
     "zprime_M-5000_W-500",
-    "zprime_M-5000_W-1500"
+    "zprime_M-5000_W-1500",
+    "qcd30-50_Mu",
+    "qcd50-80_Mu",
+    "qcd80-120_Mu",
+    "qcd120-170_Mu",
+    "qcd170-300_Mu",
+    "qcd300-470_Mu",
+    "qcd470-600_Mu",
+    "qcd600-800_Mu",
+    "qcd800-1000_Mu",
+    "qcd1000-inf_Mu",
+    "qcd30-50_EM",
+    "qcd50-80_EM",
+    "qcd80-120_EM",
+    "qcd120-170_EM",
+    "qcd170-300_EM",
+    "qcd300-inf_EM",
+    "qcd30-80_bcToE",
+    "qcd80-170_bcToE",
+    "qcd170-250_bcToE",
+    "qcd250-inf_bcToE"
   };
   int file_size = sizeof(files)/sizeof(files[0]);
 
