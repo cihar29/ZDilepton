@@ -1,0 +1,9 @@
+ISMC         false
+setSUMDRCut  OFF
+inName       root://131.225.204.161:1094//store/user/broozbah/Analysis_2017_SE/SingleElectron_2016.root
+outName      Jan18/em/Ele_em.root
+testLeg      muLeg
+tagtrig      HLT_Ele115_CaloIdVT
+probetrig    HLT_Mu50
+eras         Summer16_23Sep2016BCDV6_DATA Summer16_23Sep2016EFV6_DATA Summer16_23Sep2016GV6_DATA Summer16_23Sep2016HV6_DATA
+jet_type     AK4PFchs
