@@ -49,6 +49,7 @@ else
   fi
 
   dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/"
+
   mcfiles=(
     "DYhigh"
     "DYlow"
@@ -107,10 +108,38 @@ else
     "zprime_M-5000_W-1500"
   )
 
+: <<'COMMENT'
+
+  mcfiles=(
+    "qcd30-50_Mu"
+    "qcd50-80_Mu"
+    "qcd80-120_Mu"
+    "qcd120-170_Mu"
+    "qcd170-300_Mu"
+    "qcd300-470_Mu"
+    "qcd470-600_Mu"
+    "qcd600-800_Mu"
+    "qcd800-1000_Mu"
+    "qcd1000-inf_Mu"
+    "qcd30-50_EM"
+    "qcd50-80_EM"
+    "qcd80-120_EM"
+    "qcd120-170_EM"
+    "qcd170-300_EM"
+    "qcd300-inf_EM"
+    "qcd30-80_bcToE"
+    "qcd80-170_bcToE"
+    "qcd170-250_bcToE"
+    "qcd250-inf_bcToE"
+  )
+
+COMMENT
+
   for file in "${mcfiles[@]}" ; do
 
     lines=( "isMC           true"
             "${uncert}      ${type}"
+            #"ptrelProbe     muon"
             "setSUMDRCut    OFF"
             "inName         ${dir}${file}.root"
             "outName        ${channel}/${file}_${channel}${underscore}${uncert}${type}.root"

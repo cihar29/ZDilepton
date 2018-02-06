@@ -174,7 +174,7 @@ class ZDilepton : public edm::EDAnalyzer {
 
     TString fileName_;
     string btag_;
-    bool isMC_, isTT_;
+    bool isMC_;
     double minLepPt_, minSubLepPt_, minDiLepMass_, minLeadJetPt_;
 
     EffectiveAreas ele_areas_;
@@ -210,7 +210,6 @@ ZDilepton::ZDilepton(const edm::ParameterSet& iConfig):
   fileName_ = iConfig.getParameter<string>("fileName");
   btag_ = iConfig.getParameter<string>("btag");
   isMC_ = iConfig.getParameter<bool>("isMC");
-  isTT_ = iConfig.getParameter<bool>("isTT");
   patTrgLabel_ = consumes<edm::TriggerResults>( iConfig.getParameter<edm::InputTag>("patTrgLabel") );
   rhoTag_ = consumes<double>( iConfig.getParameter<edm::InputTag>("rhoTag") );
   pvTag_ = consumes< edm::View<reco::Vertex> >( iConfig.getParameter<edm::InputTag>("pvTag") );
@@ -439,7 +438,7 @@ void ZDilepton::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     mass_totalEvts->Fill(mass_ttbar);
 
-    double wgt_topPtWeightNOM = isTT_ ? sqrt( exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2) ) : 1.;
+    double wgt_topPtWeightNOM = sqrt( exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2) );
     double wgt_topPtWeightDN = exp(0.0615-0.0005*t_pt2) * exp(0.0615-0.0005*tbar_pt2);
 
     topPtWeightNOM[0] += wgt_topPtWeightNOM;

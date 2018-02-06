@@ -40,11 +40,11 @@ map<TString, TH1*> m_Histos1D;
 map<TString, TH2*> m_Histos2D;
 
 //parameters- edit in pars.txt
-bool isMC;
+bool isMC=false;
 TString topPtWeight="NOMINAL"; //NOMINAL (sqrt tPt*tbarPt), UP (no top reweighting), DOWN (tPt*tbarPt)
 TString jec="NOMINAL", jer="NOMINAL", pdf="NOMINAL", q2="NOMINAL", q2ttbar="NOMINAL", q2dy="NOMINAL", q2st="NOMINAL", q2signal="NOMINAL";
 TString btagSF="NOMINAL", mistagSF="NOMINAL", pileup="NOMINAL"; //NOMINAL, UP, DOWN
-TString setSUMDRCut="OFF";
+TString setSUMDRCut="OFF", ptrelProbe="";
 //ON (keep events with sumrmin<2.0), REVERSE (keep events with sumrmin>=2.0), OFF (no cut)
 //ONbt (keep events with sumrmin<1.0),  ONnb (keep events with 1<=sumrmin<2.0)
 TString inName, outName, muTrigSfName, muIdSfName, muTrackSfName, eTrigSfName, eRecoSfName, eIdSfName, btagName, pileupName;
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]){
   TH2F* muTrigSfHist=0, *muIdSfHist=0, *eTrigSfHist=0, *eRecoSfHist=0, *eIdSfHist=0;
   TGraphAsymmErrors* muTrackSfGraph=0, *btag_eff_b=0, *btag_eff_c=0, *btag_eff_udsg=0;
   
-  int muTrig_pT=0, muId_pT=0, eTrig_pT=95, eReco_pT=0, eId_pT=0, btag_pT=1200;
+  int muTrig_pT=0, muId_pT=0, eTrig_pT=95, eReco_pT=0, eId_pT=0;
 
   if (isMC) {
     TFile* muTrigSfFile = TFile::Open(muTrigSfName);
@@ -380,6 +380,13 @@ int main(int argc, char* argv[]){
     m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
     hname = Form("%i_lep1perp_in",i);
     m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
+
+    hname = Form("%i_lepperp_probe",i);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
+    hname = Form("%i_lepperp_probe_in",i);
+    m_Histos1D[hname] = new TH1D(hname,hname,200,0,200);
+    hname = Form("%i_rmin_probe",i);
+    m_Histos1D[hname] = new TH1D(hname,hname,100,0,5);
 
     hname = Form("%i_metpt",i);
     m_Histos1D[hname] = new TH1D(hname,hname,200,0,2000);
@@ -937,6 +944,26 @@ int main(int argc, char* argv[]){
     double lep0perp = lep0.Perp( minjet0.Vect() );
     double lep1perp = lep1.Perp( minjet1.Vect() );
 
+    //ptrel modeling
+    double lepperp_probe=0, rmin_probe=0;
+/*
+    int tagidx = event%2;
+    if (channel == "em") {
+      char tagflavor = (ptrelProbe == "muon") ? 'e' : 'm';
+      tagidx = (lep0flavor == tagflavor) ? 0 : 1;
+    }
+    if (tagidx == 0) {
+      if (rmin0 < 0.8) continue;
+      lepperp_probe = lep1perp;
+      rmin_probe    = rmin1;
+    }
+    else {
+      if (rmin1 < 0.8) continue;
+      lepperp_probe = lep0perp;
+      rmin_probe    = rmin0;
+    }
+*/
+
     if( (lep0perp<15 && rmin0<0.4) || (lep1perp<15 && rmin1<0.4) ) continue;
     v_cuts[ptrelCut].second += weight;  v_cuts_ptr->at(ptrelCut).second += weight;
 
@@ -1135,6 +1162,10 @@ int main(int argc, char* argv[]){
     if (rmin0 < 0.4) FillHist1D(prefix+"lep0perp_in", lep0perp, weight);
     if (rmin1 < 0.4) FillHist1D(prefix+"lep1perp_in", lep1perp, weight);
 
+    FillHist1D(prefix+"rmin_probe", rmin_probe, weight);
+    FillHist1D(prefix+"lepperp_probe", lepperp_probe, weight);
+    if (rmin_probe < 0.4) FillHist1D(prefix+"lepperp_probe_in", lepperp_probe, weight);
+
     FillHist1D(prefix+"jet0pt", jet0.Pt(), weight);
     FillHist1D(prefix+"jet0eta", jet0.Eta(), weight);
     FillHist1D(prefix+"jet0phi", jet0.Phi(), weight);
@@ -1326,34 +1357,32 @@ void setPars(const string& parFile) {
     while (line.at(0) == ' ') line.erase(0, 1);
     while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
-    if (var == "isMC"){
-      if (line == "true") isMC = true;
-      else isMC = false;
-    }
-    else if (var == "topPtWeight") topPtWeight = line.data();
-    else if (var == "jec") jec = line.data();
-    else if (var == "jer") jer = line.data();
-    else if (var == "pdf") pdf = line.data();
-    else if (var == "q2ttbar") q2ttbar = line.data();
-    else if (var == "q2dy") q2dy = line.data();
-    else if (var == "q2st") q2st = line.data();
-    else if (var == "q2signal") q2signal = line.data();
-    else if (var == "pileup") pileup = line.data();
-    else if (var == "btagSF") btagSF = line.data();
-    else if (var == "mistagSF") mistagSF = line.data();
-    else if (var == "setSUMDRCut") setSUMDRCut = line.data();
-    else if (var == "inName") inName = line.data();
-    else if (var == "outName") outName = line.data();
-    else if (var == "muTrigSfName") muTrigSfName = line.data();
-    else if (var == "muIdSfName") muIdSfName = line.data();
+    if      (var == "isMC")          { if (line == "true") isMC = true; }
+    else if (var == "topPtWeight")   topPtWeight = line.data();
+    else if (var == "jec")           jec = line.data();
+    else if (var == "jer")           jer = line.data();
+    else if (var == "pdf")           pdf = line.data();
+    else if (var == "q2ttbar")       q2ttbar = line.data();
+    else if (var == "q2dy")          q2dy = line.data();
+    else if (var == "q2st")          q2st = line.data();
+    else if (var == "q2signal")      q2signal = line.data();
+    else if (var == "pileup")        pileup = line.data();
+    else if (var == "btagSF")        btagSF = line.data();
+    else if (var == "mistagSF")      mistagSF = line.data();
+    else if (var == "setSUMDRCut")   setSUMDRCut = line.data();
+    else if (var == "ptrelProbe")    ptrelProbe = line.data();
+    else if (var == "inName")        inName = line.data();
+    else if (var == "outName")       outName = line.data();
+    else if (var == "muTrigSfName")  muTrigSfName = line.data();
+    else if (var == "muIdSfName")    muIdSfName = line.data();
     else if (var == "muTrackSfName") muTrackSfName = line.data();
-    else if (var == "eTrigSfName") eTrigSfName = line.data();
-    else if (var == "eRecoSfName") eRecoSfName = line.data();
-    else if (var == "eIdSfName") eIdSfName = line.data();
-    else if (var == "btagName") btagName = line.data();
-    else if (var == "pileupName") pileupName = line.data();
-    else if (var == "channel") channel = line;
-    else if (var == "res_era") res_era = line;
+    else if (var == "eTrigSfName")   eTrigSfName = line.data();
+    else if (var == "eRecoSfName")   eRecoSfName = line.data();
+    else if (var == "eIdSfName")     eIdSfName = line.data();
+    else if (var == "btagName")      btagName = line.data();
+    else if (var == "pileupName")    pileupName = line.data();
+    else if (var == "channel")       channel = line;
+    else if (var == "res_era")       res_era = line;
     else if (var == "eras") {
       while ( (delim_pos = line.find(' ')) != -1) {
         eras.push_back( line.substr(0, delim_pos) );
@@ -1431,7 +1460,7 @@ bool newBTag( const float& coin, const float& pT, const int& flavor, const bool&
 
     if( !oldBTag ) {
 
-      float eff = g_eff.Eval( pT>btag_pT?btag_pT:pT );
+      float eff = g_eff.Eval( pT>1200?1200:pT );
 
       //fraction of jets that need to be upgraded
       float mistagPercent = (1.0 - sf) / (1.0 - (1.0/eff) );

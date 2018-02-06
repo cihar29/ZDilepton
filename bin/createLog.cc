@@ -177,6 +177,26 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+/*
+  // diff between CR6 and CR5
+  for (auto const& chan : channels) {
+
+    for (auto const& it_set : nom[chan]["W>= 2 Jets, = 0 btags"]) {
+      string set = it_set.first;
+      nom[chan]["YCR6 - CR5"][set].first = nom[chan]["W>= 2 Jets, = 0 btags"][set].first - nom[chan]["V= 1 Jet, >= 1 btag"][set].first;
+
+      nom[chan]["YCR6 - CR5"][set].second = sqrt( nom[chan]["W>= 2 Jets, = 0 btags"][set].second*nom[chan]["W>= 2 Jets, = 0 btags"][set].second
+                                                + nom[chan]["V= 1 Jet, >= 1 btag"][set].second*nom[chan]["V= 1 Jet, >= 1 btag"][set].second );
+
+      for (auto const& it_sys : delUP[chan]) {
+        string sys = it_sys.first;
+
+        delUP[chan][sys]["YCR6 - CR5"][set].first = delUP[chan][sys]["W>= 2 Jets, = 0 btags"][set].first - delUP[chan][sys]["V= 1 Jet, >= 1 btag"][set].first;
+        delDN[chan][sys]["YCR6 - CR5"][set].first = delDN[chan][sys]["W>= 2 Jets, = 0 btags"][set].first - delDN[chan][sys]["V= 1 Jet, >= 1 btag"][set].first;
+      }
+    }
+  }
+*/
   string cut_initial = nom["mm"].begin()->first, cut_end = (--nom["mm"].end())->first;
 
   // create cutflow tables
@@ -691,6 +711,7 @@ void readFile(const string& fileName, map<string, map<string, pair<double, doubl
         else if ( dataset.Contains("ww", TString::kIgnoreCase)
                || dataset.Contains("wz", TString::kIgnoreCase)
                || dataset.Contains("zz", TString::kIgnoreCase) )    key = "vv";
+        else if ( dataset.Contains("qcd", TString::kIgnoreCase) )   key = "qcd";
         else                                                        key = dataset.Data();
 
         if ( cuts[cut].find(key) == cuts[cut].end() ) cuts[cut][key] = make_pair( N, weight * sqrt(N/weight) );

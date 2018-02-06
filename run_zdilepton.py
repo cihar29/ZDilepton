@@ -42,7 +42,7 @@ readFiles.extend( [
 
   #'/store/mc/RunIISummer16MiniAODv2/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6_ext1-v2/120000/02A210D6-F5C3-E611-B570-008CFA197BD4.root'
 
-  '/store/mc/RunIISummer16MiniAODv2/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/50000/0693E0E7-97BE-E611-B32F-0CC47A78A3D8.root'
+  #'/store/mc/RunIISummer16MiniAODv2/TT_TuneCUETP8M2T4_13TeV-powheg-pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/50000/0693E0E7-97BE-E611-B32F-0CC47A78A3D8.root'
 
   #'/store/mc/RunIISummer16MiniAODv2/ST_t-channel_top_4f_inclusiveDecays_13TeV-powhegV2-madspin-pythia8_TuneCUETP8M1/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/60000/001C9040-67B9-E611-AD6E-0CC47A7EEE32.root'
 
@@ -50,6 +50,8 @@ readFiles.extend( [
 
   #no weights?
   #'/store/mc/RunIISummer16MiniAODv2/ST_tW_top_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6_ext1-v1/50000/0C2044DB-0EC2-E611-8567-0CC47A7FC378.root'
+
+  #'/store/mc/RunIISummer16MiniAODv2/QCD_Pt-80to120_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6_ext1-v3/50000/0016A5B8-41BC-E611-B302-782BCB47D0B6.root'
 ] );
 
 isMC = cms.bool(True)
@@ -90,7 +92,6 @@ process.analysis = cms.EDAnalyzer("ZDilepton",
     fileName = cms.string("analysis" + OutputName + ".root"),
     btag = cms.string("pfCombinedInclusiveSecondaryVertexV2BJetTags"),
     isMC = isMC,
-    isTT = cms.bool(True),
     patTrgLabel = cms.InputTag("TriggerResults", "", "metLabel"),
     BadPFMuonFilter = cms.InputTag("BadPFMuonFilter",""),
     BadChargedCandidateFilter = cms.InputTag("BadChargedCandidateFilter",""),
