@@ -595,12 +595,20 @@ int main(int argc, char* argv[]){
   T->SetBranchAddress("met_py", &met_py);
   T->SetBranchAddress("met_phi", &met_phi);
 
+  //Mask Tree//
+/*
+  TFile* maskFile = TFile::Open("/uscms/home/camclean/nobackup/B2G2016/CMSSW_8_0_26/src/Analysis/B2GTTbar/test/runs/SRevents_20180206_b2gtreeV5_JetHT_Run2016BtoH-03Feb2017_JSONfinal.root");
+  TTree* maskT = (TTree*) maskFile->Get("TreeSR");
+  maskT->BuildIndex("SREventNum");
+*/
+
   //Loop Over Entries//
   int sameRlepjet=0;
   time_t start = time(NULL);
 
   for (Long64_t n=0; n<nEntries; n++) {
     T->GetEntry(n);
+    //if (maskT->GetEntryWithIndex(event) == -1) continue;
 
     TLorentzVector lep0, lep1;
     weight = weight0;
@@ -1127,6 +1135,7 @@ int main(int argc, char* argv[]){
       else {
         if (met_corrpt < 30) { v_cuts[morethan0btagCut2jets_metR].second += weight; v_cuts_ptr->at(morethan0btagCut2jets_metR).second += weight; prefix="3_"; }
         else                 { v_cuts[morethan0btagCut2jets].second += weight;      v_cuts_ptr->at(morethan0btagCut2jets).second += weight;      prefix="7_"; }
+                               //cout << "Region7 matched event: " << event << endl;
       }
     }
 

@@ -25,10 +25,10 @@ double xs_zprime = 0.272788, xs_gluon = 0.16757;
 
 //use vector to define order of samples in output tables
 vector< pair<string, string> > set_labels = { {"ttbar","ttbar"}, {"dy","Drell-Yan"}, {"st","Single-Top"}, {"vv","Diboson"}, {"wjet","W+Jets"},
-                                              {"bkg","Background"}, {zprime,zprime}, {gluon,gluon} };
+                                              {"qcd","QCD"}, {"bkg","Background"}, {zprime,zprime}, {gluon,gluon} };
 
 vector< pair<string, string> > set_latex = { {"ttbar","t$\\bar{\\textrm{t}}$"}, {"dy","Z/$\\gamma^{*}\\rightarrow l^{+}l^{-}$"}, {"st","Single-Top"}, {"vv","VV"}, {"wjet","W+Jets"},
-                                             {"bkg","Total Bkg"}, {zprime,"Z$'$ (10\\%, 3 TeV)"}, {gluon,"$\\textrm{g}_{\\textrm{kk}}$ (3 TeV)"} };
+                                             {"qcd","QCD"}, {"bkg","Total Bkg"}, {zprime,"Z$'$ (10\\%, 3 TeV)"}, {gluon,"$\\textrm{g}_{\\textrm{kk}}$ (3 TeV)"} };
 
 map<string, string> sys_labels = { {"lumi","luminosity"}, {"sig_st","\u03C3(single-top)"}, {"sig_db","\u03C3(diboson)"},
                                    {"mutrig","\u03BC trigger"}, {"muid","\u03BC ID"}, {"muiso","\u03BC Isolation"}, {"eltrig","e trigger"}, {"elid","e ID"}, {"eliso","e Isolation"},
@@ -648,7 +648,7 @@ void readFile(const string& fileName, map<string, map<string, pair<double, doubl
   if ( !file.is_open() ) cout << fileName + " not found!" << endl;
   //cout << " =====> Reading file:  " << fileName << endl ;
 
-  string line;
+  string line, channel;
   TString dataset;
   double weight=-1;
   char cut_order = 'A';  //cheesy way to keep cut order in map
@@ -666,6 +666,13 @@ void readFile(const string& fileName, map<string, map<string, pair<double, doubl
 
       line.erase(0, delim_pos+1);
       weight = stod(line);
+    }
+    else if (str == "Channel:") {
+      delim_pos = line.length()-1;
+      while (line.at(delim_pos) != ' ') delim_pos--;
+
+      line.erase(0, delim_pos+1);
+      channel = line;
     }
     else if (str == "Cut") {
       delim_pos = line.length()-1;
@@ -703,16 +710,19 @@ void readFile(const string& fileName, map<string, map<string, pair<double, doubl
       else {
         string key;
 
-        if      ( dataset.Contains("ttbar", TString::kIgnoreCase) ) key = "ttbar";
-        else if ( dataset.Contains("dy", TString::kIgnoreCase) )    key = "dy";
-        else if ( dataset.Contains("wjet", TString::kIgnoreCase) )  key = "wjet";
-        else if ( dataset.Contains("st", TString::kIgnoreCase)
-               || dataset.Contains("sat", TString::kIgnoreCase) )   key = "st";
-        else if ( dataset.Contains("ww", TString::kIgnoreCase)
-               || dataset.Contains("wz", TString::kIgnoreCase)
-               || dataset.Contains("zz", TString::kIgnoreCase) )    key = "vv";
-        else if ( dataset.Contains("qcd", TString::kIgnoreCase) )   key = "qcd";
-        else                                                        key = dataset.Data();
+        if      ( dataset.Contains("ttbar", TString::kIgnoreCase) )                        key = "ttbar";
+        else if ( dataset.Contains("dy", TString::kIgnoreCase) )                           key = "dy";
+        else if ( dataset.Contains("wjet", TString::kIgnoreCase) )                         key = "wjet";
+        else if ( dataset.Contains("st", TString::kIgnoreCase) ||
+                  dataset.Contains("sat", TString::kIgnoreCase) )                          key = "st";
+        else if ( dataset.Contains("ww", TString::kIgnoreCase) ||
+                  dataset.Contains("wz", TString::kIgnoreCase) ||
+                  dataset.Contains("zz", TString::kIgnoreCase) )                           key = "vv";
+        else if ( dataset.Contains("qcd", TString::kIgnoreCase) &&
+                  ( (channel == "mm" &&  dataset.Contains("Mu", TString::kIgnoreCase)) ||
+                    (channel == "ee" && !dataset.Contains("Mu", TString::kIgnoreCase)) ||
+                    (channel == "em" &&  dataset.Contains("Mu", TString::kIgnoreCase)) ) ) key = "qcd";
+        else                                                                               key = dataset.Data(); //signal
 
         if ( cuts[cut].find(key) == cuts[cut].end() ) cuts[cut][key] = make_pair( N, weight * sqrt(N/weight) );
         else {
@@ -722,6 +732,10 @@ void readFile(const string& fileName, map<string, map<string, pair<double, doubl
 
         //total background
         if ( !dataset.Contains("zprime", TString::kIgnoreCase) && !dataset.Contains("gluon", TString::kIgnoreCase) ) {
+          if ( dataset.Contains("qcd", TString::kIgnoreCase) && !( (channel == "mm" &&  dataset.Contains("Mu", TString::kIgnoreCase)) ||
+                                                                   (channel == "ee" && !dataset.Contains("Mu", TString::kIgnoreCase)) ||
+                                                                   (channel == "em" && dataset.Contains("Mu", TString::kIgnoreCase)) ) ) continue;
+
           key = "bkg";
           if ( cuts[cut].find(key) == cuts[cut].end() ) cuts[cut][key] = make_pair( N, weight * sqrt(N/weight) );
           else {
