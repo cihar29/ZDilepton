@@ -1,8 +1,8 @@
 //Chad Harrington - 10/19/2017
 
 void ttbar() {
-  
-  TFile* f_incl = TFile::Open("root_trees/TTbar_incl.root");
+
+  TFile* f_incl = TFile::Open("/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/TTbar_incl.root");
 
   TTree* tree = (TTree*) f_incl->Get("T");
   tree->SetBranchStatus("*",1);

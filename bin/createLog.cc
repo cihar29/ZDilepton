@@ -1,6 +1,6 @@
 //Only statistical error:    createLog dir
 //Systematic and stat error: createLog dir cutname {systematics, ...}
-//Example: createLog logs/ \>=_2_Jets,\_\>=_1_btag lumi sig_st sig_db mutrig muid muiso eltrig elid eliso jec jer btagSF mistagSF pileup topPtWeight pdf q2ttbar q2dy q2st q2signal
+//Example: createLog logs/ \>=_2_Jets,\_\>=_1_btag lumi sig_dy sig_st sig_db jec jer btagSF mistagSF pileup topPtWeight pdf q2ttbar muTrigSys muIdSys eleTrigSys eleIdSys
 
 #include <iostream>
 #include <fstream>
@@ -25,25 +25,23 @@ double xs_zprime = 0.272788, xs_gluon = 0.16757;
 
 //use vector to define order of samples in output tables
 vector< pair<string, string> > set_labels = { {"ttbar","ttbar"}, {"dy","Drell-Yan"}, {"st","Single-Top"}, {"vv","Diboson"}, {"wjet","W+Jets"},
-                                              {"qcd","QCD"}, {"bkg","Background"}, {zprime,zprime}, {gluon,gluon} };
+                                              {"bkg","Background"}, {zprime,zprime}, {gluon,gluon} };
 
 vector< pair<string, string> > set_latex = { {"ttbar","t$\\bar{\\textrm{t}}$"}, {"dy","Z/$\\gamma^{*}\\rightarrow l^{+}l^{-}$"}, {"st","Single-Top"}, {"vv","VV"}, {"wjet","W+Jets"},
-                                             {"qcd","QCD"}, {"bkg","Total Bkg"}, {zprime,"Z$'$ (10\\%, 3 TeV)"}, {gluon,"$\\textrm{g}_{\\textrm{kk}}$ (3 TeV)"} };
+                                             {"bkg","Total Bkg"}, {zprime,"Z$'$ (10\\%, 3 TeV)"}, {gluon,"$\\textrm{g}_{\\textrm{kk}}$ (3 TeV)"} };
 
-map<string, string> sys_labels = { {"lumi","luminosity"}, {"sig_st","\u03C3(single-top)"}, {"sig_db","\u03C3(diboson)"},
-                                   {"mutrig","\u03BC trigger"}, {"muid","\u03BC ID"}, {"muiso","\u03BC Isolation"}, {"eltrig","e trigger"}, {"elid","e ID"}, {"eliso","e Isolation"},
+map<string, string> sys_labels = { {"lumi","luminosity"}, {"sig_dy","\u03C3(drell-yan)"}, {"sig_st","\u03C3(single-top)"}, {"sig_db","\u03C3(diboson)"},
                                    {"jec","JEC"}, {"jer","JER"}, {"btagSF","b-tagging"}, {"mistagSF","mis-tagging"}, {"pileup","pileup"},
-                                   {"topPtWeight","top pT modeling"}, {"pdf","PDF"},
-                                   {"q2ttbar","Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-Top"}, {"q2signal","Q2 Signal"} };
+                                   {"topPtWeight","top pT modeling"}, {"pdf","PDF"}, {"q2ttbar","Q2 ttbar"},
+                                   {"muTrigSys","muon trigger"}, {"muIdSys","muon id"}, {"eleTrigSys","electron trigger"}, {"eleIdSys","electron id"} };
 
-map<string, string> sys_latex = { {"lumi","luminosity"}, {"sig_st","$\\sigma(single-top)$"}, {"sig_db","$\\sigma(diboson)$"},
-                                  {"mutrig","$\\mu$ trigger"}, {"muid","$\\mu$ ID"}, {"muiso","$\\mu$ Isolation"}, {"eltrig","e trigger"}, {"elid","e ID"}, {"eliso","e Isolation"},
+map<string, string> sys_latex = { {"lumi","luminosity"}, {"sig_dy","$\\sigma(drell-yan)$"}, {"sig_st","$\\sigma(single-top)$"}, {"sig_db","$\\sigma(diboson)$"},
                                   {"jec","JEC"}, {"jer","JER"}, {"btagSF","b-tagging"}, {"mistagSF","mis-tagging"}, {"pileup","pileup"},
-                                  {"topPtWeight","top $p_{T}$ modeling"}, {"pdf","PDF"},
-                                  {"q2ttbar","Q2 ttbar"}, {"q2dy","Q2 DY"}, {"q2st","Q2 Single-Top"}, {"q2signal","Q2 Signal"} };
+                                  {"topPtWeight","top $p_{T}$ modeling"}, {"pdf","PDF"}, {"q2ttbar","Q2 ttbar"},
+                                  {"muTrigSys","muon trigger"}, {"muIdSys","muon id"}, {"eleTrigSys","electron trigger"}, {"eleIdSys","electron id"} };
 
 // Normalization-only systematics
-map<string, double> sys_norm = { {"lumi",0.025}, {"sig_st",0.16}, {"sig_db",0.15}, {"mutrig",0.005}, {"muid",0.01}, {"muiso",0.01}, {"eltrig",0.01}, {"elid",0.01}, {"eliso",0.01} };
+map<string, double> sys_norm = { {"lumi",0.025}, {"sig_dy",0.2}, {"sig_st",0.16}, {"sig_db",0.15} };
 
 int main(int argc, char* argv[]) {
 
@@ -77,9 +75,9 @@ int main(int argc, char* argv[]) {
     readFile(dir + "logMC_"   + chan + ".txt", nom[chan]);
 
     for (auto const& sys : systematics) {
-      if ( chan == "mm" && (sys == "eltrig" || sys == "elid" || sys == "eliso") ) continue;
-      if ( chan == "ee" && (sys == "mutrig" || sys == "muid" || sys == "muiso") ) continue;
-      if ( chan == "em" &&  sys == "eltrig" )                                     continue;
+      if      ( (sys == "muTrigSys" || sys == "muIdSys") && chan == "ee" ) continue;
+      else if (  sys == "eleIdSys"   && chan == "mm" ) continue;
+      else if (  sys == "eleTrigSys" && chan != "ee" ) continue;
 
       if (sys_norm.find(sys) == sys_norm.end()) {  // shape systematics
         readFile(dir + "logMC_" + chan + "_" + sys + "UP.txt",   delUP[chan][sys]);
@@ -92,22 +90,32 @@ int main(int argc, char* argv[]) {
           string set = it_set.first;
 
           if (sys_norm.find(sys) == sys_norm.end()) {  // shape systematics
-            delUP[chan][sys][cut][set].first -= nom[chan][cut][set].first;
-            delDN[chan][sys][cut][set].first -= nom[chan][cut][set].first;
+
+            if (sys == "topPtWeight" || sys == "pdf" || sys == "q2ttbar") {
+              if (set == "bkg" || set == "ttbar") {    // this works because "bkg" comes before "ttbar" in set map
+
+                if ( sys == "topPtWeight" ) delDN[chan][sys][cut][set].first = nom[chan][cut]["ttbar"].first - delUP[chan][sys][cut]["ttbar"].first;
+                else                        delDN[chan][sys][cut][set].first = delDN[chan][sys][cut]["ttbar"].first - nom[chan][cut]["ttbar"].first;
+
+                delUP[chan][sys][cut][set].first = delUP[chan][sys][cut]["ttbar"].first - nom[chan][cut]["ttbar"].first;
+              }
+              else {
+                delUP[chan][sys][cut][set].first = 0;
+                delDN[chan][sys][cut][set].first = 0;
+              }
+            }
+            else {
+              delUP[chan][sys][cut][set].first -= nom[chan][cut][set].first;
+              delDN[chan][sys][cut][set].first -= nom[chan][cut][set].first;
+            }
           }
           else {                                       // normalization-only systematics
             double perEvent_sys = sys_norm[sys];
 
-            if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
-              if (chan == "mm") perEvent_sys *= 2.;
+            if      (sys == "lumi")
               perEvent_sys *= nom[chan][cut][set].first;
-            }
-            else if (sys == "eltrig" || sys == "elid" || sys == "eliso") {
-              if (chan == "ee") perEvent_sys *= 2.;
-              perEvent_sys *= nom[chan][cut][set].first;
-            }
-            else if (sys == "lumi")
-              perEvent_sys *= nom[chan][cut][set].first;
+            else if ( sys=="sig_dy" && (set == "dy" || set == "bkg") )
+              perEvent_sys *= nom[chan][cut]["dy"].first;
             else if ( sys=="sig_st" && (set == "st" || set == "bkg") )
               perEvent_sys *= nom[chan][cut]["st"].first;
             else if ( sys=="sig_db" && (set == "vv" || set == "bkg") )
@@ -147,25 +155,25 @@ int main(int argc, char* argv[]) {
       for (auto const& sys : systematics) {
 
         if (cut <= "FMET Filters") {
-          if ( sys == "eltrig" || sys == "elid" || sys == "eliso" ) {
+          if ( sys == "eleTrigSys" || sys == "eleIdSys" ) {
             delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first;
             delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first;
           }
           else {
             delUP["ll"][sys][cut][set].first = delUP["mm"][sys][cut][set].first;
-            delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first; 
+            delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first;
           }
         }
         else {
-          if      ( sys == "eltrig" ) {
+          if      ( sys == "eleTrigSys" ) {
             delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first;
             delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first;
           }
-          else if ( sys == "elid" || sys == "eliso" ) {
+          else if ( sys == "eleIdSys" ) {
             delUP["ll"][sys][cut][set].first = delUP["ee"][sys][cut][set].first + delUP["em"][sys][cut][set].first;
             delDN["ll"][sys][cut][set].first = delDN["ee"][sys][cut][set].first + delDN["em"][sys][cut][set].first;
           }
-          else if ( sys == "mutrig" || sys == "muid" || sys == "muiso" ) {
+          else if ( sys == "muTrigSys" || sys == "muIdSys" ) {
             delUP["ll"][sys][cut][set].first = delUP["mm"][sys][cut][set].first + delUP["em"][sys][cut][set].first;
             delDN["ll"][sys][cut][set].first = delDN["mm"][sys][cut][set].first + delDN["em"][sys][cut][set].first;
           }

@@ -1,16 +1,17 @@
 isMC           true
-setSUMDRCut    OFF
-inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/DYhigh.root
-outName        mm/DYhigh_mm.root
-channel        mm
+eleIdSys       DOWN
+setSUMDRCut    ON
+inName         /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/zprime_M-5000_W-1500.root
+outName        em/zprime_M-5000_W-1500_em_eleIdSysDOWN.root
+channel        em
 eras           Summer16_23Sep2016V4_MC
 res_era        Spring16_25nsV10_MC
 jet_type       AK4PFchs
-muTrigSfName   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/Trigger_EfficienciesAndSF_Period4.root
-muIdSfName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/ID_EfficienciesAndSF_GH.root
-muTrackSfName  /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/Tracking_EfficienciesAndSF_GH.root
-eTrigSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/electronTrigSF.root
-eRecoSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_Reco_efficiency.root
-eIdSfName      /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/e_TightID_efficiency.root
-btagName       /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/btag_eff.root
-pileupName     /uscms/home/cihar29/nobackup/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/mu_weights.root
+muTrigSfName   /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/Trigger_EfficienciesAndSF_BCDEF.root:0.549697  /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/Trigger_EfficienciesAndSF_GH.root:0.450303
+muIdSfName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/ID_EfficienciesAndSF_BCDEF.root:0.549697       /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/ID_EfficienciesAndSF_GH.root:0.450303
+muTrackSfName  /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/Tracking_EfficienciesAndSF_BCDEFGH.root
+eTrigSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/electronTrigSF.root
+eRecoSfName    /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/e_Reco_efficiency.root
+eIdSfName      /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/ele_id_effSF.root
+btagName       /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/btag_eff.root
+pileupName     /uscms_data/d3/cihar29/Analysis/CMSSW_8_0_30/src/analysis/ZDilepton/mu_weights.root

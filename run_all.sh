@@ -1,26 +1,34 @@
 #!/bin/bash
 
-# execute as nohup ./run_all.sh > & run.txt &
+# execute as nohup ./run_all.sh OFF > & run.txt &
 
-start=$(date +%s.%N)
+args=("$@")
+
+if [ $# -ne 1 ] ; then
+  echo "Please provide a DR cut (OFF, ON, ONbt, ONnb, REVERSE)."
+  exit
+fi
+
+dr=${args[0]}
 
 channels=( "mm" "em" "ee" )
-uncerts=( "topPtWeight" "jec" "jer" "pdf" "q2ttbar" "q2dy" "q2st" "q2signal" "btagSF" "mistagSF" "pileup" )
+uncerts=( "jec" "jer" "btagSF" "mistagSF" "pileup" "topPtWeight" "pdf" "q2ttbar" "muTrigSys" "muIdSys" "eleTrigSys" "eleIdSys" )
 types=( "UP" "DOWN" )
 
 dir="/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees"
 
 mkdir logs
+start=$(date +%s.%N)
 
 for chan in "${channels[@]}" ; do
   echo "Processing" $chan
   mkdir $chan
-  sh ./analyze_all.sh $chan > "logs/logMC_${chan}.txt"
+  sh ./analyze_all.sh $chan $dr > "logs/logMC_${chan}.txt"
 
   for uncert in "${uncerts[@]}" ; do
     for type in "${types[@]}" ; do
       echo "Processing" $chan $uncert $type
-      sh ./analyze_all.sh $chan $uncert $type > "logs/logMC_${chan}_${uncert}${type}.txt"
+      sh ./analyze_all.sh $chan $dr $uncert $type > "logs/logMC_${chan}_${uncert}${type}.txt"
     done
   done
 
@@ -29,7 +37,7 @@ for chan in "${channels[@]}" ; do
     dname="Ele"
   fi
   lines=( "isMC         false"
-          "setSUMDRCut  OFF"
+          "setSUMDRCut  $dr"
           "inName       ${dir}/${dname}.root"
           "outName      ${chan}/${dname}_${chan}.root"
           "channel      ${chan}"

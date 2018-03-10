@@ -10,6 +10,7 @@
 #include "TLegend.h"
 #include "TLatex.h"
 #include "TKey.h"
+#include "TLine.h"
 
 #include <vector>
 #include <map>
@@ -24,16 +25,18 @@ double delta(double delta1, double delta2, string pos_neg);
 void setPars(const string& parFile);
 void setStyle();
 void drawText();
+bool isBkg( const TString& set ) { return set=="ttbar" || set=="dy" || set=="wjet" || set=="st" || set=="vv"; }
 
 //parameters- edit in plot_pars.txt
-vector<TString> mcFileNames, sigFileNames, systematics;
+vector<TString> fileNames, systematics;
 vector<double> rebin;
 map<TString, float> sys_norm;
-string subplot, dataName;
-TString dataFileName, outName, theta, postfilename, region;
-TString hname, leftText, rightText, channel="em";
+TString dataFileName, dir, outName, channel, theta, postfilename, region, hname, leftText, rightText, subplot;
 float xmin, xmax, ymin, ymax, subymin, subymax, sigScale;
 bool logx=false, logy=false, plotData=false, plotImpact=false, fit=false;
+static Int_t MLightGray = TColor::GetColor( "#dddddd" );
+static Int_t LightGray  = TColor::GetColor( "#aaaaaa" );
+TString zprime = "zprime_M-3000_W-300", gluon = "gluon_M-3000";   //specify which signals to use in plot
 
 int main(int argc, char* argv[]) {
 
@@ -44,105 +47,161 @@ int main(int argc, char* argv[]) {
 
   setStyle();
 
-  enum SetEnum { ttbar=0, dy, st, vv, wjet, gluon, zprime, bkg, bkg_sys, undefined };
-  TString labels[] = { "t#bar{t}", "Z/#gamma*#rightarrowl^{+}l^{-}", "Single-Top", "VV", "W+Jets & QCD", "g_{kk} 3 TeV(#sigma=10 pb)", "Z'   3 TeV(#sigma=10 pb)", "Background", "Background with Systematics", "Undefined" };
-  TString outNames[]  = { "ttbar", "dy", "st", "vv", "wjet", "gluon", "zprime", "bkg", "bkg_sys", "undefined" };
+  vector< pair<TString, TString> > labels = { {"ttbar", "t#bar{t}"}, {"dy", "Z/#gamma*#rightarrowl^{+}l^{-}"}, {"st", "Single-Top"}, {"vv", "VV"}, {"wjet", "W+Jets"},
+                                              {"gluon", "g_{kk} 3 TeV (#sigma=10 pb)"}, {"zprime", "Z'   3 TeV (#sigma=10 pb)"}, {"bkg", "Background"} };
 
-  TString fname = dataFileName( dataFileName.Last('/')+1, dataFileName.Length() );
-  if      (fname.Contains("mm", TString::kIgnoreCase)) channel = "mm";
-  else if (fname.Contains("ee", TString::kIgnoreCase)) channel = "ee";
+  map<TString, TH1D*> m_NOM;
+  map<TString, map<TString, TH1D*> > m_UP, m_DN;
 
-  TFile* dataFile = TFile::Open(dataFileName + ".root");
-  TH1D* h_Data = (TH1D*) dataFile->FindObjectAny(hname);
+  fileNames.push_back( dataFileName );
+  for (auto const& fname : fileNames) {
 
-  if (rebin.size() == 1) h_Data->Rebin(rebin[0]);
-  else h_Data = (TH1D*) h_Data->Rebin(rebin.size()-1, "h_Data", &rebin[0]);
-  int nBins = h_Data->GetNbinsX();
+    TString set = "";
 
-  h_Data->SetMarkerStyle(20);
-  h_Data->SetLineColor(kBlack);
-  h_Data->SetMarkerSize(0.65);
+    if      ( fname == dataFileName )                                                set = "DATA";
+    else if ( fname.Contains("gluon", TString::kIgnoreCase) ||
+              fname.Contains("zprime", TString::kIgnoreCase) ) {
 
-  map<SetEnum, TH1D*> m_MCs, m_bkg;
-  map<pair<SetEnum, TString>, TH1D*> m_MCUPs, m_MCDNs, m_bkgUPs, m_bkgDNs;
-  for (int i=0,n=mcFileNames.size(); i<n; i++) {
+      if (theta == "gkk") {
+        if ( !fname.Contains("gluon", TString::kIgnoreCase) ) continue;
+        TString mass = fname(fname.Index("M-")+2, fname.Length()-fname.Index("M-")-2);
+        set = "gkk" + mass;
+      }
+      else if (theta == "zp1" || theta == "zp10" || theta == "zp30") {
+        if ( !fname.Contains("zprime", TString::kIgnoreCase) ) continue;
 
-    SetEnum dataset = undefined;
-    fname = mcFileNames[i]( mcFileNames[i].Last('/')+1, mcFileNames[i].Length() );
+        TString mass = fname(fname.Index("M-")+2, fname.Index("_W")-fname.Index("M-")-2);
+        TString width = fname(fname.Index("W-")+2, fname.Length()-fname.Index("W-")-2);
+        set = "zp" + mass + "_" + width;
 
-    if      ( fname.Contains("ttbar", TString::kIgnoreCase) )                        dataset = ttbar;
-    else if ( fname.Contains("dy", TString::kIgnoreCase) )                           dataset = dy;
-    else if ( fname.Contains("wjet", TString::kIgnoreCase) )                         dataset = wjet;
+        if ( width.Contains('p', TString::kIgnoreCase) ) width.ReplaceAll('p', '.');
+        int percent = stof( width.Data() ) / stof( mass.Data() ) * 100;
+
+        if      (theta == "zp1"  && percent != 1)  continue;
+        else if (theta == "zp10" && percent != 10) continue;
+        else if (theta == "zp30" && percent != 30) continue;
+      }
+      else {
+        if      ( fname == zprime )                                                  set = "zprime";
+        else if ( fname == gluon )                                                   set = "gluon";
+        else continue;
+      }
+    }
+
+    else if ( fname.Contains("ttbar", TString::kIgnoreCase) )                        set = "ttbar";
+    else if ( fname.Contains("dy", TString::kIgnoreCase) )                           set = "dy";
+    else if ( fname.Contains("wjet", TString::kIgnoreCase) )                         set = "wjet";
     else if ( fname.Contains("st", TString::kIgnoreCase) ||
-              fname.Contains("sat", TString::kIgnoreCase) )                          dataset = st;
+              fname.Contains("sat", TString::kIgnoreCase) )                          set = "st";
     else if ( fname.Contains("ww", TString::kIgnoreCase) ||
               fname.Contains("wz", TString::kIgnoreCase) ||
-              fname.Contains("zz", TString::kIgnoreCase) )                           dataset = vv;
+              fname.Contains("zz", TString::kIgnoreCase) )                           set = "vv";
     else if ( fname.Contains("qcd", TString::kIgnoreCase) &&
               ( (channel == "mm" &&  fname.Contains("Mu", TString::kIgnoreCase)) ||
                 (channel == "ee" && !fname.Contains("Mu", TString::kIgnoreCase)) ||
-                (channel == "em" &&  fname.Contains("Mu", TString::kIgnoreCase)) ) ) dataset = wjet;
+                (channel == "em" &&  fname.Contains("Mu", TString::kIgnoreCase)) ) ) set = "wjet";
     else                                                                             continue;
 
-    TFile* mcFile = TFile::Open(mcFileNames[i] + ".root");
-    TH1D* h_MC = (TH1D*) mcFile->FindObjectAny(hname);
+    TFile* file = TFile::Open( dir + fname + "_" + channel + ".root" );
+    TH1D* h = (TH1D*) file->FindObjectAny(hname);
+    if ( theta!="gkk" && theta!="zp1" && theta!="zp10" && theta!="zp30" && (set=="zprime" || set=="gluon") ) h->Scale(sigScale);
 
-    if (rebin.size() == 1) h_MC->Rebin(rebin[0]);
-    else h_MC = (TH1D*) h_MC->Rebin(rebin.size()-1, "h_MC", &rebin[0]);
+    if (rebin.size() == 1) h->Rebin(rebin[0]);
+    else                   h = (TH1D*) h->Rebin(rebin.size()-1, "h", &rebin[0]);
 
-    if ( m_MCs.find(dataset) == m_MCs.end() ) m_MCs[dataset] = h_MC;
-    else                                      m_MCs[dataset]->Add(h_MC);
+    if ( m_NOM.find(set) == m_NOM.end() ) m_NOM[set] = h;
+    else                                  m_NOM[set]->Add(h);
 
-    if ( m_bkg.find(bkg) == m_bkg.end() ) m_bkg[bkg] = (TH1D*) h_MC->Clone("h_bkg"); //second map to start with h_MC (needs new object)
-    else                                  m_bkg[bkg]->Add(h_MC);
+    // Add up MC that are a part of bkg
+    if ( isBkg(set) ) {
+      if ( m_NOM.find("bkg") == m_NOM.end() ) m_NOM["bkg"] = (TH1D*) h->Clone("h_bkg"); // Need new hist since we use this pointer in two places
+      else                                    m_NOM["bkg"]->Add(h);
+    }
 
-    for (unsigned int i_sys = 0; i_sys != systematics.size() && postfilename == ""; ++i_sys) {
-      TString sys = systematics[i_sys];
-      TFile* mcFileUP = TFile::Open( mcFileNames[i] + "_" + sys + "UP.root" );
-      TFile* mcFileDN = TFile::Open( mcFileNames[i] + "_" + sys + "DOWN.root" );
+    if ( set=="DATA" || (postfilename != "" && postfilename != "false") ) continue;
+    for (auto const& sys : systematics) {
 
-      TH1D* h_MCUP = (TH1D*) mcFileUP->FindObjectAny(hname);
-      TH1D* h_MCDN = (TH1D*) mcFileDN->FindObjectAny(hname);
+      TH1D* h_UP, *h_DN;
+      if ( ( (sys == "muTrigSys" || sys == "muIdSys") && channel == "ee" ) ||
+           ( sys == "eleIdSys"   && channel == "mm" ) ||
+           ( sys == "eleTrigSys" && channel != "ee" ) ||
+           ( (sys == "topPtWeight" || sys == "pdf" || sys == "q2ttbar") && set != "ttbar") ) {
 
-      if (rebin.size() == 1) h_MCUP->Rebin(rebin[0]);
-      else h_MCUP = (TH1D*) h_MCUP->Rebin(rebin.size()-1, "h_MCUP", &rebin[0]);
-      if (rebin.size() == 1) h_MCDN->Rebin(rebin[0]);
-      else h_MCDN = (TH1D*) h_MCDN->Rebin(rebin.size()-1, "h_MCDN", &rebin[0]);
+        h_UP = (TH1D*) h->Clone("h_UP");
+        h_DN = (TH1D*) h->Clone("h_DN");
+      }
+      else {
+        TFile* fileUP = TFile::Open( dir + fname + "_" + channel + "_" + sys + "UP.root" );
+        h_UP = (TH1D*) fileUP->FindObjectAny(hname);
+        if ( theta!="gkk" && theta!="zp1" && theta!="zp10" && theta!="zp30" && (set=="zprime" || set=="gluon") ) h_UP->Scale(sigScale);
 
-      pair<SetEnum, TString> keypair = make_pair(dataset, sys);
-      if ( m_MCUPs.find(keypair) == m_MCUPs.end() ) m_MCUPs[keypair] = h_MCUP;
-      else m_MCUPs[keypair]->Add(h_MCUP);
-      if ( m_MCDNs.find(keypair) == m_MCDNs.end() ) m_MCDNs[keypair] = h_MCDN;
-      else m_MCDNs[keypair]->Add(h_MCDN);
+        if (rebin.size() == 1) h_UP->Rebin(rebin[0]);
+        else                   h_UP = (TH1D*) h_UP->Rebin(rebin.size()-1, "h_UP", &rebin[0]);
 
-      keypair = make_pair(bkg, sys);
-      if ( m_bkgUPs.find(keypair) == m_bkgUPs.end() ) m_bkgUPs[keypair] = (TH1D*) h_MCUP->Clone("h_bkgUP");
-      else m_bkgUPs[keypair]->Add(h_MCUP);
-      if ( m_bkgDNs.find(keypair) == m_bkgDNs.end() ) m_bkgDNs[keypair] = (TH1D*) h_MCDN->Clone("h_bkgDN");
-      else m_bkgDNs[keypair]->Add(h_MCDN);
+        if (sys == "topPtWeight" && set == "ttbar") {
+          h_DN = (TH1D*) h->Clone("h_DN");
+          h_DN->Scale(2);
+          h_DN->Add(h_UP, -1);
+        }
+        else {
+          TFile* fileDN = TFile::Open( dir + fname + "_" + channel + "_" + sys + "DOWN.root" );
+          h_DN = (TH1D*) fileDN->FindObjectAny(hname);
+          if ( theta!="gkk" && theta!="zp1" && theta!="zp10" && theta!="zp30" && (set=="zprime" || set=="gluon") ) h_DN->Scale(sigScale);
+
+          if (rebin.size() == 1) h_DN->Rebin(rebin[0]);
+          else                   h_DN = (TH1D*) h_DN->Rebin(rebin.size()-1, "h_DN", &rebin[0]);
+        }
+      }
+
+      if ( m_UP[set].find(sys) == m_UP[set].end() ) m_UP[set][sys] = h_UP;
+      else                                          m_UP[set][sys]->Add(h_UP);
+      if ( m_DN[set].find(sys) == m_DN[set].end() ) m_DN[set][sys] = h_DN;
+      else                                          m_DN[set][sys]->Add(h_DN);
+
+      if ( isBkg(set) ) {
+        if ( m_UP["bkg"].find(sys) == m_UP["bkg"].end() ) m_UP["bkg"][sys] = (TH1D*) h_UP->Clone("h_bkgUP");
+        else                                              m_UP["bkg"][sys]->Add(h_UP);
+        if ( m_DN["bkg"].find(sys) == m_DN["bkg"].end() ) m_DN["bkg"][sys] = (TH1D*) h_DN->Clone("h_bkgDN");
+        else                                              m_DN["bkg"][sys]->Add(h_DN);
+      }
     }
   }
+  int nBins = m_NOM["DATA"]->GetNbinsX();
 
-  THStack* mcStack = new THStack();
-  for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) mcStack->Add( i_MC->second );
+  /// THETA output ///
 
-  if ( !m_MCs.empty() ) {
-    m_MCs[ttbar]->SetLineColor(2);
-    m_MCs[ttbar]->SetFillColor(2);
+  if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {
+    TFile* outFile = new TFile(channel + region + "__" + theta + "__" + hname( hname.Index('_')+1, hname.Length()-hname.Index('_')-1 ) + ".root","RECREATE");
+    outFile->cd();
 
-    m_MCs[dy]->SetLineColor(8);
-    m_MCs[dy]->SetFillColor(8);
+    for (auto const& i_set : m_NOM) {
+      TString set = i_set.first;
+      if (set == "bkg") continue;
+      i_set.second->Write( channel + region + "__" + set );
+      for (int i=1; i<=nBins; i++) {
+        if (i_set.second->GetBinError(i) / i_set.second->GetBinContent(i) > 0.2) cout << "Warning: " << set << " " << i_set.second->GetBinCenter(i) << endl;
+      }
 
-    m_MCs[wjet]->SetLineColor(4);
-    m_MCs[wjet]->SetFillColor(4);
+      if (set == "DATA") continue;
+      for (auto const& sys : systematics) {
+        if ( ( (sys == "muTrigSys" || sys == "muIdSys") && channel == "ee" ) ||
+             ( sys == "eleIdSys"   && channel == "mm" ) ||
+             ( sys == "eleTrigSys" && channel != "ee" ) ||
+             ( (sys == "topPtWeight" || sys == "pdf" || sys == "q2ttbar") && set != "ttbar") ) continue;
 
-    m_MCs[vv]->SetLineColor(6);
-    m_MCs[vv]->SetFillColor(6);
+        m_UP[set][sys]->Write( channel + region + "__" + set + "__" + sys + "__" + "up" );
+        m_DN[set][sys]->Write( channel + region + "__" + set + "__" + sys + "__" + "down" );
+      }
+    }
 
-    m_MCs[st]->SetLineColor(28);
-    m_MCs[st]->SetFillColor(28);
+    delete outFile;
+    outFile = 0;
+    return 1;
   }
-  if (postfilename != "") {
+
+  /// POST-FIT SYSTEMATICS ///
+
+  if (postfilename != "" && postfilename != "false") {
     TFile* postfile = TFile::Open(postfilename + ".root");
     sys_norm.clear(); systematics.clear();
 
@@ -151,207 +210,147 @@ int main(int argc, char* argv[]) {
     while ( (key = (TKey*)nextkey()) ) {
       TString keyname = key->GetName();
 
+      // use systematics from post-fit file
       if (keyname.Contains("UP")) {
-        int index = keyname.Index("__", 2, keyname.Index("__")+2, TString::kExact);  //index of second "__"
+        int index = keyname.Index("__", 2, keyname.Index("__")+2, TString::kExact); // index of second "__"
         TString sys = keyname(index+2, keyname.Index("UP")-index-2);
         unsigned int idx;
         for (idx=0; idx<systematics.size(); idx++) { if (systematics[idx] == sys) break; }
         if (idx == systematics.size()) systematics.push_back(sys);
       }
     }
+    // clone the binning
     for (auto const& sys : systematics) {
-      m_bkgUPs[make_pair(bkg, sys)] = (TH1D*) m_bkg[bkg]->Clone(sys+"UP");
-      m_bkgDNs[make_pair(bkg, sys)] = (TH1D*) m_bkg[bkg]->Clone(sys+"DN");
+      m_UP["bkg"][sys] = (TH1D*) m_NOM["bkg"]->Clone(sys+"UP");
+      m_DN["bkg"][sys] = (TH1D*) m_NOM["bkg"]->Clone(sys+"DN");
     }
     for (int i=1; i<=nBins; i++) {
       double bkg_content = 0;
 
-      for (map<SetEnum, TH1D*>::iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
-        TH1D* h = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first]);
-        i_MC->second->SetBinContent(i, h->GetBinContent(i));
+      for (auto const& i_set : m_NOM) {
+        TString set = i_set.first;
+        if ( !isBkg(set) ) continue;
+
+        TH1D* h = (TH1D*) postfile->FindObjectAny(channel + region + "__" + set);
+        i_set.second->SetBinContent(i, h->GetBinContent(i));
         bkg_content += h->GetBinContent(i);
       }
-      m_bkg[bkg]->SetBinContent(i, bkg_content);
+      m_NOM["bkg"]->SetBinContent(i, bkg_content);
 
       for (auto const& sys : systematics) {
         double bkgUP_content=0, bkgDN_content=0;
 
-        for (map<SetEnum, TH1D*>::iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
-          TH1D* hUP = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first] + "__" + sys + "UP");
-          TH1D* hDN = (TH1D*) postfile->FindObjectAny(channel + region + "__" + outNames[i_MC->first] + "__" + sys + "DN");
-          bkgUP_content += hUP->GetBinContent(i);  bkgDN_content += hDN->GetBinContent(i);
+        for (auto const& i_set : m_NOM) {
+          TString set = i_set.first;
+          if ( !isBkg(set) ) continue;
+
+          TH1D* h_UP = (TH1D*) postfile->FindObjectAny(channel + region + "__" + set + "__" + sys + "UP");
+          TH1D* h_DN = (TH1D*) postfile->FindObjectAny(channel + region + "__" + set + "__" + sys + "DN");
+          bkgUP_content += h_UP->GetBinContent(i);  bkgDN_content += h_DN->GetBinContent(i);
         }
-        m_bkgUPs[make_pair(bkg, sys)]->SetBinContent(i, bkgUP_content);
-        m_bkgDNs[make_pair(bkg, sys)]->SetBinContent(i, bkgDN_content);
+        m_UP["bkg"][sys]->SetBinContent(i, bkgUP_content);
+        m_DN["bkg"][sys]->SetBinContent(i, bkgDN_content);
       }
     }
   }
 
-  map<TString, TH1D*> m_sigs_theta;
-  map<pair<TString, TString>, TH1D*> m_sigUPs_theta, m_sigDNs_theta;
+  /// Calculate background systematics ///
 
-  map<SetEnum, TH1D*> m_sigs;
-  map<pair<SetEnum, TString>, TH1D*> m_sigUPs, m_sigDNs;
-  for (int i=0,n=sigFileNames.size(); i<n; i++) {
-
-    SetEnum dataset = undefined;
-    TString dataset_theta = "undefined";
-
-    if (theta == "gkk") {
-      if ( !sigFileNames[i].Contains("gluon", TString::kIgnoreCase) ) continue;
-      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("M-")-2);
-      dataset_theta = "gkk" + mass;
-    }
-    else if (theta == "zp1" || theta == "zp10" || theta == "zp30") {
-      if ( !sigFileNames[i].Contains("zprime", TString::kIgnoreCase) ) continue;
-
-      TString mass = sigFileNames[i](sigFileNames[i].Index("M-")+2, sigFileNames[i].Index("_W")-sigFileNames[i].Index("M-")-2);
-      TString width = sigFileNames[i](sigFileNames[i].Index("W-")+2, sigFileNames[i].Last('_')-sigFileNames[i].Index("W-")-2);
-      dataset_theta = "zp" + mass + "_" + width;
-
-      if ( width.Contains('p', TString::kIgnoreCase) ) width.ReplaceAll('p', '.');
-      int percent = stof( width.Data() ) / stof( mass.Data() ) * 100;
-
-      if      (theta == "zp1"  && percent != 1)  continue;
-      else if (theta == "zp10" && percent != 10) continue;
-      else if (theta == "zp30" && percent != 30) continue;
-    }
-    else {
-      if      ( sigFileNames[i].Contains("zprime_M-3000_W-300", TString::kIgnoreCase) ) dataset = zprime; //only plot M-3000
-      else if ( sigFileNames[i].Contains("gluon_M-3000", TString::kIgnoreCase) )        dataset = gluon;
-      else continue;
-    }
-
-    TFile* sigFile = TFile::Open(sigFileNames[i] + ".root");
-    TH1D* h_sig = (TH1D*) sigFile->FindObjectAny(hname);
-    if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sig->Scale(sigScale);
-
-    if (rebin.size() == 1) h_sig->Rebin(rebin[0]);
-    else h_sig = (TH1D*) h_sig->Rebin(rebin.size()-1, "h_sig", &rebin[0]);
-
-    if (dataset != undefined) m_sigs[dataset] = h_sig;
-    m_sigs_theta[dataset_theta] = h_sig;
-
-    for (unsigned int i_sys = 0; i_sys != systematics.size() && postfilename == ""; ++i_sys) {
-      TString sys = systematics[i_sys];
-      TFile* sigFileUP = TFile::Open( sigFileNames[i] + "_" + sys + "UP.root" );
-      TFile* sigFileDN = TFile::Open( sigFileNames[i] + "_" + sys + "DOWN.root" );
-
-      TH1D* h_sigUP = (TH1D*) sigFileUP->FindObjectAny(hname);
-      if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sigUP->Scale(sigScale);
-      TH1D* h_sigDN = (TH1D*) sigFileDN->FindObjectAny(hname);
-      if ( theta != "zp1" && theta != "zp10" && theta != "zp30" && theta != "gkk" ) h_sigDN->Scale(sigScale);
-
-      if (rebin.size() == 1) h_sigUP->Rebin(rebin[0]);
-      else h_sigUP = (TH1D*) h_sigUP->Rebin(rebin.size()-1, "h_sigUP", &rebin[0]);
-      if (rebin.size() == 1) h_sigDN->Rebin(rebin[0]);
-      else h_sigDN = (TH1D*) h_sigDN->Rebin(rebin.size()-1, "h_sigDN", &rebin[0]);
-
-      if (dataset != undefined) {
-        pair<SetEnum, TString> keypair = make_pair(dataset, sys);
-        m_sigUPs[keypair] = h_sigUP;
-        m_sigDNs[keypair] = h_sigDN;
-      }
-
-      pair<TString, TString> keypair_theta = make_pair(dataset_theta, sys);
-      m_sigUPs_theta[keypair_theta] = h_sigUP;
-      m_sigDNs_theta[keypair_theta] = h_sigDN;
-    }
-  }
-
-  if ( !m_sigs.empty() ) {
-    m_sigs[zprime]->SetLineColor(12);
-    m_sigs[zprime]->SetLineWidth(2);
-
-    m_sigs[gluon]->SetLineColor(9);
-    m_sigs[gluon]->SetLineWidth(2);
-    m_sigs[gluon]->SetLineStyle(2);
-  }
-
-  //Combine sys_norm and systematics
-  for (map<TString, float>::const_iterator it = sys_norm.begin(); it != sys_norm.end(); ++it) {
-    TString sys = it->first;
-
-    if( channel == "mm" && (sys == "eltrig" || sys == "elid" || sys == "eliso") ) continue ;
-    if( channel == "ee" && (sys == "mutrig" || sys == "muid" || sys == "muiso") ) continue ;
-    if( channel == "em" &&  sys == "eltrig" )                                     continue ;
-    systematics.push_back(sys);
-  }
-
-  m_bkg[bkg_sys] = (TH1D*) m_bkg[bkg]->Clone("h_bkg_sys"); //background with full systematics for fitting
-
-  TGraphAsymmErrors* background = new TGraphAsymmErrors(); //graph for background uncertainty
-  background->SetFillStyle(3013);
-  background->SetFillColor(kBlack);
+  TGraphAsymmErrors* background = new TGraphAsymmErrors(); // TGraph background with full systematics for plotting         (UP and DOWN error)
+  m_NOM["sys"] = (TH1D*) m_NOM["bkg"]->Clone("h_sys");     // TH1    background with full systematics for KS and Chi2 test (average error)
+  for (auto const& i_norm : sys_norm) systematics.push_back( i_norm.first );
 
   for (int pt=0; pt<nBins; pt++) {
     int bin = pt+1;
-    double nom = m_bkg[bkg]->GetBinContent(bin), staterr = m_bkg[bkg]->GetBinError(bin), errorUP=0, errorDN=0, errorAVG=0;
+    double nom = m_NOM["bkg"]->GetBinContent(bin), staterr = m_NOM["bkg"]->GetBinError(bin), errorUP=0, errorDN=0, errorAVG=0;
 
-    background->SetPoint(pt, h_Data->GetBinCenter(bin), nom);
+    background->SetPoint(pt, m_NOM["bkg"]->GetBinCenter(bin), nom);
     if (nom == 0) continue;
 
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
-      TString sys = systematics[i_sys];
+    for (auto const& sys : systematics) {
       double deltaUP, deltaDN;
 
       if (sys_norm.find(sys) != sys_norm.end()) {  // normalization-only systematics
-        double perEvent_sys = sys_norm[sys] ; // per event systematics
+        double norm = sys_norm[sys];
 
-        if (sys == "muid" || sys == "muiso" || sys == "mutrig") {
-          if (channel == "mm") perEvent_sys *= 2.;
-          perEvent_sys *= nom;
-        }
-        else if (sys == "eltrig" || sys == "elid" || sys == "eliso") {
-          if (channel == "ee") perEvent_sys *= 2.;
-          perEvent_sys *= nom;
-        }
-        else if (sys == "lumi") perEvent_sys *= nom;
+        if      (sys == "lumi") norm *= nom;
+        else if (sys=="sig_dy") norm *= m_NOM["dy"]->GetBinContent(bin);
+        else if (sys=="sig_st") norm *= m_NOM["st"]->GetBinContent(bin);
+        else if (sys=="sig_db") norm *= m_NOM["vv"]->GetBinContent(bin);
+        else                    norm = 0;
 
-        else if (sys=="sig_tt") perEvent_sys *= m_MCs[ttbar]->GetBinContent(bin);
-
-        else if (sys=="sig_dy") perEvent_sys *= m_MCs[dy]->GetBinContent(bin);
-
-        else if (sys=="sig_st") perEvent_sys *= m_MCs[st]->GetBinContent(bin);
-
-        else if (sys=="sig_db") perEvent_sys *= m_MCs[vv]->GetBinContent(bin);
-
-        else perEvent_sys = 0.;
-
-        deltaUP = perEvent_sys;
-        deltaDN = -1 * perEvent_sys;
+        deltaUP = norm;
+        deltaDN = -1 * norm;
       }
-      else {
-        deltaUP = m_bkgUPs[make_pair(bkg, sys)]->GetBinContent(bin) - nom;
-        deltaDN = m_bkgDNs[make_pair(bkg, sys)]->GetBinContent(bin) - nom;
+      else {                                       // shape systematics
+        deltaUP = m_UP["bkg"][sys]->GetBinContent(bin) - nom;
+        deltaDN = m_DN["bkg"][sys]->GetBinContent(bin) - nom;
       }
       double d1 = delta(deltaUP, deltaDN, "+");
       double d2 = delta(deltaUP, deltaDN, "-");
 
-      errorUP += d1*d1;
-      errorDN += d2*d2;
+      errorUP  += d1*d1;
+      errorDN  += d2*d2;
 
-      errorAVG+= 0.5*(fabs(d1)+fabs(d2)) * 0.5*(fabs(d1)+fabs(d2));
+      errorAVG += 0.5*(fabs(d1)+fabs(d2)) * 0.5*(fabs(d1)+fabs(d2));
     }
-    background->SetPointEXhigh( pt, h_Data->GetBinWidth(bin)/2 );
-    background->SetPointEXlow( pt, h_Data->GetBinWidth(bin)/2 );
+    background->SetPointEXhigh( pt, m_NOM["bkg"]->GetBinWidth(bin)/2 );
+    background->SetPointEXlow(  pt, m_NOM["bkg"]->GetBinWidth(bin)/2 );
     background->SetPointEYhigh( pt, sqrt( errorUP + staterr*staterr ) );
-    background->SetPointEYlow( pt, sqrt( errorDN + staterr*staterr ) );
+    background->SetPointEYlow(  pt, sqrt( errorDN + staterr*staterr ) );
 
-    m_bkg[bkg_sys]->SetBinError( bin, sqrt( errorAVG + staterr*staterr ) );
+    m_NOM["sys"]->SetBinError( bin, sqrt( errorAVG + staterr*staterr ) );
   }
 
-  TCanvas* c = new TCanvas("c", "c", 600, 600);
+  /// PLOTTING ///
 
-  float b_scale = 0.3, t_scale = 1 - b_scale;
-  TPad* top = new TPad("top", "top", 0, b_scale, 1, 1);
-  TPad* bottom = new TPad("bottom", "bottom", 0, 0, 1, b_scale);
+  m_NOM["DATA"]->SetMarkerStyle(20);
+  m_NOM["DATA"]->SetLineColor(kBlack);
+  m_NOM["DATA"]->SetMarkerSize(0.45);
+
+  background->SetFillStyle(3245);
+  background->SetFillColor(LightGray);
+  gStyle->SetHatchesLineWidth(1);
+  gStyle->SetHatchesSpacing(1);
+
+  m_NOM["ttbar"]->SetLineColor(2);
+  m_NOM["ttbar"]->SetFillColor(2);
+  m_NOM["dy"]->SetLineColor(8);
+  m_NOM["dy"]->SetFillColor(8);
+  m_NOM["wjet"]->SetLineColor(4);
+  m_NOM["wjet"]->SetFillColor(4);
+  m_NOM["vv"]->SetLineColor(6);
+  m_NOM["vv"]->SetFillColor(6);
+  m_NOM["st"]->SetLineColor(28);
+  m_NOM["st"]->SetFillColor(28);
+
+  m_NOM["zprime"]->SetLineColor(12);
+  m_NOM["zprime"]->SetLineWidth(2);
+  m_NOM["gluon"]->SetLineColor(9);
+  m_NOM["gluon"]->SetLineWidth(2);
+  m_NOM["gluon"]->SetLineStyle(2);
+
+  THStack* mcStack = new THStack();
+  for (auto const& i_set : labels) {
+    TString set = i_set.first;
+    if ( isBkg(set) ) mcStack->Add( m_NOM[set] );
+  }
+
+  TCanvas* c = new TCanvas("c", "c", 400, 400);
+  float b_scale = 0.34, t_scale = 0.99 - b_scale;
+  TPad* top = new TPad("top", "top", 0.01, b_scale, 0.99, 0.99);
+  TPad* bottom = new TPad("bottom", "bottom", 0.01, 0.0, 0.99, b_scale);
 
   if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
-    top->SetTopMargin(0.05);
-    top->SetBottomMargin(0.05);
+    top->SetTopMargin(0.065);
+    top->SetBottomMargin(0.03);
+    top->SetLeftMargin(0.19);
+    top->SetRightMargin(0.05);
     top->Draw();
+    bottom->SetTopMargin(0.03);
     bottom->SetBottomMargin(0.35);
+    bottom->SetLeftMargin(0.19);
+    bottom->SetRightMargin(0.05);
     bottom->SetGridy();
     bottom->Draw();
     top->cd();
@@ -361,66 +360,61 @@ int main(int argc, char* argv[]) {
 
   TString xtitle = "No Title";
   string keytitle = hname(2, hname.Length()).Data();
-  map<string, string> xtitles = {{"dilepmass","M_{ll} (Gev)"},{"lep0eta","#eta_{Leading Lepton}"},
-  {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T} (GeV)"},{"lep1pt","Subleading Lepton p_{T} (GeV)"},
-  {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T} (GeV)"},
-  {"jet1pt","Subleading Jet p_{T} (GeV)"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
+  map<string, string> xtitles = {{"dilepmass","M_{ll} [GeV]"},{"lep0eta","#eta_{Leading Lepton}"},
+  {"lep1eta","#eta_{Subleading Lepton}"},{"lep0pt","Leading Lepton p_{T} [GeV]"},{"lep1pt","Subleading Lepton p_{T} [GeV]"},
+  {"jet0eta","#eta_{Leading Jet}"},{"jet1eta","#eta_{Subleading Jet}"},{"jet0pt","Leading Jet p_{T} [GeV]"},
+  {"jet1pt","Subleading Jet p_{T} [GeV]"},{"nEle","Number of Electrons"},{"nMuon","Number of Muons"},
   {"nJet","Number of Jets"},{"nEleDiff","N_{Electrons}-N_{Good Electrons}"},{"nMuonDiff","N_{Muons}-N_{Good Muons} "},
   {"nJetDiff","N_{Jets}-N_{Good Jets} "},{"nGoodEle","N_{Good Electrons}"},{"nGoodMuon","N_{Good Muons}"},
-  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} (GeV)"},{"sT","H_{T}^{L} (GeV)"},{"sT_met","S_{T} (GeV)"},{"metpt","MET p_{T} (GeV)"},
+  {"nGoodJet","N_{Good Jets}"},{"jethT","H_{T} [GeV]"},{"sT","H_{T}^{L} [GeV]"},{"sT_met","S_{T} [GeV]"},{"metpt","MET p_{T} [GeV]"},
   {"jet0btag","btag_{Leading Jet}"},{"jet1btag","btag_{Subeading Jet}"},{"nbtag","Number of btagged Jets"},{"sumrmin","#DeltaR_{min0} + #DeltaR_{min1}"},
-  {"metcorrpt","MET p_{T} (GeV)"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
-  {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} (GeV)"},{"lep1perp","Subleading Lepton p_{T}^{rel} (GeV)"},
+  {"metcorrpt","MET p_{T} [GeV]"},{"muonD0","Muon D_{0} (cm)"},{"muonDz","Muon D_{z} (cm)"},{"rmin0","#DeltaR_{min}(leading lepton, jet)"},
+  {"rmin1","#DeltaR_{min}(subleading lepton, jet)"},{"lep0perp","Leading Lepton p_{T}^{rel} [GeV]"},{"lep1perp","Subleading Lepton p_{T}^{rel} [GeV]"},
   {"rl0cleanj","#DeltaR(leading lepton, cleaned jet)"},{"rl1cleanj","#DeltaR(subleading lepton, cleaned jet)"},{"rl0l1","#DeltaR(leading lepton, subleading lepton)"},
   {"jet0phi","#phi_{Leading Jet}"}, {"jet1phi","#phi_{Subleading Jet}"}, {"lep0phi","#phi_{Leading Lepton}"}, {"lep1phi","#phi_{Subleading Lepton}"},
-  {"lepept","electron p_{T} (GeV)"}, {"lepmpt","muon p_{T} (GeV)"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} (GeV)"},
-  {"minjet1pt","Jet p_{T}^{rmin subleading lepton} (GeV)"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} (GeV)"},
-  {"cleanjet1pt","Jet p_{T}^{cleaned from subleading lepton} (GeV)"},{"masslmin0","M_{leading lep,rmin jet} (Gev)"},{"masslmin1","M_{subleading lep,rmin jet} (Gev)"},
-  {"masslljjm","M_{lljjmet} (Gev)"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"},{"nPV","N_{Good Primary vertices}"},
-  {"lep0perp_in","Leading Lepton p_{T}^{rel} In (GeV)"},{"lep1perp_in","Subleading Lepton p_{T}^{rel} In (GeV)"},{"lepperp_probe","Probe Lepton p_{T}^{rel} (GeV)"},
-  {"lepperp_probe_in","Probe Lepton p_{T}^{rel} In (GeV)"},{"rmin_probe","#DeltaR_{min}(probe lepton, jet)"} };
+  {"lepept","electron p_{T} [GeV]"}, {"lepmpt","muon p_{T} [GeV]"},{"rbl","#DeltaR(b quark, lepton)"},{"minjet0pt","Jet p_{T}^{rmin leading lepton} [GeV]"},
+  {"minjet1pt","Jet p_{T}^{rmin subleading lepton} [GeV]"},{"cleanjet0pt","Jet p_{T}^{cleaned from leading lepton} [GeV]"},
+  {"cleanjet1pt","Jet p_{T}^{cleaned from subleading lepton} [GeV]"},{"masslmin0","M_{leading lep,rmin jet} [GeV]"},{"masslmin1","M_{subleading lep,rmin jet} [GeV]"},
+  {"masslljjm","M_{lljjmet} [GeV]"},{"dphi_jet0met","#Delta #phi_{Leading Jet,MET}"},{"dphi_jet1met","#Delta #phi_{Subleading Jet,MET}"},{"nPV","N_{Good Primary vertices}"},
+  {"lep0perp_in","Leading Lepton p_{T}^{rel} In [GeV]"},{"lep1perp_in","Subleading Lepton p_{T}^{rel} In [GeV]"},{"lepperp_probe","Probe Lepton p_{T}^{rel} [GeV]"},
+  {"lepperp_probe_in","Probe Lepton p_{T}^{rel} In [GeV]"},{"rmin_probe","#DeltaR_{min}(probe lepton, jet)"} };
   if (xtitles.find(keytitle) != xtitles.end()) xtitle = xtitles[keytitle];
 
-  TH1D* hist = 0;
-  if (rebin.size() == 1) hist = new TH1D("hist", "hist", nBins, h_Data->GetBinLowEdge(1), h_Data->GetBinLowEdge(nBins+1));
-  else hist = new TH1D("hist", "hist", rebin.size()-1, &rebin[0]);
+  TH1D* hist=0;
+  if (rebin.size() == 1) hist = new TH1D("hist", "hist", nBins, m_NOM["DATA"]->GetBinLowEdge(1), m_NOM["DATA"]->GetBinLowEdge(nBins+1));
+  else                   hist = new TH1D("hist", "hist", rebin.size()-1, &rebin[0]);
 
   if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
     hist->GetXaxis()->SetTickLength(0.03/t_scale);
     hist->GetXaxis()->SetLabelSize(0);
-    hist->GetYaxis()->SetTitleSize(0.03/t_scale);
-    hist->GetYaxis()->SetTitleOffset(0.95);
+    hist->GetYaxis()->SetTitleSize(0.05/t_scale);
+    hist->GetYaxis()->SetTitleOffset(1.5*t_scale);
     hist->GetYaxis()->SetLabelSize(0.03/t_scale);
   }
   else {
     hist->GetXaxis()->SetTitle(xtitle);
-    hist->GetXaxis()->SetTitleSize(0.03/t_scale);
-    hist->GetXaxis()->SetTitleOffset(1.3);
-    hist->GetXaxis()->SetLabelSize(0.03/t_scale);
-
-    hist->GetYaxis()->SetTitleSize(0.03/t_scale);
-    hist->GetYaxis()->SetTitleOffset(1.3);
-    hist->GetYaxis()->SetLabelSize(0.03/t_scale);
+    hist->GetXaxis()->SetTitleOffset(1);
+    hist->GetYaxis()->SetTitleOffset(1.2);
 
     if (logx) { hist->GetXaxis()->SetNoExponent(); hist->GetXaxis()->SetMoreLogLabels(); }
   }
 
   hist->GetXaxis()->SetNdivisions(5, 5, 0);
   hist->GetXaxis()->SetRangeUser(xmin, xmax);
+  hist->GetYaxis()->SetTitle("Events");
 
-  ymax = h_Data->GetMaximum();
-  if (ymax == 0) ymax = mcStack->GetMaximum();
+  ymax = mcStack->GetMaximum();
   if (logy) { ymax *= 100; ymin = 0.1; }
   else        ymax *= 1.5;
   hist->GetYaxis()->SetRangeUser(ymin, int(ymax) );
 
   hist->Draw();
-  int legEntries = m_MCs.size() + m_sigs.size();
-  if (plotData) legEntries++;
+  int legEntries = labels.size(); // don't include bkg uncert in legend
+  if (!plotData) legEntries--;
 
   TLegend* leg = 0;
   if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
-    leg = new TLegend(.65,.9-.06*legEntries,.85,.9);
+    leg = new TLegend(.65,.9-.055*legEntries,.85,.9);
     leg->SetTextSize(0.04);
   }
   else {
@@ -431,22 +425,20 @@ int main(int argc, char* argv[]) {
   leg->SetFillColor(0);
   leg->SetFillStyle(0);
 
-  for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC)
-    leg->AddEntry(i_MC->second, labels[i_MC->first].Data(), "F");
-  for (map<SetEnum, TH1D*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
-    leg->AddEntry(i_sig->second, labels[i_sig->first].Data(), "L");
+  if (plotData) leg->AddEntry(m_NOM["DATA"], "Data", "PLE");
+
+  for (auto const& i_set : labels) {
+    TString set = i_set.first;
+    if (set=="bkg") continue;
+
+    leg->AddEntry( m_NOM[set], i_set.second.Data(), (set=="gluon" || set=="zprime" ? "L" : "F") );
+  }
 
   mcStack->Draw("samehist");
-  for (map<SetEnum, TH1D*>::const_iterator i_sig=m_sigs.begin(); i_sig != m_sigs.end(); ++i_sig)
-    i_sig->second->Draw("samehist");
-
-  leg->AddEntry(background, "Bkg Uncertainty", "F");
   background->Draw("sameE2");
-
-  if (plotData) {
-    h_Data->Draw("samePE");
-    leg->AddEntry(h_Data, Form( "%s", dataName.data() ), "PLE");
-  }
+  m_NOM["gluon"]->Draw("samehist");
+  m_NOM["zprime"]->Draw("samehist");
+  if (plotData) m_NOM["DATA"]->Draw("samePE");
 
   gPad->RedrawAxis();
   leg->Draw();
@@ -460,36 +452,39 @@ int main(int argc, char* argv[]) {
 
     bhist = (TH1D*) hist->Clone("bhist");
 
-    TH1D* hsubplot = (TH1D*) h_Data->Clone("hsubplot");
+    TH1D* hsubplot = (TH1D*) m_NOM["DATA"]->Clone("hsubplot");
 
     TGraphAsymmErrors* bkg_env = (TGraphAsymmErrors*) background->Clone("bkg_env");
+    TGraphAsymmErrors* bkg_env_stat = (TGraphAsymmErrors*) background->Clone("bkg_env_stat");
     double *yarray = background->GetY(), *eyhigh = background->GetEYhigh(), *eylow = background->GetEYlow();
 
-    TString subytitle = "#frac{Data}{Background}";
+    TString subytitle = "Data / Bkg";
     if (subplot=="ratio") {
-      bhist->GetYaxis()->SetTitleOffset(0.53);
       for (int pt=0; pt<nBins; pt++) {
         if (yarray[pt] == 0) continue;
         int bin=pt+1;
 
-        hsubplot->SetBinContent(bin, h_Data->GetBinContent(bin)/yarray[pt]);
-        hsubplot->SetBinError(bin, h_Data->GetBinError(bin)/yarray[pt]);
+        hsubplot->SetBinContent(bin, m_NOM["DATA"]->GetBinContent(bin)/yarray[pt]);
+        hsubplot->SetBinError(  bin, m_NOM["DATA"]->GetBinError(bin)  /yarray[pt]);
 
-        bkg_env->SetPoint(pt, h_Data->GetBinCenter(bin), 1.);
+        bkg_env->SetPoint(       pt, m_NOM["DATA"]->GetBinCenter(bin), 1.);
         bkg_env->SetPointEYhigh( pt, eyhigh[pt]/yarray[pt] );
-        bkg_env->SetPointEYlow( pt, eylow[pt]/yarray[pt] );
+        bkg_env->SetPointEYlow(  pt, eylow[pt] /yarray[pt] );
+
+        bkg_env_stat->SetPoint(       pt, m_NOM["DATA"]->GetBinCenter(bin), 1.);
+        bkg_env_stat->SetPointEYhigh( pt, m_NOM["bkg"]->GetBinError(bin)/yarray[pt] );
+        bkg_env_stat->SetPointEYlow(  pt, m_NOM["bkg"]->GetBinError(bin)/yarray[pt] );
       }
     }
     else {
       subytitle = "Pull";
-      bhist->GetYaxis()->SetTitleOffset(0.43);
       for (int pt=0; pt<nBins; pt++) {
         if (yarray[pt] == 0) continue;
         int bin=pt+1;
 
-        double diff = h_Data->GetBinContent(bin)-yarray[pt];
-        double sigma = diff>0 ? sqrt( h_Data->GetBinError(bin)*h_Data->GetBinError(bin) + eyhigh[pt]*eyhigh[pt] )
-                              : sqrt( h_Data->GetBinError(bin)*h_Data->GetBinError(bin) + eylow[pt]*eylow[pt] );
+        double diff = m_NOM["DATA"]->GetBinContent(bin)-yarray[pt];
+        double sigma = diff>0 ? sqrt( m_NOM["DATA"]->GetBinError(bin)*m_NOM["DATA"]->GetBinError(bin) + eyhigh[pt]*eyhigh[pt] )
+                              : sqrt( m_NOM["DATA"]->GetBinError(bin)*m_NOM["DATA"]->GetBinError(bin) + eylow[pt]*eylow[pt] );
 
         if (sigma == 0) continue;
         hsubplot->SetBinContent(bin, diff/sigma);
@@ -498,8 +493,8 @@ int main(int argc, char* argv[]) {
 
     bhist->GetXaxis()->SetLabelSize(0.03/b_scale);
     bhist->GetXaxis()->SetTickLength(0.03/b_scale);
-    bhist->GetXaxis()->SetTitleSize(0.03/b_scale);
-    bhist->GetXaxis()->SetTitleOffset(1.3);
+    bhist->GetXaxis()->SetTitleSize(0.05/b_scale);
+    bhist->GetXaxis()->SetTitleOffset(1);
     bhist->GetXaxis()->SetTitle(xtitle);
     bhist->GetXaxis()->SetRangeUser(xmin, xmax);
     if (logx) { bhist->GetXaxis()->SetNoExponent(); bhist->GetXaxis()->SetMoreLogLabels(); }
@@ -507,82 +502,45 @@ int main(int argc, char* argv[]) {
     bhist->GetYaxis()->SetRangeUser(subymin, subymax);
     bhist->GetYaxis()->SetNdivisions(5, 3, 0);
     bhist->GetYaxis()->SetLabelSize(0.03/b_scale);
+    bhist->GetYaxis()->SetTitleOffset(1.5*b_scale);
     bhist->GetYaxis()->SetTitle(subytitle);
-    bhist->GetYaxis()->SetTitleSize(0.03/b_scale);
+    bhist->GetYaxis()->SetTitleSize(0.05/b_scale);
     bhist->GetYaxis()->CenterTitle(true);
 
     bhist->Draw();
 
-    gStyle->SetHatchesLineWidth(1);
-    gStyle->SetHatchesSpacing(2);
-
     if (subplot=="ratio") {
-      bkg_env->SetFillColor(kGray+2);
-      bkg_env->SetFillStyle(3144);
-      bkg_env->Draw("samePE2");
+      bkg_env_stat->SetLineColor(MLightGray);
+      bkg_env_stat->SetFillColor(MLightGray);
+      bkg_env_stat->SetFillStyle(1001);
+
+      bkg_env->SetLineColor(LightGray);
+      bkg_env->SetFillColor(LightGray);
+      bkg_env->SetFillStyle(1001);
+
+      bkg_env->Draw("sameE2");
+      bkg_env_stat->Draw("sameE2");
       hsubplot->Draw("samePE");
+      TLine* hline = new TLine(xmin,1,xmax,1);
+      hline->SetLineStyle(7);
+      hline->Draw();
     }
     else {
       hsubplot->SetFillColor(kGray+2);
       hsubplot->SetFillStyle(3144);
       hsubplot->Draw("samehist");
     }
+    gPad->RedrawAxis();
   }
 
   c->Print("./plots/" + outName + ".pdf");
 
   if (fit) {
     cout << channel << " " << hname << endl;
-    cout << "KS Test\t\t"        << h_Data->KolmogorovTest(m_bkg[bkg])      << "\t" << h_Data->KolmogorovTest(m_bkg[bkg_sys])      << endl;
-    cout << "KS Test (with X)\t" << h_Data->KolmogorovTest(m_bkg[bkg], "X") << "\t" << h_Data->KolmogorovTest(m_bkg[bkg_sys], "X") << endl;
-    h_Data->Chi2Test(m_bkg[bkg], "UWP");
-    h_Data->Chi2Test(m_bkg[bkg_sys], "UWP");
-  }
-
-  if (theta == "zp1" || theta == "zp10" || theta == "zp30" || theta == "gkk") {
-    channel += region;
-    TFile* outFile = new TFile(channel + "__" + theta + "__" + hname( hname.Index('_')+1, hname.Length()-hname.Index('_')-1 ) + ".root","RECREATE");
-    outFile->cd();
-
-    h_Data->Write( channel + "__DATA" );
-    for (int i=1; i<=nBins; i++) {
-      if (h_Data->GetBinError(i) / h_Data->GetBinContent(i) > 0.2) cout << "Warning: Data " << h_Data->GetBinCenter(i) << endl;
-    }
-
-    for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
-      SetEnum dataset = i_MC->first;
-      i_MC->second->Write( channel + "__" + outNames[dataset] );
-      for (int i=1; i<=nBins; i++) {
-        if (i_MC->second->GetBinError(i) / i_MC->second->GetBinContent(i) > 0.2) cout << "Warning: " << outNames[dataset] << " " << i_MC->second->GetBinCenter(i) << endl;
-      }
-
-      for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
-        TString sys = systematics[i_sys];
-        if (sys_norm.find(sys) != sys_norm.end()) continue;
-
-        m_MCUPs[make_pair(dataset, sys)]->Write( channel + "__" + outNames[dataset] + "__" + sys + "__" + "up" );
-        m_MCDNs[make_pair(dataset, sys)]->Write( channel + "__" + outNames[dataset] + "__" + sys + "__" + "down" );
-      }
-    }
-
-    for (map<TString, TH1D*>::const_iterator i_sig=m_sigs_theta.begin(); i_sig != m_sigs_theta.end(); ++i_sig) {
-      TString dataset = i_sig->first;
-      i_sig->second->Write( channel + "__" + dataset );
-      for (int i=1; i<=nBins; i++) {
-        if (i_sig->second->GetBinError(i) / i_sig->second->GetBinContent(i) > 0.2) cout << "Warning: " << dataset << " " << i_sig->second->GetBinCenter(i) << endl;
-      }
-
-      for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
-        TString sys = systematics[i_sys];
-        if (sys_norm.find(sys) != sys_norm.end()) continue;
-
-        m_sigUPs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "up" );
-        m_sigDNs_theta[make_pair(dataset, sys)]->Write( channel + "__" + dataset + "__" + sys + "__" + "down" );
-      }
-    }
-
-    delete outFile;
-    outFile = 0;
+    cout << "KS Test\t\t"        << m_NOM["DATA"]->KolmogorovTest(m_NOM["bkg"])      << "\t" << m_NOM["DATA"]->KolmogorovTest(m_NOM["sys"])      << endl;
+    cout << "KS Test (with X)\t" << m_NOM["DATA"]->KolmogorovTest(m_NOM["bkg"], "X") << "\t" << m_NOM["DATA"]->KolmogorovTest(m_NOM["sys"], "X") << endl;
+    m_NOM["DATA"]->Chi2Test(m_NOM["bkg"], "UWP");
+    m_NOM["DATA"]->Chi2Test(m_NOM["sys"], "UWP");
   }
 
   if (plotImpact) {
@@ -598,30 +556,18 @@ int main(int argc, char* argv[]) {
     if (subplot=="ratio") bhist->GetYaxis()->SetTitle("#frac{Up/Down}{Nom}");
     else                  bhist->GetYaxis()->SetTitle("#frac{Up/Down - Nom}{Nom}");
 
-    m_MCs.insert(m_sigs.begin(), m_sigs.end()); //merge signals to mc map to take care of plots in one loop
-    m_MCUPs.insert(m_sigUPs.begin(), m_sigUPs.end());
-    m_MCDNs.insert(m_sigDNs.begin(), m_sigDNs.end());
-
-    m_MCs[bkg] = m_bkg[bkg]; //merge background to mc map to take care of plots in one loop
-
-    for (unsigned int i_sys = 0; i_sys != systematics.size(); ++i_sys) {
-      TString sys = systematics[i_sys];
+    for (auto const& sys : systematics) {
       if (sys_norm.find(sys) != sys_norm.end()) continue;
 
-      m_MCUPs[make_pair(bkg, sys)] = m_bkgUPs[make_pair(bkg, sys)]; //merge background to mc map
-      m_MCDNs[make_pair(bkg, sys)] = m_bkgDNs[make_pair(bkg, sys)];
-
-      for (map<SetEnum, TH1D*>::const_iterator i_MC=m_MCs.begin(); i_MC != m_MCs.end(); ++i_MC) {
+      for (auto const& i_set : labels) {
+        TString set = i_set.first;
 
         c->Clear("D");  leg->Clear();
-
-        SetEnum dataset = i_MC->first;
-
         top->cd();  hist->Draw();  drawText();
 
-        TH1D* h_NM = i_MC->second;
-        TH1D* h_UP = m_MCUPs[make_pair(dataset, sys)];
-        TH1D* h_DN = m_MCDNs[make_pair(dataset, sys)];
+        TH1D* h_NM = m_NOM[set];
+        TH1D* h_UP = m_UP[set][sys];
+        TH1D* h_DN = m_DN[set][sys];
 
         if (logy) hist->GetYaxis()->SetRangeUser(0.1, int(h_NM->GetMaximum()*100) );
         else      hist->GetYaxis()->SetRangeUser(ymin, int(h_NM->GetMaximum()*1.5) );
@@ -632,8 +578,8 @@ int main(int argc, char* argv[]) {
         h_UP->SetLineColor(8);       h_UP->SetLineWidth(2);  h_UP->Draw("histsame");
         h_DN->SetLineColor(kRed+1);  h_DN->SetLineWidth(2);  h_DN->Draw("histsame");
 
-        leg->SetHeader( labels[dataset].Data() );  leg->AddEntry(h_NM, "Nominal", "L");
-        leg->AddEntry(h_UP, sys+" Up", "L");       leg->AddEntry(h_DN, sys+" Down", "L");
+        leg->SetHeader( i_set.second.Data() );  leg->AddEntry(h_NM, "Nominal", "L");
+        leg->AddEntry(h_UP, sys+" Up", "L");    leg->AddEntry(h_DN, sys+" Down", "L");
         leg->Draw();
 
         bottom->cd();  bhist->Draw();
@@ -644,7 +590,7 @@ int main(int argc, char* argv[]) {
         else                  { hsubUP->Add(h_NM, -1); hsubUP->Divide(h_NM); hsubDN->Add(h_NM, -1); hsubDN->Divide(h_NM); }
         hsubUP->Draw("histsame");  hsubDN->Draw("histsame");
 
-        c->Print("./plots/impact/" + outName + "_" + outNames[dataset] + "_" + sys + ".pdf");
+        c->Print("./plots/impact/" + outName + "_" + set + "_" + sys + ".pdf");
       }
     }
   }
@@ -655,43 +601,60 @@ void drawText() {
   TLatex text;
   text.SetNDC();
 
-  text.SetTextSize(0.035);
+  text.SetTextSize(0.045);
   text.SetTextFont(42);
-  if ( plotData && (subplot=="ratio" || subplot=="pull") ) text.DrawLatex(1-rightText.Length()/95., 0.96, rightText);
-  else text.DrawLatex(1-rightText.Length()/68., 0.96, rightText);
+  if ( plotData && (subplot=="ratio" || subplot=="pull") )
+    text.DrawLatex(1-rightText.Length()/82., 0.95, rightText);
+  else {
+    text.SetTextSize(0.035);
+    text.DrawLatex(1-rightText.Length()/75., 0.96, rightText);
+  }
 
-  text.SetTextSize(0.05);
+  text.SetTextSize(0.06);
   text.SetTextFont(61);
-  text.DrawLatex(0.18, 0.96, "CMS");
-  //text.DrawLatex(0.18, 0.96, leftText);
-  text.SetTextSize(0.03);
+  if ( plotData && (subplot=="ratio" || subplot=="pull") ) text.DrawLatex(0.2, 0.95, "CMS");
+  else {
+    text.SetTextSize(0.05);
+    text.DrawLatex(0.18, 0.96, "CMS");
+  }
 
   //text.SetTextSize(0.04);
   //text.SetTextFont(52);
   //text.DrawLatex(0.29, 0.96, "Simulation Preliminary"); //make bool
 
-  text.SetTextSize(0.035);
+  text.SetTextSize(0.04);
   text.SetTextFont(42);
-  float textposx = 0.2, textposy = 0.9;
+  float textposx, textposy, gap;
+  if ( plotData && (subplot=="ratio" || subplot=="pull") ) {
+    textposx = 0.25;
+    textposy = 0.88;
+    gap = 0.06;
+  }
+  else {
+    text.SetTextSize(0.03);
+    textposx = 0.22;
+    textposy = 0.9;
+    gap = 0.05;
+  }
 
   if      (channel == "mm")  text.DrawLatex(textposx,textposy,"#bf{#mu#mu}");
   else if (channel == "ee")  text.DrawLatex(textposx,textposy,"#bf{ee}");
   else                       text.DrawLatex(textposx,textposy,"#bf{e#mu}");
 
   if (hname.Contains("0_") || hname.Contains("2_") || hname.Contains("4_") || hname.Contains("6_"))
-    text.DrawLatex(textposx,textposy-0.05,"#bf{= 0 btags}");
+    text.DrawLatex(textposx,textposy-gap,"#bf{= 0 btags}");
   else
-    text.DrawLatex(textposx,textposy-0.05,"#bf{#geq 1 btag}");
+    text.DrawLatex(textposx,textposy-gap,"#bf{#geq 1 btag}");
 
   if (hname.Contains("0_") || hname.Contains("1_") || hname.Contains("4_") || hname.Contains("5_"))
-    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV}");
+    text.DrawLatex(textposx,textposy-2*gap,"#bf{p_{T}^{j0}>100 GeV}");
   else
-    text.DrawLatex(textposx,textposy-0.1,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
+    text.DrawLatex(textposx,textposy-2*gap,"#bf{p_{T}^{j0}>100 GeV, p_{T}^{j1}>50 GeV}");
 
   if (hname.Contains("0_") || hname.Contains("1_") || hname.Contains("2_") || hname.Contains("3_"))
-    text.DrawLatex(textposx,textposy-0.15,"#bf{p_{T}^{miss} < 30 GeV}");
+    text.DrawLatex(textposx,textposy-3*gap,"#bf{p_{T}^{miss} < 30 GeV}");
   else
-    text.DrawLatex(textposx,textposy-0.15,"#bf{p_{T}^{miss} > 30 GeV}");
+    text.DrawLatex(textposx,textposy-3*gap,"#bf{p_{T}^{miss} > 30 GeV}");
 }
 
 void setPars(const string& parFile) {
@@ -714,21 +677,13 @@ void setPars(const string& parFile) {
     while (line.at(0) == ' ') line.erase(0, 1);
     while (line.at(line.length()-1) == ' ') line.erase(line.length()-1, line.length());
 
-    if (var == "mcFileNames") {
+    if (var == "fileNames") {
       while ( (delim_pos = line.find(' ')) != -1) {
-        mcFileNames.push_back( line.substr(0, delim_pos).data() );
+        fileNames.push_back( line.substr(0, delim_pos).data() );
         line.erase(0, delim_pos + 1);
         while (line.at(0) == ' ') line.erase(0, 1);
       }
-      mcFileNames.push_back( line.data() );
-    }
-    else if (var == "sigFileNames") {
-      while ( (delim_pos = line.find(' ')) != -1) {
-        sigFileNames.push_back( line.substr(0, delim_pos).data() );
-        line.erase(0, delim_pos + 1);
-        while (line.at(0) == ' ') line.erase(0, 1);
-      }
-      sigFileNames.push_back( line.data() );
+      fileNames.push_back( line.data() );
     }
     else if (var == "systematics") {
       while ( (delim_pos = line.find(' ')) != -1) {
@@ -757,14 +712,15 @@ void setPars(const string& parFile) {
       rebin.push_back( stod(line) );
     }
     else if (var == "dataFileName") dataFileName = line.data();
-    else if (var == "dataName")     dataName = line;
     else if (var == "outName")      outName = line.data();
+    else if (var == "dir")          dir = line.data();
+    else if (var == "channel")      channel = line.data();
     else if (var == "theta")        theta = line.data();
     else if (var == "postfilename") postfilename = line.data();
-    else if (var == "region")       region = line.data();
     else if (var == "hname")        hname = line.data();
     else if (var == "leftText")     leftText = line.data();
     else if (var == "rightText")    rightText = line.data();
+    else if (var == "subplot")      subplot = line.data();
     else if (var == "sigScale")     sigScale = stof(line);
     else if (var == "xmin")         xmin = stof(line);
     else if (var == "xmax")         xmax = stof(line);
@@ -772,12 +728,12 @@ void setPars(const string& parFile) {
     else if (var == "ymax")         ymax = stof(line);
     else if (var == "subymin")      subymin = stof(line);
     else if (var == "subymax")      subymax = stof(line);
-    else if (var == "subplot")      subplot = line;
-    else if (var == "logx")         { if (line == "true") logx = true; }
-    else if (var == "logy")         { if (line == "true") logy = true; }
-    else if (var == "plotData")     { if (line == "true") plotData = true; }
-    else if (var == "plotImpact")   { if (line == "true") plotImpact = true; }
-    else if (var == "fit")          { if (line == "true") fit = true; }
+    else if (var == "region")       { if (line != "false") region = line.data(); }
+    else if (var == "logx")         { if (line == "true")  logx = true; }
+    else if (var == "logy")         { if (line == "true")  logy = true; }
+    else if (var == "plotData")     { if (line == "true")  plotData = true; }
+    else if (var == "plotImpact")   { if (line == "true")  plotImpact = true; }
+    else if (var == "fit")          { if (line == "true")  fit = true; }
   }
   file.close();
 }

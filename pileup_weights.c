@@ -5,7 +5,7 @@ void drawText();
 
 void pileup_weights() {
 
-  TString dir = "root_trees/";
+  TString dir = "/uscms_data/d3/cihar29/Analysis/CMSSW_8_0_26_patch2/src/analysis/ZDilepton/root_trees/";
   TString files[] = {
     "mu_DataUP",
     "mu_DataNOMINAL",

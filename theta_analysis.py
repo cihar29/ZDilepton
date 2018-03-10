@@ -5,7 +5,7 @@ def get_model():
     # which also includes rate changes according to the alternate shapes.
     # For more info about this model and naming conventuion, see documentation
     # of build_model_from_rootfile.
-    model = build_model_from_rootfile('ll_all__gkk__sT_met.root', include_mc_uncertainties=True)
+    model = build_model_from_rootfile('ll_ON__gkk__masslljjm.root', include_mc_uncertainties=True)
  
     # If the prediction histogram is zero, but data is non-zero, the negative log-likelihood
     # is infinity which causes problems for some methods. Therefore, we set all histogram
@@ -26,47 +26,12 @@ def get_model():
     # systematic. In this case, the same parameter will be used; shape and rate changes 
     # will be 100% correlated.
  
+    model.add_lognormal_uncertainty('drellyan_xsec',  0.2,  'dy')
     model.add_lognormal_uncertainty('singletop_xsec', 0.16, 'st')
     model.add_lognormal_uncertainty('diboson_xsec',   0.15, 'vv')
  
     for proc in model.processes:
         model.add_lognormal_uncertainty('lumi',           0.025, proc)
-
-        model.add_lognormal_uncertainty('muon_trigger',   0.01,  proc, 'mmbt')
-        model.add_lognormal_uncertainty('muon_id',        0.02,  proc, 'mmbt')
-        model.add_lognormal_uncertainty('muon_isolation', 0.02,  proc, 'mmbt')
-        model.add_lognormal_uncertainty('muon_trigger',   0.01,  proc, 'mmnb')
-        model.add_lognormal_uncertainty('muon_id',        0.02,  proc, 'mmnb')
-        model.add_lognormal_uncertainty('muon_isolation', 0.02,  proc, 'mmnb')
-        model.add_lognormal_uncertainty('muon_trigger',   0.01,  proc, 'mmrev')
-        model.add_lognormal_uncertainty('muon_id',        0.02,  proc, 'mmrev')
-        model.add_lognormal_uncertainty('muon_isolation', 0.02,  proc, 'mmrev')
-
-        model.add_lognormal_uncertainty('ele_trigger',    0.02,  proc, 'eebt')
-        model.add_lognormal_uncertainty('ele_id',         0.02,  proc, 'eebt')
-        model.add_lognormal_uncertainty('ele_isolation',  0.02,  proc, 'eebt')
-        model.add_lognormal_uncertainty('ele_trigger',    0.02,  proc, 'eenb')
-        model.add_lognormal_uncertainty('ele_id',         0.02,  proc, 'eenb')
-        model.add_lognormal_uncertainty('ele_isolation',  0.02,  proc, 'eenb')
-        model.add_lognormal_uncertainty('ele_trigger',    0.02,  proc, 'eerev')
-        model.add_lognormal_uncertainty('ele_id',         0.02,  proc, 'eerev')
-        model.add_lognormal_uncertainty('ele_isolation',  0.02,  proc, 'eerev')
-
-        model.add_lognormal_uncertainty('muon_trigger',   0.005, proc, 'embt')
-        model.add_lognormal_uncertainty('muon_id',        0.01,  proc, 'embt')
-        model.add_lognormal_uncertainty('muon_isolation', 0.01,  proc, 'embt')
-        model.add_lognormal_uncertainty('ele_id',         0.01,  proc, 'embt')
-        model.add_lognormal_uncertainty('ele_isolation',  0.01,  proc, 'embt')
-        model.add_lognormal_uncertainty('muon_trigger',   0.005, proc, 'emnb')
-        model.add_lognormal_uncertainty('muon_id',        0.01,  proc, 'emnb')
-        model.add_lognormal_uncertainty('muon_isolation', 0.01,  proc, 'emnb')
-        model.add_lognormal_uncertainty('ele_id',         0.01,  proc, 'emnb')
-        model.add_lognormal_uncertainty('ele_isolation',  0.01,  proc, 'emnb')
-        model.add_lognormal_uncertainty('muon_trigger',   0.005, proc, 'emrev')
-        model.add_lognormal_uncertainty('muon_id',        0.01,  proc, 'emrev')
-        model.add_lognormal_uncertainty('muon_isolation', 0.01,  proc, 'emrev')
-        model.add_lognormal_uncertainty('ele_id',         0.01,  proc, 'emrev')
-        model.add_lognormal_uncertainty('ele_isolation',  0.01,  proc, 'emrev')
 
     return model
  
@@ -136,23 +101,24 @@ for sp in spgs:
         histosUP[p] = evaluate_prediction(model, nuisance_parsUP[p], include_signal = False)
         histosDN[p] = evaluate_prediction(model, nuisance_parsDN[p], include_signal = False)
 
-        if p not in ('beta_signal', 'q2signal') :
-            covfile.write("%s  " % p)
-            covfile_asv.write("%s  " % p)
+        if p == 'beta_signal' : continue
+        covfile.write("%s  " % p)
+        covfile_asv.write("%s  " % p)
+
     covfile.write("\n")
     covfile_asv.write("\n")
     nPars = len(pars)
 
     for i in range(nPars) :
         p = pars[i]
-        if p in ('beta_signal', 'q2signal') : continue
+        if p == 'beta_signal' : continue
         nuifile.write("%-20s%5.4f    %5.4f\n" % (p, nuisances[sp][p][0][0], nuisances[sp][p][0][1]))
         nuifile_asv.write("%-20s%5.4f    %5.4f\n" % (p, nuisances_asv[sp][p][0][0], nuisances_asv[sp][p][0][1]))
 
         covfile.write("%-20s" % p)
         covfile_asv.write("%-20s" % p)
         for j in range(nPars) :
-            if pars[j] in ('beta_signal', 'q2signal') : continue
+            if pars[j] == 'beta_signal' : continue
             covfile.write("%5.4f  " % nuisances[sp]['__cov'][0][i][j])
             covfile_asv.write("%5.4f  " % nuisances_asv[sp]['__cov'][0][i][j])
         covfile.write("\n")
